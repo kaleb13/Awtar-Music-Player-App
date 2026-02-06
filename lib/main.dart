@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/main_player_screen.dart';
 import 'screens/home_screen.dart';
-import 'providers/navigation_provider.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
@@ -14,7 +13,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Awtart Music Player',
+      title: 'Awtar',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
@@ -30,29 +29,15 @@ class RootLayout extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentScreen = ref.watch(screenProvider);
-
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // HOME PAGE ALWAYS AT THE BOTTOM
-          const HomeScreen(),
+          // 1. HOME PAGE (Static Base)
+          HomeScreen(),
 
-          // PLAYER OVERLAY (Slides up/down)
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeOutQuart,
-            top: currentScreen == AppScreen.player
-                ? 0
-                : MediaQuery.of(context).size.height,
-            left: 0,
-            right: 0,
-            bottom: currentScreen == AppScreen.player
-                ? 0
-                : -MediaQuery.of(context).size.height,
-            child: const MainMusicPlayer(),
-          ),
+          // 2. THE DYNAMIC PLAYER SECTION (Handles all 3 states: Mini, Expanded, Lyrics)
+          Positioned.fill(child: MainMusicPlayer()),
         ],
       ),
     );

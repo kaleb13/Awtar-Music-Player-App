@@ -185,6 +185,7 @@ class AppAlbumCard extends StatelessWidget {
   final String imageUrl;
   final double size;
   final bool isMini;
+  final bool flexible;
   final VoidCallback? onTap;
 
   const AppAlbumCard({
@@ -194,6 +195,7 @@ class AppAlbumCard extends StatelessWidget {
     required this.imageUrl,
     this.size = 140,
     this.isMini = false,
+    this.flexible = false,
     this.onTap,
   });
 
@@ -206,17 +208,26 @@ class AppAlbumCard extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.small),
-            child: Image.network(
-              imageUrl,
-              width: size,
-              height: size,
-              fit: BoxFit.cover,
-            ),
+            child: flexible
+                ? AspectRatio(
+                    aspectRatio: 1.0,
+                    child: Image.network(
+                      imageUrl,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : Image.network(
+                    imageUrl,
+                    width: size,
+                    height: size,
+                    fit: BoxFit.cover,
+                  ),
           ),
           if (!isMini) ...[
             const SizedBox(height: 8),
             SizedBox(
-              width: size,
+              width: flexible ? double.infinity : size,
               child: Text(
                 title,
                 style: AppTextStyles.bodySmall.copyWith(
@@ -227,7 +238,7 @@ class AppAlbumCard extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: size,
+              width: flexible ? double.infinity : size,
               child: Text(
                 artist,
                 style: AppTextStyles.caption,
@@ -368,6 +379,57 @@ class AppMiniPlayer extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class AppTopBar extends StatelessWidget {
+  const AppTopBar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  color: AppColors.accentYellow,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.music_note,
+                  color: Colors.black,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                "Awtar",
+                style: AppTextStyles.titleMedium.copyWith(
+                  letterSpacing: 1,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const Row(
+            children: [
+              AppIconButton(icon: Icons.search, color: Colors.white),
+              SizedBox(width: 16),
+              AppIconButton(
+                icon: Icons.more_vert, // Vertical Menu
+                color: Colors.white,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

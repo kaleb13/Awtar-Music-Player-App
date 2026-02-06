@@ -14,6 +14,10 @@ final pageControllerProvider = Provider<PageController>((ref) {
   return controller;
 });
 
-enum AppScreen { home, player }
+enum AppScreen { home, player, lyrics }
 
 final screenProvider = StateProvider<AppScreen>((ref) => AppScreen.home);
+
+enum HomeTab { home, folders, artists, albums }
+
+final homeTabProvider = StateProvider<HomeTab>((ref) => HomeTab.home);

@@ -10,7 +10,7 @@ class PlayerScreenContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final playerState = ref.watch(playerProvider);
+    final isPlaying = ref.watch(playerProvider.select((s) => s.isPlaying));
     final song = ref.watch(sampleSongProvider);
 
     return Column(
@@ -82,26 +82,40 @@ class PlayerScreenContent extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 20),
-        AppProgressBar(
-          value: playerState.position.inSeconds.toDouble(),
-          max: playerState.duration.inSeconds.toDouble(),
-          onChanged: (v) => ref
-              .read(playerProvider.notifier)
-              .seek(Duration(seconds: v.toInt())),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _formatDuration(playerState.position),
-              style: AppTextStyles.caption,
-            ),
-            Text(
-              _formatDuration(playerState.duration),
-              style: AppTextStyles.caption,
-            ),
-          ],
+        Consumer(
+          builder: (context, ref, child) {
+            final position = ref.watch(
+              playerProvider.select((s) => s.position),
+            );
+            final duration = ref.watch(
+              playerProvider.select((s) => s.duration),
+            );
+            return Column(
+              children: [
+                AppProgressBar(
+                  value: position.inSeconds.toDouble(),
+                  max: duration.inSeconds.toDouble(),
+                  onChanged: (v) => ref
+                      .read(playerProvider.notifier)
+                      .seek(Duration(seconds: v.toInt())),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _formatDuration(position),
+                      style: AppTextStyles.caption,
+                    ),
+                    Text(
+                      _formatDuration(duration),
+                      style: AppTextStyles.caption,
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 20),
         Row(
@@ -110,9 +124,9 @@ class PlayerScreenContent extends ConsumerWidget {
             const AppIconButton(icon: Icons.repeat, color: AppColors.textGrey),
             const AppIconButton(icon: Icons.skip_previous, size: 36),
             AppPlayButton(
-              isPlaying: playerState.isPlaying,
+              isPlaying: isPlaying,
               onTap: () {
-                if (playerState.isPlaying) {
+                if (isPlaying) {
                   ref.read(playerProvider.notifier).pause();
                 } else {
                   ref.read(playerProvider.notifier).play(song);
@@ -199,7 +213,7 @@ class LyricsScreenContent extends ConsumerWidget {
     final progress = ref.watch(scrollProgressProvider);
 
     return Container(
-      color: AppColors.background,
+      color: AppColors.mainDark,
       padding: const EdgeInsets.only(top: 140),
       child: Opacity(
         opacity: progress.clamp(0.0, 1.0),
@@ -225,7 +239,7 @@ class LyricsScreenContent extends ConsumerWidget {
                       padding: EdgeInsets.only(right: 12.0),
                       child: Icon(
                         Icons.play_arrow,
-                        color: AppColors.accentYellow,
+                        color: AppColors.primaryGreen,
                         size: 20,
                       ),
                     ),
@@ -238,8 +252,8 @@ class LyricsScreenContent extends ConsumerWidget {
                             ? FontWeight.bold
                             : FontWeight.w500,
                         color: isCurrent
-                            ? AppColors.textMain
-                            : AppColors.textDim,
+                            ? Colors.white
+                            : Colors.white.withOpacity(0.4),
                       ),
                     ),
                   ),
