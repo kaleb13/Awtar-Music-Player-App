@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:awtart_music_player/providers/player_provider.dart';
 import 'package:awtart_music_player/providers/navigation_provider.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:awtart_music_player/theme/app_theme.dart';
+import 'package:awtart_music_player/widgets/app_widgets.dart';
 
 class PlayerScreenContent extends ConsumerWidget {
   const PlayerScreenContent({super.key});
@@ -14,18 +15,23 @@ class PlayerScreenContent extends ConsumerWidget {
 
     return Column(
       children: [
+        const SizedBox(height: 15),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Icon(Icons.arrow_back),
+            AppIconButton(
+              icon: Icons.arrow_back,
+              onTap: () =>
+                  ref.read(screenProvider.notifier).state = AppScreen.home,
+            ),
             Text(
               "Songs",
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.bold,
+              style: AppTextStyles.caption.copyWith(
+                color: Colors.black,
                 fontSize: 16,
               ),
             ),
-            const Icon(Icons.more_horiz),
+            const AppIconButton(icon: Icons.more_horiz),
           ],
         ),
         const Spacer(),
@@ -37,30 +43,35 @@ class PlayerScreenContent extends ConsumerWidget {
               children: [
                 Text(
                   song.title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                  style: AppTextStyles.titleLarge.copyWith(
+                    color: AppColors.textLight,
                   ),
                 ),
                 Text(
                   song.artist,
-                  style: GoogleFonts.outfit(color: Colors.grey, fontSize: 16),
+                  style: AppTextStyles.bodyMain.copyWith(
+                    color: AppColors.textGrey,
+                  ),
                 ),
               ],
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF1DB954),
-                borderRadius: BorderRadius.circular(20),
+                color: AppColors.primaryGreen,
+                borderRadius: BorderRadius.circular(AppRadius.medium),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.favorite_border, color: Colors.white, size: 18),
-                  SizedBox(width: 4),
+                  const Icon(
+                    Icons.favorite_border,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 4),
                   Text(
                     "Saved",
-                    style: TextStyle(
+                    style: AppTextStyles.bodySmall.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
@@ -71,23 +82,12 @@ class PlayerScreenContent extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 20),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            trackHeight: 2,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-            activeTrackColor: Colors.black,
-            inactiveTrackColor: Colors.black.withOpacity(0.1),
-            thumbColor: Colors.black,
-          ),
-          child: Slider(
-            value: playerState.position.inSeconds.toDouble(),
-            max: playerState.duration.inSeconds.toDouble().clamp(0.001, 10000),
-            onChanged: (v) {
-              ref
-                  .read(playerProvider.notifier)
-                  .seek(Duration(seconds: v.toInt()));
-            },
-          ),
+        AppProgressBar(
+          value: playerState.position.inSeconds.toDouble(),
+          max: playerState.duration.inSeconds.toDouble(),
+          onChanged: (v) => ref
+              .read(playerProvider.notifier)
+              .seek(Duration(seconds: v.toInt())),
         ),
         const SizedBox(height: 10),
         Row(
@@ -95,11 +95,11 @@ class PlayerScreenContent extends ConsumerWidget {
           children: [
             Text(
               _formatDuration(playerState.position),
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+              style: AppTextStyles.caption,
             ),
             Text(
               _formatDuration(playerState.duration),
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+              style: AppTextStyles.caption,
             ),
           ],
         ),
@@ -107,9 +107,10 @@ class PlayerScreenContent extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            const Icon(Icons.repeat, color: Colors.grey),
-            const Icon(Icons.skip_previous, size: 36),
-            GestureDetector(
+            const AppIconButton(icon: Icons.repeat, color: AppColors.textGrey),
+            const AppIconButton(icon: Icons.skip_previous, size: 36),
+            AppPlayButton(
+              isPlaying: playerState.isPlaying,
               onTap: () {
                 if (playerState.isPlaying) {
                   ref.read(playerProvider.notifier).pause();
@@ -117,21 +118,9 @@ class PlayerScreenContent extends ConsumerWidget {
                   ref.read(playerProvider.notifier).play(song);
                 }
               },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: Colors.black,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  playerState.isPlaying ? Icons.pause : Icons.play_arrow,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
             ),
-            const Icon(Icons.skip_next, size: 36),
-            const Icon(Icons.shuffle, color: Colors.grey),
+            const AppIconButton(icon: Icons.skip_next, size: 36),
+            const AppIconButton(icon: Icons.shuffle, color: AppColors.textGrey),
           ],
         ),
         const SizedBox(height: 20),
@@ -155,6 +144,7 @@ class LyricsHeaderContent extends ConsumerWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        const SizedBox(height: 10),
         Row(
           children: [
             const SizedBox(width: 62),
@@ -164,21 +154,25 @@ class LyricsHeaderContent extends ConsumerWidget {
                 children: [
                   Text(
                     song.title,
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
+                    style: AppTextStyles.titleMedium.copyWith(
+                      color: AppColors.textLight,
                       fontSize: 16,
                     ),
                   ),
-                  Text(
-                    song.artist,
-                    style: GoogleFonts.outfit(color: Colors.grey, fontSize: 14),
-                  ),
+                  Text(song.artist, style: AppTextStyles.bodySmall),
                 ],
               ),
             ),
-            const Icon(Icons.more_horiz, color: Colors.grey, size: 24),
+            const AppIconButton(
+              icon: Icons.more_horiz,
+              color: AppColors.textGrey,
+            ),
             const SizedBox(width: 16),
-            const Icon(Icons.favorite, color: Color(0xFF1DB954), size: 22),
+            const AppIconButton(
+              icon: Icons.favorite,
+              color: AppColors.primaryGreen,
+              size: 22,
+            ),
           ],
         ),
         const SizedBox(height: 10),
@@ -189,36 +183,6 @@ class LyricsHeaderContent extends ConsumerWidget {
             color: Colors.grey.shade200,
             borderRadius: BorderRadius.circular(2),
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              padding: const EdgeInsets.all(2),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.grey,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ],
         ),
       ],
     );
@@ -235,15 +199,15 @@ class LyricsScreenContent extends ConsumerWidget {
     final progress = ref.watch(scrollProgressProvider);
 
     return Container(
-      color: Colors.black,
-      padding: const EdgeInsets.only(top: 140), // Space for mini header
+      color: AppColors.background,
+      padding: const EdgeInsets.only(top: 140),
       child: Opacity(
         opacity: progress.clamp(0.0, 1.0),
         child: ListView.builder(
           physics: progress < 0.9
               ? const NeverScrollableScrollPhysics()
               : const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+          padding: const EdgeInsets.fromLTRB(40, 40, 40, 160),
           itemCount: song.lyrics.length,
           itemBuilder: (context, index) {
             final lyric = song.lyrics[index];
@@ -261,21 +225,21 @@ class LyricsScreenContent extends ConsumerWidget {
                       padding: EdgeInsets.only(right: 12.0),
                       child: Icon(
                         Icons.play_arrow,
-                        color: Color(0xFFEEE544),
+                        color: AppColors.accentYellow,
                         size: 20,
                       ),
                     ),
                   Expanded(
                     child: Text(
                       lyric.text,
-                      style: GoogleFonts.outfit(
+                      style: AppTextStyles.outfit(
                         fontSize: isCurrent ? 22 : 18,
                         fontWeight: isCurrent
                             ? FontWeight.bold
                             : FontWeight.w500,
                         color: isCurrent
-                            ? Colors.white
-                            : Colors.grey.withOpacity(0.4),
+                            ? AppColors.textMain
+                            : AppColors.textDim,
                       ),
                     ),
                   ),

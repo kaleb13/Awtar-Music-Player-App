@@ -13,3 +13,7 @@ final pageControllerProvider = Provider<PageController>((ref) {
   ref.onDispose(() => controller.dispose());
   return controller;
 });
+
+enum AppScreen { home, player }
+
+final screenProvider = StateProvider<AppScreen>((ref) => AppScreen.home);

@@ -76,7 +76,7 @@ final sampleSongProvider = Provider<Song>((ref) {
     title: "God's Plan",
     artist: "Drake",
     albumArt:
-        "https://images.genius.com/f9c8d5d4a13f683495441315664556a3.1000x1000x1.jpg",
+        "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=1000&auto=format&fit=crop",
     url:
         "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", // Sample MP3
     lyrics: [
