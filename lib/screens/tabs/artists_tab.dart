@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/app_widgets.dart';
 import '../details/artist_details_screen.dart';
 
 class ArtistsTab extends StatelessWidget {
@@ -47,51 +46,36 @@ class ArtistsTab extends StatelessWidget {
       },
     ];
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(left: 24, right: 24, top: 20),
-              child: AppTopBar(),
-            ),
-            Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.85,
-                ),
-                itemCount: artists.length,
-                itemBuilder: (context, index) {
-                  final artist = artists[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ArtistDetailsScreen(
-                            name: artist["name"]!,
-                            imageUrl: artist["img"]!,
-                          ),
-                        ),
-                      );
-                    },
-                    child: AppArtistCard(
-                      name: artist["name"]!,
-                      songs: artist["songs"]!,
-                      imageUrl: artist["img"]!,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+    return GridView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.85,
       ),
+      itemCount: artists.length,
+      itemBuilder: (context, index) {
+        final artist = artists[index];
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ArtistDetailsScreen(
+                  name: artist["name"]!,
+                  imageUrl: artist["img"]!,
+                ),
+              ),
+            );
+          },
+          child: AppArtistCard(
+            name: artist["name"]!,
+            songs: artist["songs"]!,
+            imageUrl: artist["img"]!,
+          ),
+        );
+      },
     );
   }
 }

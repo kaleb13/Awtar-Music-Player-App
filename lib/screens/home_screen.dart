@@ -17,123 +17,141 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tab = ref.watch(homeTabProvider);
-    switch (tab) {
-      case HomeTab.folders:
-        return const FoldersTab();
-      case HomeTab.artists:
-        return const ArtistsTab();
-      case HomeTab.albums:
-        return const AlbumsTab();
-      default:
-        return const HomeOverview();
-    }
-  }
-}
-
-class HomeOverview extends ConsumerWidget {
-  const HomeOverview({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        bottom: false,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          bottom: false,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
-              // Top Nav Bar
-              const AppTopBar(),
-              const SizedBox(height: 30),
-
-              // 1st Section: Popular Artists
-              AppSectionHeader(
-                title: "Popular Artists",
-                onSeeAll: () =>
-                    ref.read(homeTabProvider.notifier).state = HomeTab.artists,
+              const Padding(
+                padding: EdgeInsets.only(left: 24, right: 24, top: 20),
+                child: AppTopBar(),
               ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildArtistItem(
-                    context,
-                    ref,
-                    "The Weekend",
-                    "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?q=80&w=200&auto=format&fit=crop",
-                  ),
-                  const SizedBox(width: 20),
-                  _buildArtistItem(
-                    context,
-                    ref,
-                    "Drake",
-                    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop",
-                  ),
-                  const SizedBox(width: 20),
-                  _buildArtistItem(
-                    context,
-                    ref,
-                    "Post Malone",
-                    "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop",
-                  ),
+              const SizedBox(height: 10),
+              const TabBar(
+                dividerColor: Colors.transparent,
+                indicatorColor: AppColors.accentYellow,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.grey,
+                labelPadding: EdgeInsets.symmetric(horizontal: 4),
+                labelStyle: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14, // Slightly smaller to fit 4 tabs
+                ),
+                unselectedLabelStyle: TextStyle(
+                  fontWeight: FontWeight.normal,
+                  fontSize: 14,
+                ),
+                tabs: [
+                  Tab(text: "Overview"),
+                  Tab(text: "Folders"),
+                  Tab(text: "Artists"),
+                  Tab(text: "Albums"),
                 ],
               ),
-              const SizedBox(height: 40),
-
-              // 2nd Section: Popular Albums
-              AppSectionHeader(
-                title: "Popular Albums",
-                onSeeAll: () =>
-                    ref.read(homeTabProvider.notifier).state = HomeTab.albums,
-              ),
               const SizedBox(height: 20),
-              _buildAlbumGrid(context, ref),
-              const SizedBox(height: 40),
-
-              // 3rd Section: Most Played
-              const AppSectionHeader(title: "Most Played"),
-              const SizedBox(height: 20),
-              _buildSongRow(ref),
-              const SizedBox(height: 40),
-
-              // 4th Section: Recently Played
-              const AppSectionHeader(title: "Recently Played"),
-              const SizedBox(height: 20),
-              _buildSongRow(ref),
-              const SizedBox(height: 40),
-
-              // 5th Section: Summary
-              const AppSectionHeader(title: "Monthly Summary"),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceDark,
-                  borderRadius: BorderRadius.circular(AppRadius.medium),
-                ),
-                child: const Column(
+              const Expanded(
+                child: TabBarView(
                   children: [
-                    AppSummaryItem(
-                      label: "Time played this month",
-                      value: "24h 15m",
-                    ),
-                    SizedBox(height: 20),
-                    AppSummaryItem(
-                      label: "Total time played",
-                      value: "156h 40m",
-                    ),
+                    HomeOverviewContent(),
+                    FoldersTab(),
+                    ArtistsTab(),
+                    AlbumsTab(),
                   ],
                 ),
               ),
-              const SizedBox(height: 180), // Room for shrunken player + nav bar
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class HomeOverviewContent extends ConsumerWidget {
+  const HomeOverviewContent({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 10),
+          // 1st Section: Popular Artists
+          const AppSectionHeader(title: "Popular Artists"),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildArtistItem(
+                context,
+                ref,
+                "The Weekend",
+                "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?q=80&w=200&auto=format&fit=crop",
+              ),
+              const SizedBox(width: 20),
+              _buildArtistItem(
+                context,
+                ref,
+                "Drake",
+                "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop",
+              ),
+              const SizedBox(width: 20),
+              _buildArtistItem(
+                context,
+                ref,
+                "Post Malone",
+                "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop",
+              ),
+            ],
+          ),
+          const SizedBox(height: 40),
+
+          // 2nd Section: Popular Albums
+          const AppSectionHeader(title: "Popular Albums"),
+          const SizedBox(height: 20),
+          _buildAlbumGrid(context, ref),
+          const SizedBox(height: 40),
+
+          // 3rd Section: Most Played
+          const AppSectionHeader(title: "Most Played"),
+          const SizedBox(height: 20),
+          _buildSongRow(ref),
+          const SizedBox(height: 40),
+
+          // 4th Section: Recently Played
+          const AppSectionHeader(title: "Recently Played"),
+          const SizedBox(height: 20),
+          _buildSongRow(ref),
+          const SizedBox(height: 40),
+
+          // 5th Section: Summary
+          const AppSectionHeader(title: "Monthly Summary"),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceDark,
+              borderRadius: BorderRadius.circular(AppRadius.medium),
+            ),
+            child: const Column(
+              children: [
+                AppSummaryItem(
+                  label: "Time played this month",
+                  value: "24h 15m",
+                ),
+                SizedBox(height: 20),
+                AppSummaryItem(label: "Total time played", value: "156h 40m"),
+              ],
+            ),
+          ),
+          const SizedBox(height: 180), // Room for shrunken player + nav bar
+        ],
       ),
     );
   }

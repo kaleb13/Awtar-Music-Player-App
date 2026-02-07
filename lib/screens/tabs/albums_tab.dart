@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/app_widgets.dart';
 import '../details/album_details_screen.dart';
 
@@ -48,52 +47,37 @@ class AlbumsTab extends StatelessWidget {
       },
     ];
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(left: 24, right: 24, top: 20),
-              child: AppTopBar(),
-            ),
-            Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 24,
-                  childAspectRatio: 0.75,
-                ),
-                itemCount: albums.length,
-                itemBuilder: (context, index) {
-                  final album = albums[index];
-                  return AppAlbumCard(
-                    title: album["title"]!,
-                    artist: album["artist"]!,
-                    imageUrl: album["img"]!,
-                    size: 160,
-                    flexible: true,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AlbumDetailsScreen(
-                            title: album["title"]!,
-                            artist: album["artist"]!,
-                            imageUrl: album["img"]!,
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+    return GridView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 24,
+        childAspectRatio: 0.75,
       ),
+      itemCount: albums.length,
+      itemBuilder: (context, index) {
+        final album = albums[index];
+        return AppAlbumCard(
+          title: album["title"]!,
+          artist: album["artist"]!,
+          imageUrl: album["img"]!,
+          size: 160,
+          flexible: true,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AlbumDetailsScreen(
+                  title: album["title"]!,
+                  artist: album["artist"]!,
+                  imageUrl: album["img"]!,
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

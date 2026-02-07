@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/player_provider.dart';
@@ -151,12 +152,16 @@ class LyricsScreen extends ConsumerWidget {
                   child: Row(
                     children: [
                       if (isCurrent)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(right: 12.0),
-                          child: Icon(
-                            Icons.play_arrow,
-                            color: Color(0xFFEEE544),
-                            size: 20,
+                          child: SvgPicture.asset(
+                            "assets/icons/play_icon.svg",
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFFEEE544),
+                              BlendMode.srcIn,
+                            ),
+                            width: 20,
+                            height: 20,
                           ),
                         ),
                       Expanded(
@@ -188,11 +193,7 @@ class LyricsScreen extends ConsumerWidget {
                 children: [
                   GestureDetector(
                     onTap: () {
-                      if (playerState.isPlaying) {
-                        ref.read(playerProvider.notifier).pause();
-                      } else {
-                        ref.read(playerProvider.notifier).play(song);
-                      }
+                      ref.read(playerProvider.notifier).togglePlayPause(song);
                     },
                     child: Container(
                       padding: const EdgeInsets.all(12),
@@ -200,11 +201,25 @@ class LyricsScreen extends ConsumerWidget {
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        playerState.isPlaying ? Icons.pause : Icons.play_arrow,
-                        color: Colors.black,
-                        size: 32,
-                      ),
+                      child: playerState.isPlaying
+                          ? SvgPicture.asset(
+                              "assets/icons/pause_icon.svg",
+                              colorFilter: const ColorFilter.mode(
+                                Colors.black,
+                                BlendMode.srcIn,
+                              ),
+                              width: 32,
+                              height: 32,
+                            )
+                          : SvgPicture.asset(
+                              "assets/icons/play_icon.svg",
+                              colorFilter: const ColorFilter.mode(
+                                Colors.black,
+                                BlendMode.srcIn,
+                              ),
+                              width: 32,
+                              height: 32,
+                            ),
                     ),
                   ),
                   const SizedBox(width: 15),

@@ -1,58 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/app_widgets.dart';
 
 class FoldersTab extends ConsumerWidget {
   const FoldersTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              const AppTopBar(),
-              Text("Storage", style: AppTextStyles.titleLarge),
-              const SizedBox(height: 8),
-              Text("Select a source to browse", style: AppTextStyles.bodySmall),
-              const SizedBox(height: 30),
-              const AppStorageCard(
-                name: "Internal Storage",
-                icon: Icons.smartphone,
-                used: "45 GB",
-                total: "64 GB",
-                percent: 0.7,
-                gradientColors: [Color(0xFFF12711), Color(0xFFF5AF19)],
-              ),
-              const SizedBox(height: 20),
-              const AppStorageCard(
-                name: "SD Card",
-                icon: Icons.sd_storage,
-                used: "12 GB",
-                total: "128 GB",
-                percent: 0.1,
-                gradientColors: [Color(0xFF11998e), Color(0xFF38ef7d)],
-              ),
-              const SizedBox(height: 20),
-              const AppStorageCard(
-                name: "USB Drive",
-                icon: Icons.usb,
-                used: "0 GB",
-                total: "0 GB",
-                percent: 0.0,
-                isEnabled: false,
-                gradientColors: [Colors.grey, Colors.grey],
-              ),
-              const SizedBox(height: 120), // Bottom padding
-            ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 10),
+          Text("Storage", style: AppTextStyles.titleLarge),
+          const SizedBox(height: 8),
+          Text("Select a source to browse", style: AppTextStyles.bodySmall),
+          const SizedBox(height: 30),
+          const AppStorageCard(
+            name: "Internal Storage",
+            icon: Icons.smartphone,
+            used: "45 GB",
+            total: "64 GB",
+            percent: 0.7,
+            gradientColors: [Color(0xFFF12711), Color(0xFFF5AF19)],
           ),
-        ),
+          const SizedBox(height: 20),
+          const AppStorageCard(
+            name: "SD Card",
+            icon: Icons.sd_storage,
+            used: "12 GB",
+            total: "128 GB",
+            percent: 0.1,
+            gradientColors: [Color(0xFF11998e), Color(0xFF38ef7d)],
+          ),
+          const SizedBox(height: 20),
+          const AppStorageCard(
+            name: "USB Drive",
+            icon: Icons.usb,
+            used: "0 GB",
+            total: "0 GB",
+            percent: 0.0,
+            isEnabled: false,
+            gradientColors: [Colors.grey, Colors.grey],
+          ),
+          const SizedBox(height: 120), // Bottom padding
+        ],
       ),
     );
   }

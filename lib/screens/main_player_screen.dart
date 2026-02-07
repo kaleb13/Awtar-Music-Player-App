@@ -1,11 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:awtart_music_player/providers/player_provider.dart';
 import 'package:awtart_music_player/providers/navigation_provider.dart';
 import 'package:awtart_music_player/theme/app_theme.dart';
 import 'package:awtart_music_player/widgets/app_widgets.dart';
-import 'package:awtart_music_player/widgets/music_visualizer.dart';
+
 import 'player_screen.dart';
 
 class MainMusicPlayer extends ConsumerStatefulWidget {
@@ -92,8 +93,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
         target = value > 0.2 ? 1.0 : 0.0;
       } else if (currentScreen == AppScreen.lyrics) {
         // Origin: 2.0.
-        // Logic: "Long drag but not too long" -> Require 25% movement (value < 1.75)
-        target = value < 1.75 ? 1.0 : 2.0;
+        // Logic: "Long drag but not too long" -> Require 20% movement (value < 1.8)
+        target = value < 1.8 ? 1.0 : 2.0;
       } else {
         // Origin: 1.0 (Player). Keep 20% sensitive rule.
         if (value < 0.8) {
@@ -130,6 +131,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
   Widget build(BuildContext context) {
     final song = ref.watch(sampleSongProvider);
     final screenHeight = MediaQuery.of(context).size.height;
+    final currentMainTab = ref.watch(mainTabProvider);
 
     // Fixed: ref.listen must be in build, not in a builder callback
     ref.listen(screenProvider, (prev, next) {
@@ -159,21 +161,22 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
         double currentMargin;
         Color currentColor = AppColors.surfaceWhite;
         if (val <= 1.0) {
+          // New Mini Player: Height ~60, Bottom Nav visible
           currentHeight = Tween<double>(
-            begin: 64,
+            begin: 60,
             end: screenHeight * 0.85,
           ).transform(val);
           currentTop = Tween<double>(
-            begin: screenHeight - 90,
+            begin: screenHeight - 160, // Above Nav Bar
             end: 0,
           ).transform(val);
           currentRadius = Tween<double>(
-            begin: 35,
+            begin: 30, // Pill Shape
             end: AppRadius.large,
           ).transform(val);
           currentMargin = Tween<double>(begin: 16, end: 0).transform(val);
           currentColor = Color.lerp(
-            const Color(0xFFE0E4E7),
+            Colors.transparent, // Transparent for blurring bg
             AppColors.surfaceWhite,
             val.clamp(0.0, 1.0),
           )!;
@@ -221,10 +224,84 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                   ),
                 ),
               if (val > 1.0)
-                const Positioned.fill(
-                  key: ValueKey('lyrics'),
-                  child:
-                      LyricsScreenContent(), // Removed RepaintBoundary here as it's added inside the widget or can be added back if needed, but keeping text match simpler
+                Positioned(
+                  key: const ValueKey('lyrics'),
+                  top: ((2.0 - val) * screenHeight).clamp(0.0, screenHeight),
+                  left: 0,
+                  right: 0,
+                  height: screenHeight,
+                  child: LyricsScreenContent(
+                    onDragUpdate: (delta) {
+                      double screenHeight = MediaQuery.of(context).size.height;
+                      double relativeDelta = delta / screenHeight;
+                      // Dragging DOWN (positive delta) should DECREASE controller value (2.0 -> 1.0)
+                      _controller.value = (_controller.value - relativeDelta)
+                          .clamp(1.0, 2.0);
+                    },
+                    onDragEnd: (velocity) {
+                      // Delegate to the main unified drag end handler
+                      _onVerticalDragEnd(
+                        DragEndDetails(
+                          primaryVelocity: velocity,
+                          velocity: Velocity(
+                            pixelsPerSecond: Offset(0, velocity),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              // Bottom Navigation Bar (New)
+              if (val < 0.2)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 140,
+                  child: Opacity(
+                    opacity: (1 - val * 5).clamp(0.0, 1.0),
+                    child: Container(
+                      alignment: Alignment.bottomCenter,
+                      padding: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            AppColors.background.withOpacity(0.0),
+                            AppColors.background,
+                          ],
+                          stops: const [0.0, 0.6],
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildBottomNavItem(
+                            ref,
+                            MainTab.home,
+                            "Home",
+                            currentMainTab == MainTab.home,
+                            svgPath: "assets/icons/home_icon.svg",
+                          ),
+                          _buildBottomNavItem(
+                            ref,
+                            MainTab.discover,
+                            "Discovery",
+                            currentMainTab == MainTab.discover,
+                            svgPath: "assets/icons/search_icon.svg",
+                          ),
+                          _buildBottomNavItem(
+                            ref,
+                            MainTab.collection,
+                            "Collection",
+                            currentMainTab == MainTab.collection,
+                            svgPath: "assets/icons/collection_icon.svg",
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               Positioned(
                 key: const ValueKey('card'),
@@ -251,13 +328,16 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                               bottomRight: Radius.circular(AppRadius.large),
                             )
                           : BorderRadius.circular(currentRadius),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 20,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
+                      // Remove shadow for mini player to look clean
+                      boxShadow: val < 0.1
+                          ? []
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 20,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
                     ),
                     child: ClipRRect(
                       borderRadius: val > 1.0
@@ -267,12 +347,20 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                             )
                           : BorderRadius.circular(currentRadius),
                       child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        filter: ImageFilter.blur(
+                          sigmaX: val < 0.5 ? 10 : 20,
+                          sigmaY: val < 0.5 ? 10 : 20,
+                        ),
                         child: Container(
-                          color: currentColor.withOpacity(0.85),
+                          // Container Background Logic
+                          // Mini: Transparent (shows blurred album art)
+                          // Expanded: White (with slight opacity)
+                          color: val < 0.1
+                              ? Colors.black.withOpacity(0.3)
+                              : currentColor.withOpacity(0.95),
                           child: SafeArea(
                             bottom: false,
-                            top: false, // Manual safe area to prevent jolt
+                            top: false,
                             child: Padding(
                               padding: EdgeInsets.only(
                                 top: Tween<double>(
@@ -280,24 +368,32 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                   end: MediaQuery.of(context).padding.top,
                                 ).transform(val.clamp(0.0, 1.0)),
                                 left: Tween<double>(
-                                  begin: 12,
+                                  begin: 0, // Fill width at start
                                   end: 24,
                                 ).transform(val.clamp(0.0, 1.0)),
                                 right: Tween<double>(
-                                  begin: 12,
+                                  begin: 0, // Fill width at start
                                   end: 24,
                                 ).transform(val.clamp(0.0, 1.0)),
                               ),
                               child: Stack(
                                 clipBehavior: Clip.none,
                                 children: [
+                                  // 1. Album Art (Background for mini, Foreground for Large)
+                                  _buildMorphingAlbumArt(
+                                    context,
+                                    val,
+                                    song.albumArt,
+                                  ),
+                                  // 2. Mini Player Content (Text on top of Art)
                                   if (val < 0.5)
                                     Positioned.fill(
                                       child: Opacity(
                                         opacity: (1 - val * 2).clamp(0.0, 1.0),
-                                        child: _buildMiniPlayerUI(song),
+                                        child: _buildMiniPlayerUI(song, ref),
                                       ),
                                     ),
+                                  // 3. Main Player Content (Text below/above Art)
                                   if (val > 0.2 && val < 1.8)
                                     Positioned.fill(
                                       child: Opacity(
@@ -321,11 +417,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                         ),
                                       ),
                                     ),
-                                  _buildMorphingAlbumArt(
-                                    context,
-                                    val,
-                                    song.albumArt,
-                                  ),
                                 ],
                               ),
                             ),
@@ -356,149 +447,181 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     );
   }
 
-  Widget _buildMiniPlayerUI(dynamic song) {
-    final currentTab = ref.watch(homeTabProvider);
-    return Row(
-      children: [
-        _buildNavIcon(
-          HomeTab.home,
-          Icons.home,
-          Icons.home_outlined,
-          currentTab == HomeTab.home,
-        ),
-        _buildNavIcon(
-          HomeTab.folders,
-          Icons.folder,
-          Icons.folder_outlined,
-          currentTab == HomeTab.folders,
-        ),
-        Expanded(
-          flex: 4,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+  Widget _buildMiniPlayerUI(dynamic song, WidgetRef ref) {
+    final isPlaying = ref.watch(playerProvider).isPlaying;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          // Left: Play/Pause Button
+          GestureDetector(
+            onTap: () {
+              ref.read(playerProvider.notifier).togglePlayPause(song);
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: 50, // Larger touch width
+              height: 50, // Larger touch height
+              alignment: const Alignment(-0.4, 0.0),
+              child: isPlaying
+                  ? SvgPicture.asset(
+                      "assets/icons/pause_icon.svg",
+                      width: 24, // Original requested size equivalent
+                      height: 24,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
+                    )
+                  : SvgPicture.asset(
+                      "assets/icons/play_icon.svg",
+                      width: 24,
+                      height: 24,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+            ),
+          ),
+          // Center: Title and Artist
+          Expanded(
             child: GestureDetector(
-              onTap: () =>
-                  ref.read(screenProvider.notifier).state = AppScreen.player,
+              onTap: () {
+                ref.read(screenProvider.notifier).state = AppScreen.player;
+              },
+              behavior: HitTestBehavior.opaque,
               child: Container(
-                height: 46,
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0D0D0D),
-                  borderRadius: BorderRadius.circular(23),
-                ),
-                child: Stack(
+                color: Colors.transparent, // Ensure hits are captured
+                height: 50, // Match height of side buttons
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 5),
-                        child: const SizedBox(width: 34, height: 34),
+                    Text(
+                      song.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const Align(
-                      alignment: Alignment.center,
-                      child: MusicVisualizer(),
-                    ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: Consumer(
-                          builder: (context, ref, child) {
-                            final pos = ref.watch(
-                              playerProvider.select((s) => s.position),
-                            );
-                            return Text(
-                              _formatDuration(pos),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                fontFamily: 'monospace',
-                              ),
-                            );
-                          },
-                        ),
+                    Text(
+                      song.artist,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
             ),
           ),
-        ),
-        _buildNavIcon(
-          HomeTab.artists,
-          Icons.person,
-          Icons.person_outline,
-          currentTab == HomeTab.artists,
-        ),
-        _buildNavIcon(
-          HomeTab.albums,
-          Icons.library_music,
-          Icons.library_music_outlined,
-          currentTab == HomeTab.albums,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNavIcon(
-    HomeTab tab,
-    IconData filled,
-    IconData outlined,
-    bool isActive,
-  ) {
-    return Expanded(
-      flex: 1,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => ref.read(homeTabProvider.notifier).state = tab,
-        child: Container(
-          color: Colors.transparent,
-          alignment: Alignment.center,
-          child: Icon(
-            isActive ? filled : outlined,
-            color: Colors.black,
-            size: 26,
+          // Right: Next Icon
+          GestureDetector(
+            onTap: () {
+              ref.read(playerProvider.notifier).next();
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: 50,
+              height: 50,
+              alignment: const Alignment(0.4, 0.0),
+              child: const Icon(Icons.skip_next, color: Colors.white, size: 30),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  String _formatDuration(Duration d) {
-    String minutes = d.inMinutes.toString();
-    String seconds = (d.inSeconds % 60).toString().padLeft(2, '0');
-    return "$minutes:$seconds";
+  Widget _buildBottomNavItem(
+    WidgetRef ref,
+    MainTab tab,
+    String label,
+    bool isActive, {
+    IconData? icon,
+    String? svgPath,
+  }) {
+    return GestureDetector(
+      onTap: () => ref.read(mainTabProvider.notifier).state = tab,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (svgPath != null)
+            SvgPicture.asset(
+              svgPath,
+              colorFilter: ColorFilter.mode(
+                isActive ? Colors.white : Colors.grey,
+                BlendMode.srcIn,
+              ),
+              width: 26,
+              height: 26,
+            )
+          else
+            Icon(
+              icon ?? Icons.error,
+              color: isActive ? Colors.white : Colors.grey,
+              size: 26,
+            ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive ? Colors.white : Colors.grey,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMorphingAlbumArt(BuildContext context, double val, String url) {
     final screenWidth = MediaQuery.of(context).size.width;
-    double size;
+
     double top;
     double left;
+    double width;
+    double height;
     double radius;
+    double blur;
+
     if (val <= 1.0) {
-      size = Tween<double>(begin: 34, end: screenWidth - 48).transform(val);
-      top = Tween<double>(begin: 15, end: 75).transform(val);
-      left = Tween<double>(begin: 96, end: 0).transform(val);
-      radius = Tween<double>(begin: 17, end: AppRadius.large).transform(val);
+      width = Tween<double>(
+        begin: screenWidth - 32,
+        end: screenWidth - 48,
+      ).transform(val);
+      height = Tween<double>(begin: 60, end: screenWidth - 48).transform(val);
+      top = Tween<double>(begin: 0, end: 75).transform(val);
+      left = Tween<double>(begin: 0, end: 0).transform(val);
+      radius = Tween<double>(begin: 0, end: AppRadius.large).transform(val);
+      blur = Tween<double>(begin: 20, end: 0).transform(val);
     } else {
       double t = val - 1.0;
-      size = Tween<double>(begin: screenWidth - 48, end: 50).transform(t);
+      width = Tween<double>(begin: screenWidth - 48, end: 50).transform(t);
+      height = width;
       top = Tween<double>(begin: 75, end: 32).transform(t);
       left = 0;
       radius = Tween<double>(
         begin: AppRadius.large,
         end: AppRadius.small,
       ).transform(t);
+      blur = 0;
     }
+
     return Positioned(
       top: top,
       left: left,
-      width: size,
-      height: size,
+      width: width,
+      height: height,
       child: IgnorePointer(
         child: Container(
           decoration: BoxDecoration(
@@ -515,7 +638,15 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(radius),
-            child: Image.network(url, fit: BoxFit.cover),
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+              child: Image.network(
+                url,
+                fit: BoxFit.cover,
+                width: width,
+                height: height,
+              ),
+            ),
           ),
         ),
       ),

@@ -7,25 +7,37 @@ class MusicPlayerState {
   final bool isPlaying;
   final Duration position;
   final Duration duration;
+  final bool? _isShuffling;
+  final bool? _isRepeating;
+
+  bool get isShuffling => _isShuffling ?? false;
+  bool get isRepeating => _isRepeating ?? false;
 
   MusicPlayerState({
     this.currentSong,
     this.isPlaying = false,
     this.position = Duration.zero,
     this.duration = Duration.zero,
-  });
+    bool? isShuffling,
+    bool? isRepeating,
+  }) : _isShuffling = isShuffling,
+       _isRepeating = isRepeating;
 
   MusicPlayerState copyWith({
     Song? currentSong,
     bool? isPlaying,
     Duration? position,
     Duration? duration,
+    bool? isShuffling,
+    bool? isRepeating,
   }) {
     return MusicPlayerState(
       currentSong: currentSong ?? this.currentSong,
       isPlaying: isPlaying ?? this.isPlaying,
       position: position ?? this.position,
       duration: duration ?? this.duration,
+      isShuffling: isShuffling ?? this.isShuffling,
+      isRepeating: isRepeating ?? this.isRepeating,
     );
   }
 }
@@ -60,8 +72,42 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     await _audioPlayer.pause();
   }
 
+  Future<void> togglePlayPause(Song? song) async {
+    if (state.isPlaying) {
+      await pause();
+    } else {
+      if (song != null) {
+        await play(song);
+      } else if (state.currentSong != null) {
+        await _audioPlayer.resume();
+      }
+    }
+  }
+
   Future<void> seek(Duration position) async {
     await _audioPlayer.seek(position);
+  }
+
+  void next() {
+    // TODO: Implement actual next logic (playlist)
+    print("Action: Next Song");
+  }
+
+  void previous() {
+    // TODO: Implement actual previous logic
+    print("Action: Previous Song");
+  }
+
+  void toggleShuffle() {
+    final newValue = !state.isShuffling;
+    state = state.copyWith(isShuffling: newValue);
+    print("Action: Shuffle $newValue");
+  }
+
+  void toggleRepeat() {
+    final newValue = !state.isRepeating;
+    state = state.copyWith(isRepeating: newValue);
+    print("Action: Repeat $newValue");
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_theme.dart';
 
 class AppPlayButton extends StatelessWidget {
@@ -26,10 +27,20 @@ class AppPlayButton extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        child: Icon(
-          isPlaying ? Icons.pause : Icons.play_arrow,
-          color: iconColor,
-          size: size * 0.5,
+        child: Center(
+          child: isPlaying
+              ? SvgPicture.asset(
+                  "assets/icons/pause_icon.svg",
+                  width: size * 0.5,
+                  height: size * 0.5,
+                  colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                )
+              : SvgPicture.asset(
+                  "assets/icons/play_icon.svg",
+                  width: size * 0.5,
+                  height: size * 0.5,
+                  colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                ),
         ),
       ),
     );
@@ -432,11 +443,19 @@ class AppTopBar extends StatelessWidget {
               ),
             ],
           ),
-          const Row(
+          Row(
             children: [
-              AppIconButton(icon: Icons.search, color: Colors.white),
-              SizedBox(width: 16),
-              AppIconButton(
+              SvgPicture.asset(
+                "assets/icons/search_icon.svg",
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const AppIconButton(
                 icon: Icons.more_vert, // Vertical Menu
                 color: Colors.white,
               ),

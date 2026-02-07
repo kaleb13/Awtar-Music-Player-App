@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:awtart_music_player/providers/player_provider.dart';
 import 'package:awtart_music_player/providers/navigation_provider.dart';
@@ -121,20 +122,35 @@ class PlayerScreenContent extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            const AppIconButton(icon: Icons.repeat, color: AppColors.textGrey),
-            const AppIconButton(icon: Icons.skip_previous, size: 36),
+            AppIconButton(
+              icon: Icons.repeat,
+              color: ref.watch(playerProvider).isRepeating
+                  ? AppColors.primaryGreen
+                  : AppColors.textGrey,
+              onTap: () => ref.read(playerProvider.notifier).toggleRepeat(),
+            ),
+            AppIconButton(
+              icon: Icons.skip_previous,
+              size: 36,
+              onTap: () => ref.read(playerProvider.notifier).previous(),
+            ),
             AppPlayButton(
               isPlaying: isPlaying,
-              onTap: () {
-                if (isPlaying) {
-                  ref.read(playerProvider.notifier).pause();
-                } else {
-                  ref.read(playerProvider.notifier).play(song);
-                }
-              },
+              onTap: () =>
+                  ref.read(playerProvider.notifier).togglePlayPause(song),
             ),
-            const AppIconButton(icon: Icons.skip_next, size: 36),
-            const AppIconButton(icon: Icons.shuffle, color: AppColors.textGrey),
+            AppIconButton(
+              icon: Icons.skip_next,
+              size: 36,
+              onTap: () => ref.read(playerProvider.notifier).next(),
+            ),
+            AppIconButton(
+              icon: Icons.shuffle,
+              color: ref.watch(playerProvider).isShuffling
+                  ? AppColors.primaryGreen
+                  : AppColors.textGrey,
+              onTap: () => ref.read(playerProvider.notifier).toggleShuffle(),
+            ),
           ],
         ),
         const SizedBox(height: 20),
@@ -204,63 +220,89 @@ class LyricsHeaderContent extends ConsumerWidget {
 }
 
 class LyricsScreenContent extends ConsumerWidget {
-  const LyricsScreenContent({super.key});
+  final void Function(double)? onDragUpdate;
+  final void Function(double)? onDragEnd;
+
+  const LyricsScreenContent({super.key, this.onDragUpdate, this.onDragEnd});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playerState = ref.watch(playerProvider);
     final song = ref.watch(sampleSongProvider);
-    final progress = ref.watch(scrollProgressProvider);
 
-    return Container(
-      color: AppColors.mainDark,
-      padding: const EdgeInsets.only(top: 140),
-      child: Opacity(
-        opacity: progress.clamp(0.0, 1.0),
-        child: ListView.builder(
-          physics: progress < 0.9
-              ? const NeverScrollableScrollPhysics()
-              : const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(40, 40, 40, 160),
-          itemCount: song.lyrics.length,
-          itemBuilder: (context, index) {
-            final lyric = song.lyrics[index];
-            final isCurrent =
-                playerState.position >= lyric.time &&
-                (index == song.lyrics.length - 1 ||
-                    playerState.position < song.lyrics[index + 1].time);
+    return GestureDetector(
+      onVerticalDragUpdate: (details) {
+        onDragUpdate?.call(details.delta.dy);
+      },
+      onVerticalDragEnd: (details) {
+        onDragEnd?.call(details.primaryVelocity ?? 0);
+      },
+      child: Container(
+        color: AppColors.mainDark,
+        padding: const EdgeInsets.only(top: 140),
+        child: Opacity(
+          opacity: 1.0,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollUpdateNotification) {
+                if (notification.metrics.pixels <= 0 &&
+                    notification.dragDetails != null) {
+                  onDragUpdate?.call(notification.dragDetails!.delta.dy);
+                }
+              } else if (notification is ScrollEndNotification) {
+                // We only care if we were potentially dragging
+                onDragEnd?.call(notification.dragDetails?.primaryVelocity ?? 0);
+              }
+              return false;
+            },
+            child: ListView.builder(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(40, 40, 40, 160),
+              itemCount: song.lyrics.length,
+              itemBuilder: (context, index) {
+                final lyric = song.lyrics[index];
+                final isCurrent =
+                    playerState.position >= lyric.time &&
+                    (index == song.lyrics.length - 1 ||
+                        playerState.position < song.lyrics[index + 1].time);
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 28.0),
-              child: Row(
-                children: [
-                  if (isCurrent)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 12.0),
-                      child: Icon(
-                        Icons.play_arrow,
-                        color: AppColors.primaryGreen,
-                        size: 20,
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 28.0),
+                  child: Row(
+                    children: [
+                      if (isCurrent)
+                        Padding(
+                          padding: EdgeInsets.only(right: 12.0),
+                          child: SvgPicture.asset(
+                            "assets/icons/play_icon.svg",
+                            colorFilter: const ColorFilter.mode(
+                              AppColors.primaryGreen,
+                              BlendMode.srcIn,
+                            ),
+                            width: 20,
+                            height: 20,
+                          ),
+                        ),
+                      Expanded(
+                        child: Text(
+                          lyric.text,
+                          style: AppTextStyles.outfit(
+                            fontSize: isCurrent ? 22 : 18,
+                            fontWeight: isCurrent
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                            color: isCurrent
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.4),
+                          ),
+                        ),
                       ),
-                    ),
-                  Expanded(
-                    child: Text(
-                      lyric.text,
-                      style: AppTextStyles.outfit(
-                        fontSize: isCurrent ? 22 : 18,
-                        fontWeight: isCurrent
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                        color: isCurrent
-                            ? Colors.white
-                            : Colors.white.withOpacity(0.4),
-                      ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          },
+                );
+              },
+            ),
+          ),
         ),
       ),
     );

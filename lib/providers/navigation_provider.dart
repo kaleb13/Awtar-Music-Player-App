@@ -21,3 +21,7 @@ final screenProvider = StateProvider<AppScreen>((ref) => AppScreen.home);
 enum HomeTab { home, folders, artists, albums }
 
 final homeTabProvider = StateProvider<HomeTab>((ref) => HomeTab.home);
+
+enum MainTab { home, discover, collection }
+
+final mainTabProvider = StateProvider<MainTab>((ref) => MainTab.home);
