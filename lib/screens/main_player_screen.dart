@@ -71,16 +71,18 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     if (velocity.abs() > flingThreshold) {
       if (velocity < 0) {
         // Swipe UP
-        if (value < 1.0)
+        if (value < 1.0) {
           target = 1.0;
-        else
+        } else {
           target = 2.0;
+        }
       } else {
         // Swipe DOWN
-        if (value > 1.0)
+        if (value > 1.0) {
           target = 1.0;
-        else
+        } else {
           target = 0.0;
+        }
       }
     } else {
       // 2. Slow Drag / Insufficient Fling Logic
@@ -158,11 +160,11 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
         Color currentColor = AppColors.surfaceWhite;
         if (val <= 1.0) {
           currentHeight = Tween<double>(
-            begin: 70,
+            begin: 64,
             end: screenHeight * 0.85,
           ).transform(val);
           currentTop = Tween<double>(
-            begin: screenHeight - 96,
+            begin: screenHeight - 90,
             end: 0,
           ).transform(val);
           currentRadius = Tween<double>(
@@ -357,7 +359,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
   Widget _buildMiniPlayerUI(dynamic song) {
     final currentTab = ref.watch(homeTabProvider);
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _buildNavIcon(
           HomeTab.home,
@@ -372,17 +373,18 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
           currentTab == HomeTab.folders,
         ),
         Expanded(
+          flex: 4,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: GestureDetector(
               onTap: () =>
                   ref.read(screenProvider.notifier).state = AppScreen.player,
               child: Container(
-                height: 54,
+                height: 46,
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0D0D0D),
-                  borderRadius: BorderRadius.circular(27),
+                  borderRadius: BorderRadius.circular(23),
                 ),
                 child: Stack(
                   children: [
@@ -390,7 +392,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                       alignment: Alignment.centerLeft,
                       child: Padding(
                         padding: const EdgeInsets.only(left: 5),
-                        child: const SizedBox(width: 40, height: 40),
+                        child: const SizedBox(width: 34, height: 34),
                       ),
                     ),
                     const Align(
@@ -447,14 +449,19 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     IconData outlined,
     bool isActive,
   ) {
-    return GestureDetector(
-      onTap: () => ref.read(homeTabProvider.notifier).state = tab,
-      child: SizedBox(
-        width: 40,
-        child: Icon(
-          isActive ? filled : outlined,
-          color: Colors.black,
-          size: 26,
+    return Expanded(
+      flex: 1,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => ref.read(homeTabProvider.notifier).state = tab,
+        child: Container(
+          color: Colors.transparent,
+          alignment: Alignment.center,
+          child: Icon(
+            isActive ? filled : outlined,
+            color: Colors.black,
+            size: 26,
+          ),
         ),
       ),
     );
@@ -473,10 +480,10 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     double left;
     double radius;
     if (val <= 1.0) {
-      size = Tween<double>(begin: 40, end: screenWidth - 48).transform(val);
+      size = Tween<double>(begin: 34, end: screenWidth - 48).transform(val);
       top = Tween<double>(begin: 15, end: 75).transform(val);
-      left = Tween<double>(begin: 93, end: 0).transform(val);
-      radius = Tween<double>(begin: 20, end: AppRadius.large).transform(val);
+      left = Tween<double>(begin: 96, end: 0).transform(val);
+      radius = Tween<double>(begin: 17, end: AppRadius.large).transform(val);
     } else {
       double t = val - 1.0;
       size = Tween<double>(begin: screenWidth - 48, end: 50).transform(t);

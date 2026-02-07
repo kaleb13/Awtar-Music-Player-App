@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_widgets.dart';
+import '../details/artist_details_screen.dart';
 
 class ArtistsTab extends StatelessWidget {
   const ArtistsTab({super.key});
@@ -67,10 +68,23 @@ class ArtistsTab extends StatelessWidget {
                 itemCount: artists.length,
                 itemBuilder: (context, index) {
                   final artist = artists[index];
-                  return AppArtistCard(
-                    name: artist["name"]!,
-                    songs: artist["songs"]!,
-                    imageUrl: artist["img"]!,
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ArtistDetailsScreen(
+                            name: artist["name"]!,
+                            imageUrl: artist["img"]!,
+                          ),
+                        ),
+                      );
+                    },
+                    child: AppArtistCard(
+                      name: artist["name"]!,
+                      songs: artist["songs"]!,
+                      imageUrl: artist["img"]!,
+                    ),
                   );
                 },
               ),

@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
-import '../providers/player_provider.dart';
 import '../providers/navigation_provider.dart';
 
 import 'tabs/folders_tab.dart';
 import 'tabs/artists_tab.dart';
 import 'tabs/albums_tab.dart';
+
+import 'details/artist_details_screen.dart';
+
+import 'details/album_details_screen.dart'; // Import for navigation
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -45,31 +48,35 @@ class HomeOverview extends ConsumerWidget {
             children: [
               const SizedBox(height: 20),
               // Top Nav Bar
-              const SizedBox(height: 20),
-              // Top Nav Bar
               const AppTopBar(),
-              const SizedBox(height: 10),
               const SizedBox(height: 30),
 
               // 1st Section: Popular Artists
-              const AppSectionHeader(title: "Popular Artists"),
+              AppSectionHeader(
+                title: "Popular Artists",
+                onSeeAll: () =>
+                    ref.read(homeTabProvider.notifier).state = HomeTab.artists,
+              ),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildArtistItem(
+                    context,
                     ref,
                     "The Weekend",
                     "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?q=80&w=200&auto=format&fit=crop",
                   ),
                   const SizedBox(width: 20),
                   _buildArtistItem(
+                    context,
                     ref,
                     "Drake",
                     "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop",
                   ),
                   const SizedBox(width: 20),
                   _buildArtistItem(
+                    context,
                     ref,
                     "Post Malone",
                     "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop",
@@ -79,9 +86,13 @@ class HomeOverview extends ConsumerWidget {
               const SizedBox(height: 40),
 
               // 2nd Section: Popular Albums
-              const AppSectionHeader(title: "Popular Albums"),
+              AppSectionHeader(
+                title: "Popular Albums",
+                onSeeAll: () =>
+                    ref.read(homeTabProvider.notifier).state = HomeTab.albums,
+              ),
               const SizedBox(height: 20),
-              _buildAlbumGrid(ref),
+              _buildAlbumGrid(context, ref),
               const SizedBox(height: 40),
 
               // 3rd Section: Most Played
@@ -127,24 +138,49 @@ class HomeOverview extends ConsumerWidget {
     );
   }
 
-  Widget _buildArtistItem(WidgetRef ref, String name, String url) {
+  Widget _buildArtistItem(
+    BuildContext context,
+    WidgetRef ref,
+    String name,
+    String url,
+  ) {
     return AppArtistCircle(
       name: name,
       imageUrl: url,
-      onTap: () => ref.read(screenProvider.notifier).state = AppScreen.player,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                ArtistDetailsScreen(name: name, imageUrl: url),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildAlbumGrid(WidgetRef ref) {
-    AppScreen openPlayer() =>
-        ref.read(screenProvider.notifier).state = AppScreen.player;
+  Widget _buildAlbumGrid(BuildContext context, WidgetRef ref) {
+    void openAlbum(String title, String artist, String img) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              AlbumDetailsScreen(title: title, artist: artist, imageUrl: img),
+        ),
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           flex: 1,
           child: AppAlbumCard(
-            onTap: openPlayer,
+            onTap: () => openAlbum(
+              "After Hours",
+              "The Weekend",
+              "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=400&auto=format&fit=crop",
+            ),
             title: "After Hours",
             artist: "The Weekend",
             imageUrl:
@@ -161,7 +197,11 @@ class HomeOverview extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: AppAlbumCard(
-                      onTap: openPlayer,
+                      onTap: () => openAlbum(
+                        "Scorpion",
+                        "Drake",
+                        "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=200&auto=format&fit=crop",
+                      ),
                       title: "",
                       artist: "",
                       imageUrl:
@@ -173,7 +213,11 @@ class HomeOverview extends ConsumerWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: AppAlbumCard(
-                      onTap: openPlayer,
+                      onTap: () => openAlbum(
+                        "Hollywood's Bleeding",
+                        "Post Malone",
+                        "https://images.unsplash.com/photo-1459749411177-042180ce673c?q=80&w=200&auto=format&fit=crop",
+                      ),
                       title: "",
                       artist: "",
                       imageUrl:
@@ -189,7 +233,11 @@ class HomeOverview extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: AppAlbumCard(
-                      onTap: openPlayer,
+                      onTap: () => openAlbum(
+                        "Anti",
+                        "Rihanna",
+                        "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=200&auto=format&fit=crop",
+                      ),
                       title: "",
                       artist: "",
                       imageUrl:
@@ -201,7 +249,11 @@ class HomeOverview extends ConsumerWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: AppAlbumCard(
-                      onTap: openPlayer,
+                      onTap: () => openAlbum(
+                        "Astroworld",
+                        "Travis Scott",
+                        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=200&auto=format&fit=crop",
+                      ),
                       title: "",
                       artist: "",
                       imageUrl:

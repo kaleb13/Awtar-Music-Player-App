@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_widgets.dart';
+import '../details/album_details_screen.dart';
 
 class AlbumsTab extends StatelessWidget {
   const AlbumsTab({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // ... (rest of the list definition is fine)
     final albums = [
       {
         "title": "After Hours",
@@ -73,6 +75,18 @@ class AlbumsTab extends StatelessWidget {
                     imageUrl: album["img"]!,
                     size: 160,
                     flexible: true,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AlbumDetailsScreen(
+                            title: album["title"]!,
+                            artist: album["artist"]!,
+                            imageUrl: album["img"]!,
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
