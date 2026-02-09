@@ -3,14 +3,22 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   // Primary Palette
-  static const Color primaryGreen = Color(0xFF1DB954);
-  static const Color accentYellow = Color(0xFFEEE544);
+  static const Color primaryGreen = Color(0xFF50be5b);
+  static const Color accentYellow = Color(0xFF5186d2);
 
   // Backgrounds & Surfaces
-  static const Color mainDark = Color(0xFF000400);
+  static const Color mainDark = Color(0xFF141619);
+  static const Color mainDarkLight = Color(0xFF2a2a34);
   static const Color background = mainDark;
+
+  static const LinearGradient mainGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [mainDarkLight, mainDark],
+  );
+
   static const Color surfaceWhite = Colors.white;
-  static const Color surfaceDark = Color(0xFF121212);
+  static const Color surfaceDark = Color(0xFF1c1c24);
 
   // Text Colors
   static const Color textMain = Colors.white;
@@ -53,4 +61,13 @@ class AppRadius {
   static const double large = 40.0;
   static const double medium = 20.0;
   static const double small = 8.0;
+}
+
+class AppAssets {
+  static const String logo = "assets/icons/logo_icon.svg";
+  static const String home = "assets/icons/home_icon.svg";
+  static const String search = "assets/icons/search_icon.svg";
+  static const String collection = "assets/icons/collection_icon.svg";
+  static const String play = "assets/icons/play_icon.svg";
+  static const String pause = "assets/icons/pause_icon.svg";
 }

@@ -2,10 +2,12 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:palette_generator/palette_generator.dart';
 import 'package:awtart_music_player/providers/player_provider.dart';
 import 'package:awtart_music_player/providers/navigation_provider.dart';
 import 'package:awtart_music_player/theme/app_theme.dart';
 import 'package:awtart_music_player/widgets/app_widgets.dart';
+import 'package:awtart_music_player/models/song.dart';
 
 import 'player_screen.dart';
 
@@ -20,6 +22,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     with TickerProviderStateMixin {
   late AnimationController _controller;
   late AnimationController _breathingController;
+  Color? _dominantColor;
 
   @override
   void initState() {
@@ -56,6 +59,35 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
         ref.read(scrollProgressProvider.notifier).state = 0.0;
       }
     });
+
+    _updatePalette();
+  }
+
+  Future<void> _updatePalette() async {
+    try {
+      final Song song =
+          ref.read(playerProvider).currentSong ?? ref.read(sampleSongProvider);
+      final PaletteGenerator generator =
+          await PaletteGenerator.fromImageProvider(
+            NetworkImage(song.albumArt),
+            size: const Size(50, 50),
+            maximumColorCount: 5,
+          );
+      if (mounted) {
+        setState(() {
+          _dominantColor =
+              generator.vibrantColor?.color ??
+              generator.dominantColor?.color ??
+              AppColors.accentYellow;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _dominantColor = AppColors.accentYellow;
+        });
+      }
+    }
   }
 
   @override
@@ -141,9 +173,11 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
 
   @override
   Widget build(BuildContext context) {
-    final song = ref.watch(sampleSongProvider);
+    final playerState = ref.watch(playerProvider);
+    final Song song = playerState.currentSong ?? ref.watch(sampleSongProvider);
     final screenHeight = MediaQuery.of(context).size.height;
     final currentMainTab = ref.watch(mainTabProvider);
+
     // Observe isPlaying for reactive updates
     ref.listen<bool>(playerProvider.select((s) => s.isPlaying), (
       prev,
@@ -153,6 +187,13 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
         _breathingController.repeat(reverse: true);
       } else {
         _breathingController.stop();
+      }
+    });
+
+    // Observe song changes to update palette
+    ref.listen(playerProvider, (prev, next) {
+      if (prev?.currentSong?.albumArt != next.currentSong?.albumArt) {
+        _updatePalette();
       }
     });
 
@@ -223,14 +264,17 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
         return Material(
           type: MaterialType.transparency,
           child: Stack(
-            clipBehavior: Clip.none,
             children: [
               if (val > 0.1)
                 Positioned.fill(
                   key: const ValueKey('bg'),
                   child: Opacity(
                     opacity: ((val - 0.1) * 1.25).clamp(0.0, 1.0),
-                    child: Container(color: AppColors.mainDark),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        gradient: AppColors.mainGradient,
+                      ),
+                    ),
                   ),
                 ),
               if (val > 0.5)
@@ -263,12 +307,10 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                     onDragUpdate: (delta) {
                       double screenHeight = MediaQuery.of(context).size.height;
                       double relativeDelta = delta / screenHeight;
-                      // Dragging DOWN (positive delta) should DECREASE controller value (2.0 -> 1.0)
                       _controller.value = (_controller.value - relativeDelta)
                           .clamp(1.0, 2.0);
                     },
                     onDragEnd: (velocity) {
-                      // Delegate to the main unified drag end handler
                       _onVerticalDragEnd(
                         DragEndDetails(
                           primaryVelocity: velocity,
@@ -286,7 +328,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: 160, // Increased from 140 to move the fade "up"
+                  height: 160,
                   child: Opacity(
                     opacity: (1 - val * 5).clamp(0.0, 1.0),
                     child: Container(
@@ -297,10 +339,11 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            AppColors.background.withOpacity(0.0),
+                            Colors.transparent,
+                            AppColors.background,
                             AppColors.background,
                           ],
-                          stops: const [0.0, 0.6],
+                          stops: const [0.0, 0.4, 1.0],
                         ),
                       ),
                       child: Row(
@@ -311,21 +354,21 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                             MainTab.home,
                             "Home",
                             currentMainTab == MainTab.home,
-                            svgPath: "assets/icons/home_icon.svg",
+                            svgPath: AppAssets.home,
                           ),
                           _buildBottomNavItem(
                             ref,
                             MainTab.discover,
                             "Discovery",
                             currentMainTab == MainTab.discover,
-                            svgPath: "assets/icons/search_icon.svg",
+                            svgPath: AppAssets.search,
                           ),
                           _buildBottomNavItem(
                             ref,
                             MainTab.collection,
                             "Collection",
                             currentMainTab == MainTab.collection,
-                            svgPath: "assets/icons/collection_icon.svg",
+                            svgPath: AppAssets.collection,
                           ),
                         ],
                       ),
@@ -341,7 +384,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    // If docked in Lyrics mode (white section at top), tap to go to Player
                     if (_controller.value > 1.5) {
                       ref.read(screenProvider.notifier).state =
                           AppScreen.player;
@@ -357,7 +399,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                               bottomRight: Radius.circular(AppRadius.large),
                             )
                           : BorderRadius.circular(currentRadius),
-                      // Remove shadow for mini player to look clean
                       boxShadow: val < 0.1
                           ? []
                           : [
@@ -381,9 +422,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                           sigmaY: val < 0.5 ? 10 : 20,
                         ),
                         child: Container(
-                          // Container Background Logic
-                          // Mini: Transparent (shows blurred album art)
-                          // Expanded: White (with slight opacity)
                           color: val < 0.1
                               ? Colors.black.withOpacity(0.3)
                               : currentColor.withOpacity(0.95),
@@ -397,24 +435,22 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                   end: MediaQuery.of(context).padding.top,
                                 ).transform(val.clamp(0.0, 1.0)),
                                 left: Tween<double>(
-                                  begin: 0, // Fill width at start
+                                  begin: 0,
                                   end: 24,
                                 ).transform(val.clamp(0.0, 1.0)),
                                 right: Tween<double>(
-                                  begin: 0, // Fill width at start
+                                  begin: 0,
                                   end: 24,
                                 ).transform(val.clamp(0.0, 1.0)),
                               ),
                               child: Stack(
                                 clipBehavior: Clip.none,
                                 children: [
-                                  // 1. Album Art (Background for mini, Foreground for Large)
                                   _buildMorphingAlbumArt(
                                     context,
                                     val,
                                     song.albumArt,
                                   ),
-                                  // 2. Mini Player Content (Text on top of Art)
                                   if (val < 0.5)
                                     Positioned.fill(
                                       child: Opacity(
@@ -422,7 +458,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                         child: _buildMiniPlayerUI(song, ref),
                                       ),
                                     ),
-                                  // 3. Main Player Content (Text below/above Art)
                                   if (val > 0.2 && val < 1.8)
                                     Positioned.fill(
                                       child: Opacity(
@@ -482,20 +517,19 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
-          // Left: Play/Pause Button
           GestureDetector(
             onTap: () {
               ref.read(playerProvider.notifier).togglePlayPause(song);
             },
             behavior: HitTestBehavior.opaque,
             child: Container(
-              width: 50, // Larger touch width
-              height: 50, // Larger touch height
-              alignment: const Alignment(-0.4, 0.0),
+              width: 50,
+              height: 50,
+              alignment: const Alignment(0.0, 0.0),
               child: isPlaying
                   ? SvgPicture.asset(
-                      "assets/icons/pause_icon.svg",
-                      width: 24, // Original requested size equivalent
+                      AppAssets.pause,
+                      width: 24,
                       height: 24,
                       colorFilter: const ColorFilter.mode(
                         Colors.white,
@@ -503,7 +537,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                       ),
                     )
                   : SvgPicture.asset(
-                      "assets/icons/play_icon.svg",
+                      AppAssets.play,
                       width: 24,
                       height: 24,
                       colorFilter: const ColorFilter.mode(
@@ -513,7 +547,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                     ),
             ),
           ),
-          // Center: Title and Artist
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -521,8 +554,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
               },
               behavior: HitTestBehavior.opaque,
               child: Container(
-                color: Colors.transparent, // Ensure hits are captured
-                height: 50, // Match height of side buttons
+                color: Colors.transparent,
+                height: 50,
                 alignment: Alignment.center,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -551,7 +584,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
               ),
             ),
           ),
-          // Right: Next Icon
           GestureDetector(
             onTap: () {
               ref.read(playerProvider.notifier).next();
@@ -615,6 +647,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
 
   Widget _buildMorphingAlbumArt(BuildContext context, double val, String url) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final borderColor = _dominantColor ?? AppColors.accentYellow;
 
     double top;
     double left;
@@ -655,8 +688,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
         child: AnimatedBuilder(
           animation: _breathingController,
           builder: (context, child) {
-            // Apply breathing animation only in MiniPlayer mode (val < 0.1)
-            // and ensure it scales from center
             final scale = val < 0.1
                 ? (1.0 + _breathingController.value * 0.3)
                 : 1.0;
@@ -669,6 +700,9 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(radius),
+              border: val > 0.2
+                  ? Border.all(color: borderColor.withOpacity(0.9), width: 2.5)
+                  : null,
               boxShadow: [
                 if (val > 0.2 && val < 1.8)
                   BoxShadow(
@@ -679,8 +713,11 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                   ),
               ],
             ),
+            padding: val > 0.2 ? const EdgeInsets.all(5) : EdgeInsets.zero,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(radius),
+              borderRadius: BorderRadius.circular(
+                val > 0.1 ? (radius > 4 ? radius - 4 : 0) : radius,
+              ),
               child: ImageFiltered(
                 imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
                 child: Image.network(
@@ -790,7 +827,7 @@ class LyricsBottomBarContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playerState = ref.watch(playerProvider);
-    final song = ref.watch(sampleSongProvider);
+    final Song song = playerState.currentSong ?? ref.watch(sampleSongProvider);
     return Container(
       height: 160,
       decoration: BoxDecoration(

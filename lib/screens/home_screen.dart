@@ -21,57 +21,67 @@ class HomeScreen extends ConsumerWidget {
     return DefaultTabController(
       length: 4,
       child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(
-                  left: 12,
-                  right: 12,
-                  top: 20,
-                ), // Reduced from 24
-                child: AppTopBar(),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: AppSearchBar(),
-              ),
-              const SizedBox(height: 20),
-              const TabBar(
-                dividerColor: Colors.transparent,
-                indicatorColor: AppColors.accentYellow,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.grey,
-                labelPadding: EdgeInsets.symmetric(horizontal: 4),
-                labelStyle: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+        backgroundColor: Colors.transparent,
+        body: Container(
+          decoration: const BoxDecoration(gradient: AppColors.mainGradient),
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(
+                    left: 12,
+                    right: 12,
+                    top: 20,
+                  ), // Reduced from 24
+                  child: AppTopBar(),
                 ),
-                unselectedLabelStyle: TextStyle(
-                  fontWeight: FontWeight.normal,
-                  fontSize: 13,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: AppSearchBar(),
                 ),
-                tabs: [
-                  Tab(text: "LIBRARY"), // Changed content
-                  Tab(text: "FOLDERS"),
-                  Tab(text: "ARTISTS"),
-                  Tab(text: "ALBUMS"),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Expanded(
-                child: TabBarView(
-                  children: [
-                    HomeOverviewContent(),
-                    FoldersTab(),
-                    ArtistsTab(),
-                    AlbumsTab(),
+                const SizedBox(height: 12),
+                const TabBar(
+                  dividerColor: Colors.transparent,
+                  indicatorColor: AppColors.accentYellow,
+                  indicator: UnderlineTabIndicator(
+                    borderSide: BorderSide(
+                      width: 2.0,
+                      color: AppColors.accentYellow,
+                    ),
+                    insets: EdgeInsets.only(top: 40), // Push indicator down
+                  ),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.grey,
+                  labelPadding: EdgeInsets.symmetric(horizontal: 4),
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  unselectedLabelStyle: TextStyle(
+                    fontWeight: FontWeight.normal,
+                    fontSize: 13,
+                  ),
+                  tabs: [
+                    Tab(text: "LIBRARY"), // Changed content
+                    Tab(text: "FOLDERS"),
+                    Tab(text: "ARTISTS"),
+                    Tab(text: "ALBUMS"),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 0),
+                const Expanded(
+                  child: TabBarView(
+                    children: [
+                      HomeOverviewContent(),
+                      FoldersTab(),
+                      ArtistsTab(),
+                      AlbumsTab(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -102,28 +112,36 @@ class HomeOverviewContent extends ConsumerWidget {
             child: AppSectionHeader(title: "Popular Artists"),
           ),
           const SizedBox(height: 20),
-          Padding(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildArtistItem(
                   context,
                   ref,
-                  "The Weekend",
+                  "Bereket Tesfaye",
                   "https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=300",
+                  "2h",
+                  subtitle: "32 Tracks 5 Albums",
                 ),
+                const SizedBox(width: 20),
                 _buildArtistItem(
                   context,
                   ref,
-                  "Drake",
+                  "Dawit Tsige",
                   "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=300",
+                  "45m",
+                  subtitle: "18 Tracks 2 Albums",
                 ),
+                const SizedBox(width: 20),
                 _buildArtistItem(
                   context,
                   ref,
-                  "Post Malone",
+                  "Aster Aweke",
                   "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop",
+                  "1.5h",
+                  subtitle: "45 Tracks 8 Albums",
                 ),
               ],
             ),
@@ -168,22 +186,26 @@ class HomeOverviewContent extends ConsumerWidget {
           const SizedBox(height: 20),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
-                borderRadius: BorderRadius.circular(AppRadius.medium),
-              ),
-              child: const Column(
-                children: [
-                  AppSummaryItem(
-                    label: "Time played this month",
-                    value: "24h 15m",
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppSummaryItem(
+                    label: "Monthly Time",
+                    value: "24.2h",
+                    trend: "+2h", // Threshold: >= 1h shows green/up
+                    isTrendPositive: true,
                   ),
-                  SizedBox(height: 20),
-                  AppSummaryItem(label: "Total time played", value: "156h 40m"),
-                ],
-              ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppSummaryItem(
+                    label: "Total Playtime",
+                    value: "156h",
+                    trend: "+45m", // Threshold: < 1h shows red/down/decrease
+                    isTrendPositive: false,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 180), // Room for shrunken player + nav bar
@@ -197,12 +219,14 @@ class HomeOverviewContent extends ConsumerWidget {
     WidgetRef ref,
     String name,
     String url,
-  ) {
-    return ColorAwareAlbumCard(
-      title: name,
-      artist: "",
+    String playTime, {
+    String? subtitle,
+  }) {
+    return AppPopularArtistCard(
+      name: name,
       imageUrl: url,
-      size: 100,
+      playTime: playTime,
+      subtitle: subtitle,
       onTap: () {
         ref.read(bottomNavVisibleProvider.notifier).state = false;
         Navigator.push(
@@ -232,10 +256,10 @@ class HomeOverviewContent extends ConsumerWidget {
       });
     }
 
-    return IntrinsicHeight(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.stretch, // Stretch to match heights
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Large Featured Album
           Expanded(
@@ -294,7 +318,7 @@ class HomeOverviewContent extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 5),
                 Row(
                   children: [
                     Expanded(

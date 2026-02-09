@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:palette_generator/palette_generator.dart';
 import '../theme/app_theme.dart';
+import '../providers/search_provider.dart';
+import '../providers/navigation_provider.dart';
 
 class AppPlayButton extends StatelessWidget {
   final bool isPlaying;
@@ -30,13 +33,13 @@ class AppPlayButton extends StatelessWidget {
         child: Center(
           child: isPlaying
               ? SvgPicture.asset(
-                  "assets/icons/pause_icon.svg",
+                  AppAssets.pause,
                   width: size * 0.5,
                   height: size * 0.5,
                   colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
                 )
               : SvgPicture.asset(
-                  "assets/icons/play_icon.svg",
+                  AppAssets.play,
                   width: size * 0.5,
                   height: size * 0.5,
                   colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
@@ -159,46 +162,227 @@ class AppSectionHeader extends StatelessWidget {
   }
 }
 
-class AppArtistCircle extends StatelessWidget {
-  final String name;
+class AppPremiumCard extends StatefulWidget {
+  final String title;
+  final String? subtitle;
   final String imageUrl;
+  final String? badgeText;
+  final bool showMenu;
+  final double size;
   final VoidCallback? onTap;
+  final bool isCircular;
+  final bool flexible;
 
-  const AppArtistCircle({
+  const AppPremiumCard({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.imageUrl,
+    this.badgeText,
+    this.showMenu = false,
+    this.size = 90,
+    this.onTap,
+    this.isCircular = false,
+    this.flexible = false,
+  });
+
+  @override
+  State<AppPremiumCard> createState() => _AppPremiumCardState();
+}
+
+class _AppPremiumCardState extends State<AppPremiumCard> {
+  Color? _dominantColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _updatePalette();
+  }
+
+  @override
+  void didUpdateWidget(covariant AppPremiumCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _updatePalette();
+    }
+  }
+
+  Future<void> _updatePalette() async {
+    try {
+      final PaletteGenerator generator =
+          await PaletteGenerator.fromImageProvider(
+            NetworkImage(widget.imageUrl),
+            size: const Size(50, 50),
+            maximumColorCount: 5,
+          );
+      if (mounted) {
+        setState(() {
+          _dominantColor =
+              generator.vibrantColor?.color ??
+              generator.dominantColor?.color ??
+              AppColors.accentYellow;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _dominantColor = AppColors.accentYellow;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = _dominantColor ?? AppColors.accentYellow;
+    final double borderRadiusInner = widget.isCircular
+        ? (widget.flexible ? 1000 : widget.size)
+        : 24;
+    final double borderRadiusOuter = widget.isCircular
+        ? (widget.flexible ? 1000 : widget.size)
+        : 28;
+
+    Widget imageContainer = Container(
+      width: widget.flexible ? double.infinity : widget.size,
+      height: widget.flexible ? null : widget.size,
+      decoration: BoxDecoration(
+        shape: widget.isCircular ? BoxShape.circle : BoxShape.rectangle,
+        borderRadius: widget.isCircular
+            ? null
+            : BorderRadius.circular(borderRadiusOuter),
+        border: Border.all(color: borderColor.withOpacity(0.9), width: 2.2),
+      ),
+      padding: const EdgeInsets.all(5),
+      child: ClipRRect(
+        borderRadius: widget.isCircular
+            ? BorderRadius.circular(borderRadiusOuter)
+            : BorderRadius.circular(borderRadiusInner),
+        child: widget.flexible
+            ? AspectRatio(
+                aspectRatio: 1.0,
+                child: Image.network(widget.imageUrl, fit: BoxFit.cover),
+              )
+            : Image.network(
+                widget.imageUrl,
+                fit: BoxFit.cover,
+                width: widget.size,
+                height: widget.size,
+              ),
+      ),
+    );
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              imageContainer,
+              // Badge (Play Time or Menu)
+              if (widget.badgeText != null || widget.showMenu)
+                Positioned(
+                  top: 4,
+                  right: -4,
+                  child: Container(
+                    padding: widget.showMenu
+                        ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4)
+                        : const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0D0D0F),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: widget.showMenu
+                        ? const Icon(
+                            Icons.more_horiz,
+                            color: Colors.white,
+                            size: 14,
+                          )
+                        : Text(
+                            widget.badgeText!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: widget.flexible ? null : widget.size + 20,
+            child: Column(
+              children: [
+                Text(
+                  widget.title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMain.copyWith(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+                if (widget.subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.subtitle!,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 10,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AppPopularArtistCard extends StatelessWidget {
+  final String name;
+  final String? subtitle;
+  final String imageUrl;
+  final String playTime;
+  final VoidCallback onTap;
+
+  const AppPopularArtistCard({
     super.key,
     required this.name,
+    this.subtitle,
     required this.imageUrl,
-    this.onTap,
+    required this.playTime,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return AppPremiumCard(
+      title: name,
+      subtitle: subtitle,
+      imageUrl: imageUrl,
+      badgeText: playTime,
       onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              image: DecorationImage(
-                image: NetworkImage(imageUrl),
-                fit: BoxFit.cover,
-              ),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-                width: 2,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            name,
-            style: AppTextStyles.caption.copyWith(color: AppColors.textMain),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -225,53 +409,13 @@ class AppAlbumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return AppPremiumCard(
+      title: title,
+      subtitle: artist,
+      imageUrl: imageUrl,
+      size: size,
+      flexible: flexible,
       onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.small),
-            child: flexible
-                ? AspectRatio(
-                    aspectRatio: 1.0,
-                    child: Image.network(
-                      imageUrl,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  )
-                : Image.network(
-                    imageUrl,
-                    width: size,
-                    height: size,
-                    fit: BoxFit.cover,
-                  ),
-          ),
-          if (!isMini) ...[
-            const SizedBox(height: 8),
-            SizedBox(
-              width: flexible ? double.infinity : size,
-              child: Text(
-                title,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textMain,
-                  fontWeight: FontWeight.bold,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            SizedBox(
-              width: flexible ? double.infinity : size,
-              child: Text(
-                artist,
-                style: AppTextStyles.caption,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }
@@ -279,27 +423,99 @@ class AppAlbumCard extends StatelessWidget {
 class AppSummaryItem extends StatelessWidget {
   final String label;
   final String value;
+  final String? trend;
+  final bool isTrendPositive;
 
-  const AppSummaryItem({super.key, required this.label, required this.value});
+  const AppSummaryItem({
+    super.key,
+    required this.label,
+    required this.value,
+    this.trend,
+    this.isTrendPositive = true,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.caption),
-        Text(
-          value,
-          style: AppTextStyles.titleLarge.copyWith(
-            color: AppColors.accentYellow,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(AppRadius.medium),
+        border: Border.all(color: Colors.white.withOpacity(0.03), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: AppTextStyles.caption.copyWith(
+              letterSpacing: 1.2,
+              fontSize: 10,
+              color: Colors.white.withOpacity(0.4),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                value,
+                style: AppTextStyles.titleLarge.copyWith(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              if (trend != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        (isTrendPositive
+                                ? AppColors.primaryGreen
+                                : Colors.redAccent)
+                            .withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isTrendPositive
+                            ? Icons.trending_up
+                            : Icons.trending_down,
+                        size: 14,
+                        color: isTrendPositive
+                            ? AppColors.primaryGreen
+                            : Colors.redAccent,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        trend!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isTrendPositive
+                              ? AppColors.primaryGreen
+                              : Colors.redAccent,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
 
-class AppMiniPlayer extends ConsumerWidget {
+class AppMiniPlayer extends StatefulWidget {
   final String title;
   final String artist;
   final String imageUrl;
@@ -320,14 +536,62 @@ class AppMiniPlayer extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  State<AppMiniPlayer> createState() => _AppMiniPlayerState();
+}
+
+class _AppMiniPlayerState extends State<AppMiniPlayer> {
+  Color? _dominantColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _updatePalette();
+  }
+
+  @override
+  void didUpdateWidget(covariant AppMiniPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _updatePalette();
+    }
+  }
+
+  Future<void> _updatePalette() async {
+    try {
+      final PaletteGenerator generator =
+          await PaletteGenerator.fromImageProvider(
+            NetworkImage(widget.imageUrl),
+            size: const Size(50, 50),
+            maximumColorCount: 5,
+          );
+      if (mounted) {
+        setState(() {
+          _dominantColor =
+              generator.vibrantColor?.color ??
+              generator.dominantColor?.color ??
+              AppColors.accentYellow;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _dominantColor = AppColors.accentYellow;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = _dominantColor ?? AppColors.accentYellow;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         height: 70,
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
+          color: AppColors.surfaceDark,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -345,21 +609,32 @@ class AppMiniPlayer extends ConsumerWidget {
               Align(
                 alignment: Alignment.bottomLeft,
                 child: FractionallySizedBox(
-                  widthFactor: progress.clamp(0.0, 1.0),
-                  child: Container(height: 3, color: AppColors.accentYellow),
+                  widthFactor: widget.progress.clamp(0.0, 1.0),
+                  child: Container(height: 3, color: AppColors.primaryGreen),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        imageUrl,
-                        width: 45,
-                        height: 45,
-                        fit: BoxFit.cover,
+                    // Stroke Effect Cover Image
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: borderColor.withOpacity(0.9),
+                          width: 2.0,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(3.5),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(7.5),
+                        child: Image.network(
+                          widget.imageUrl,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -369,7 +644,7 @@ class AppMiniPlayer extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            title,
+                            widget.title,
                             style: AppTextStyles.bodySmall.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -377,7 +652,7 @@ class AppMiniPlayer extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            artist,
+                            widget.artist,
                             style: AppTextStyles.caption.copyWith(fontSize: 11),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -394,8 +669,8 @@ class AppMiniPlayer extends ConsumerWidget {
                       size: 40,
                       color: Colors.white,
                       iconColor: Colors.black,
-                      isPlaying: isPlaying,
-                      onTap: onPlayPause,
+                      isPlaying: widget.isPlaying,
+                      onTap: widget.onPlayPause,
                     ),
                   ],
                 ),
@@ -414,18 +689,23 @@ class AppTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
-              const AppIconButton(
-                icon: Icons.menu,
-                color: Colors.white,
-                size: 28,
+              SvgPicture.asset(
+                AppAssets.logo,
+                height: 28,
+                width: 35,
+                errorBuilder: (context, error, stackTrace) => const Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: 28,
+                ),
               ),
-              const SizedBox(width: 8), // Reduced gap
+              const SizedBox(width: 12), // Adjusted gap
               Text(
                 "Awtar",
                 style: AppTextStyles.titleMedium.copyWith(
@@ -445,11 +725,12 @@ class AppTopBar extends StatelessWidget {
   }
 }
 
-class AppSearchBar extends StatelessWidget {
-  const AppSearchBar({super.key});
+class AppSearchBar extends ConsumerWidget {
+  final bool autoFocus;
+  const AppSearchBar({super.key, this.autoFocus = false});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       height: 48,
       decoration: BoxDecoration(
@@ -458,6 +739,18 @@ class AppSearchBar extends StatelessWidget {
         border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
       ),
       child: TextField(
+        autofocus: autoFocus,
+        onChanged: (value) {
+          ref.read(searchQueryProvider.notifier).state = value;
+          if (ref.read(mainTabProvider) != MainTab.discover) {
+            ref.read(mainTabProvider.notifier).state = MainTab.discover;
+          }
+        },
+        onTap: () {
+          if (ref.read(mainTabProvider) != MainTab.discover) {
+            ref.read(mainTabProvider.notifier).state = MainTab.discover;
+          }
+        },
         style: const TextStyle(color: Colors.white, fontSize: 14),
         decoration: InputDecoration(
           hintText: "Search songs, artists, albums...",
@@ -468,7 +761,7 @@ class AppSearchBar extends StatelessWidget {
           prefixIcon: Padding(
             padding: const EdgeInsets.all(12),
             child: SvgPicture.asset(
-              "assets/icons/search_icon.svg",
+              AppAssets.search,
               colorFilter: ColorFilter.mode(
                 Colors.white.withOpacity(0.3),
                 BlendMode.srcIn,
@@ -483,61 +776,130 @@ class AppSearchBar extends StatelessWidget {
   }
 }
 
-class AppPromoBanner extends StatelessWidget {
+class AppPromoBanner extends StatefulWidget {
   const AppPromoBanner({super.key});
 
   @override
+  State<AppPromoBanner> createState() => _AppPromoBannerState();
+}
+
+class _AppPromoBannerState extends State<AppPromoBanner> {
+  Color? _dominantColor;
+  final String imageUrl =
+      "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=800";
+
+  @override
+  void initState() {
+    super.initState();
+    _updatePalette();
+  }
+
+  Future<void> _updatePalette() async {
+    try {
+      final PaletteGenerator generator =
+          await PaletteGenerator.fromImageProvider(
+            NetworkImage(imageUrl),
+            size: const Size(50, 50),
+            maximumColorCount: 5,
+          );
+      if (mounted) {
+        setState(() {
+          _dominantColor =
+              generator.vibrantColor?.color ??
+              generator.dominantColor?.color ??
+              AppColors.accentYellow;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _dominantColor = AppColors.accentYellow;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final borderColor = _dominantColor ?? AppColors.accentYellow;
+
     return Container(
       width: double.infinity,
-      height: 120, // Reduced from 180
+      height: 120,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        image: const DecorationImage(
-          image: NetworkImage(
-            "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=800",
-          ),
-          fit: BoxFit.cover,
-        ),
+        borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
+        border: Border.all(color: borderColor.withOpacity(0.9), width: 2.5),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [
-              Colors.black.withOpacity(0.8),
-              Colors.black.withOpacity(0.1),
-              Colors.transparent,
-            ],
-            stops: const [0.0, 0.6, 1.0],
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+      padding: const EdgeInsets.all(5), // The "Double Stroke" gap
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Stack(
           children: [
-            Text(
-              "After Hours",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20, // Reduced from 26
-                fontWeight: FontWeight.bold,
-                height: 1.1,
+            // Background Image
+            Positioned.fill(
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: AppColors.mainDarkLight,
+                  child: const Icon(Icons.music_note, color: Colors.white24),
+                ),
               ),
             ),
-            Text(
-              "The Weekend • Deluxe Edition",
-              style: TextStyle(color: Colors.white70, fontSize: 13),
+            // Gradient Overlay
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.black.withOpacity(0.85),
+                      Colors.black.withOpacity(0.4),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
+                  ),
+                ),
+              ),
+            ),
+            // Content centered vertically
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "After Hours",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        height: 1.1,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "The Weekend • Deluxe Edition",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 13,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

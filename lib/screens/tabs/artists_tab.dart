@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../details/artist_details_screen.dart';
-import '../../providers/navigation_provider.dart';
+import '../../widgets/app_widgets.dart'; // Import this to use AppPremiumCard
 
 class ArtistsTab extends ConsumerWidget {
   const ArtistsTab({super.key});
@@ -52,7 +52,6 @@ class ArtistsTab extends ConsumerWidget {
         "img":
             "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=400",
       },
-      // Added more for grid visualization
       {
         "name": "Fenan Befkadu",
         "tracks": "12",
@@ -72,17 +71,22 @@ class ArtistsTab extends ConsumerWidget {
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3, // Changed to 3 columns
+        crossAxisCount: 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 0.7, // Taller aspect ratio for narrower cards
+        childAspectRatio: 0.65, // Increased vertical space to fix overflow
       ),
       itemCount: artists.length,
       itemBuilder: (context, index) {
         final artist = artists[index];
-        return GestureDetector(
+        return AppPremiumCard(
+          title: artist["name"]!,
+          subtitle: "${artist["tracks"]} Tracks ${artist["albums"]} Albums",
+          imageUrl: artist["img"]!,
+          isCircular:
+              false, // User requested the square-rounded look like popular artists
           onTap: () {
-            ref.read(bottomNavVisibleProvider.notifier).state = false;
+            // ref.read(bottomNavVisibleProvider.notifier).state = false;
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -91,94 +95,10 @@ class ArtistsTab extends ConsumerWidget {
                   imageUrl: artist["img"]!,
                 ),
               ),
-            ).then((_) {
-              ref.read(bottomNavVisibleProvider.notifier).state = true;
-            });
+            );
           },
-          child: AppArtistCard(
-            name: artist["name"]!,
-            tracks: artist["tracks"]!,
-            albums: artist["albums"]!,
-            imageUrl: artist["img"]!,
-          ),
         );
       },
-    );
-  }
-}
-
-class AppArtistCard extends StatelessWidget {
-  final String name;
-  final String tracks;
-  final String albums;
-  final String imageUrl;
-
-  const AppArtistCard({
-    super.key,
-    required this.name,
-    required this.tracks,
-    required this.albums,
-    required this.imageUrl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        // No color here, we want it transparent-ish or let children handle
-      ),
-      clipBehavior:
-          Clip.antiAlias, // Ensures internal children respect rounded corners
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 1. Square Image Top
-          AspectRatio(
-            aspectRatio: 1.0,
-            child: Image.network(imageUrl, fit: BoxFit.cover),
-          ),
-
-          // 2. Info Section (Silver Dark Transparent)
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                // "Silver Dark" + Transparent
-                color: const Color(0xFF2A2C30).withOpacity(0.9),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Flexible(
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                        fontFamily: "Inter", // Or whatever default font
-                        color: Colors.white,
-                        fontSize: 12, // Reduced font size to fit 3 columns
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Flexible(
-                    child: Text(
-                      "$tracks tracks $albums albums",
-                      style: TextStyle(color: Colors.grey[400], fontSize: 9),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

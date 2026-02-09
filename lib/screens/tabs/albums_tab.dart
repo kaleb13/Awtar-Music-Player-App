@@ -55,7 +55,7 @@ class AlbumsTab extends ConsumerWidget {
         crossAxisCount: 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 0.7, // Matching artist tab ratio
+        childAspectRatio: 0.62, // Increased vertical space to prevent overflow
       ),
       itemCount: albums.length,
       itemBuilder: (context, index) {

@@ -1,43 +1,190 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
+import '../providers/search_provider.dart';
+import '../providers/player_provider.dart';
 
-class DiscoverScreen extends StatelessWidget {
+class DiscoverScreen extends ConsumerWidget {
   const DiscoverScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final query = ref.watch(searchQueryProvider);
+    final results = ref.watch(searchResultsProvider);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(padding: EdgeInsets.all(24.0), child: AppTopBar()),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SvgPicture.asset(
-                      "assets/icons/search_icon.svg",
-                      width: 64,
-                      height: 64,
-                      colorFilter: const ColorFilter.mode(
-                        AppColors.primaryGreen,
-                        BlendMode.srcIn,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text("Discover New Music", style: AppTextStyles.titleLarge),
-                    const SizedBox(height: 8),
-                    Text("Coming Soon...", style: AppTextStyles.bodyMain),
-                  ],
-                ),
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.mainGradient),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(left: 24, right: 24, top: 20),
+                child: AppTopBar(),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                child: AppSearchBar(autoFocus: true),
+              ),
+              Expanded(
+                child: query.isEmpty
+                    ? _buildSearchPlaceholder()
+                    : results.isEmpty
+                    ? _buildNoResults()
+                    : _buildSearchResults(results, ref),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            AppAssets.search,
+            width: 64,
+            height: 64,
+            colorFilter: ColorFilter.mode(
+              AppColors.textGrey.withOpacity(0.3),
+              BlendMode.srcIn,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "Find your favorite music",
+            style: AppTextStyles.bodyMain.copyWith(
+              color: AppColors.textGrey.withOpacity(0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoResults() {
+    return const Center(
+      child: Text(
+        "No results found",
+        style: TextStyle(color: AppColors.textGrey),
+      ),
+    );
+  }
+
+  Widget _buildSearchResults(SearchResult results, WidgetRef ref) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      children: [
+        if (results.songs.isNotEmpty) ...[
+          _buildHeader("SONGS"),
+          ...results.songs.map(
+            (song) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: AppSongListTile(
+                title: song.title,
+                artist: song.artist,
+                duration: "3:45", // Mock duration
+                imageUrl: song.albumArt,
+                onTap: () {
+                  ref.read(playerProvider.notifier).play(song);
+                },
               ),
             ),
-          ],
+          ),
+          const SizedBox(height: 24),
+        ],
+        if (results.albums.isNotEmpty) ...[
+          _buildHeader("ALBUMS"),
+          SizedBox(
+            height: 180,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: results.albums.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 16),
+              itemBuilder: (context, index) {
+                final album = results.albums[index];
+                return AppAlbumCard(
+                  title: album.title,
+                  artist: album.artist,
+                  imageUrl: album.imageUrl,
+                  size: 120,
+                  onTap: () {},
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+        if (results.artists.isNotEmpty) ...[
+          _buildHeader("ARTISTS"),
+          SizedBox(
+            height: 140,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: results.artists.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 16),
+              itemBuilder: (context, index) {
+                final artist = results.artists[index];
+                return Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          image: DecorationImage(
+                            image: NetworkImage(artist.imageUrl),
+                            fit: BoxFit.cover,
+                          ),
+                          border: Border.all(
+                            color: AppColors.primaryGreen.withOpacity(0.3),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: 80,
+                      child: Text(
+                        artist.name,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+        const SizedBox(height: 100), // Bottom padding for player
+      ],
+    );
+  }
+
+  Widget _buildHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Text(
+        title,
+        style: AppTextStyles.caption.copyWith(
+          letterSpacing: 2,
+          color: Colors.white.withOpacity(0.5),
         ),
       ),
     );
@@ -52,41 +199,44 @@ class CollectionScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(left: 24, right: 24, top: 20),
-                child: AppTopBar(),
-              ),
-              const SizedBox(height: 10),
-              const TabBar(
-                dividerColor: Colors.transparent,
-                indicatorColor: AppColors.accentYellow,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.grey,
-                labelStyle: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+        backgroundColor: Colors.transparent,
+        body: Container(
+          decoration: const BoxDecoration(gradient: AppColors.mainGradient),
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(left: 24, right: 24, top: 20),
+                  child: AppTopBar(),
                 ),
-                unselectedLabelStyle: TextStyle(
-                  fontWeight: FontWeight.normal,
-                  fontSize: 16,
+                const SizedBox(height: 10),
+                const TabBar(
+                  dividerColor: Colors.transparent,
+                  indicatorColor: AppColors.accentYellow,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.grey,
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  unselectedLabelStyle: TextStyle(
+                    fontWeight: FontWeight.normal,
+                    fontSize: 16,
+                  ),
+                  tabs: [
+                    Tab(text: "Favorites"),
+                    Tab(text: "Playlist"),
+                  ],
                 ),
-                tabs: [
-                  Tab(text: "Favorites"),
-                  Tab(text: "Playlist"),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: TabBarView(
-                  children: [const _FavoritesTab(), const _PlaylistsTab()],
+                const SizedBox(height: 20),
+                Expanded(
+                  child: TabBarView(
+                    children: [const _FavoritesTab(), const _PlaylistsTab()],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

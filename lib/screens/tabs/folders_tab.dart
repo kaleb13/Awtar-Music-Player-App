@@ -14,27 +14,27 @@ class FoldersTab extends ConsumerWidget {
         children: [
           const SizedBox(height: 10),
           Text("Storage", style: AppTextStyles.titleLarge),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text("Select a source to browse", style: AppTextStyles.bodySmall),
-          const SizedBox(height: 30),
+          const SizedBox(height: 24),
           const AppStorageCard(
             name: "Internal Storage",
             icon: Icons.smartphone,
             used: "45 GB",
             total: "64 GB",
             percent: 0.7,
-            gradientColors: [Color(0xFFF12711), Color(0xFFF5AF19)],
+            accentColor: Color(0xFF5186d2),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           const AppStorageCard(
             name: "SD Card",
             icon: Icons.sd_storage,
             used: "12 GB",
             total: "128 GB",
             percent: 0.1,
-            gradientColors: [Color(0xFF11998e), Color(0xFF38ef7d)],
+            accentColor: Color(0xFF50be5b),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           const AppStorageCard(
             name: "USB Drive",
             icon: Icons.usb,
@@ -42,7 +42,7 @@ class FoldersTab extends ConsumerWidget {
             total: "0 GB",
             percent: 0.0,
             isEnabled: false,
-            gradientColors: [Colors.grey, Colors.grey],
+            accentColor: Colors.grey,
           ),
           const SizedBox(height: 120), // Bottom padding
         ],
@@ -57,7 +57,7 @@ class AppStorageCard extends StatelessWidget {
   final String used;
   final String total;
   final double percent;
-  final List<Color> gradientColors;
+  final Color accentColor;
   final bool isEnabled;
 
   const AppStorageCard({
@@ -67,10 +67,7 @@ class AppStorageCard extends StatelessWidget {
     required this.used,
     required this.total,
     required this.percent,
-    this.gradientColors = const [
-      AppColors.primaryGreen,
-      AppColors.accentYellow,
-    ],
+    required this.accentColor,
     this.isEnabled = true,
   });
 
@@ -78,59 +75,70 @@ class AppStorageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.surfaceDark,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.03), width: 1),
       ),
       child: Opacity(
-        opacity: isEnabled ? 1.0 : 0.5,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        opacity: isEnabled ? 1.0 : 0.4,
+        child: Row(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 28),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.white.withOpacity(0.3),
-                  size: 16,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(name, style: AppTextStyles.titleMedium),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "$used used",
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.accentYellow,
-                  ),
-                ),
-                Text("of $total", style: AppTextStyles.caption),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: percent,
-                minHeight: 8,
-                backgroundColor: Colors.white.withOpacity(0.1),
-                valueColor: AlwaysStoppedAnimation(gradientColors.first),
+            // Minimal Icon
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: Icon(icon, color: accentColor, size: 20),
+            ),
+            const SizedBox(width: 16),
+            // Name and Progress Column
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        name,
+                        style: AppTextStyles.bodyMain.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        "$used / $total",
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.white.withOpacity(0.4),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Slim Progress Bar
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: percent,
+                      minHeight: 4,
+                      backgroundColor: Colors.white.withOpacity(0.05),
+                      valueColor: AlwaysStoppedAnimation(accentColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.white.withOpacity(0.2),
+              size: 18,
             ),
           ],
         ),

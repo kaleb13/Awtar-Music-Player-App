@@ -265,7 +265,7 @@ class _ArtistDetailsScreenState extends State<ArtistDetailsScreen> {
                   color: backgroundColor,
                   padding: const EdgeInsets.only(bottom: 24),
                   child: SizedBox(
-                    height: 160,
+                    height: 185, // Increased from 170 to fix overflow
                     child: ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       scrollDirection: Axis.horizontal,
@@ -304,7 +304,8 @@ class _ArtistDetailsScreenState extends State<ArtistDetailsScreen> {
                           title: album['title']!,
                           artist: "${album['year']!} • ${widget.name}",
                           imageUrl: album['img']!,
-                          size: 110, // Adjusted size to fit 3 items
+                          size: 100, // Slightly smaller to fit better
+                          showThreeDotsMenu: true,
                           onTap: () {
                             Navigator.push(
                               context,
