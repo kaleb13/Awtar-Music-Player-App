@@ -178,8 +178,8 @@ class AppArtistCircle extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: 110,
+            height: 110,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               image: DecorationImage(
@@ -420,20 +420,12 @@ class AppTopBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: AppColors.accentYellow,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.music_note,
-                  color: Colors.black,
-                  size: 20,
-                ),
+              const AppIconButton(
+                icon: Icons.menu,
+                color: Colors.white,
+                size: 28,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8), // Reduced gap
               Text(
                 "Awtar",
                 style: AppTextStyles.titleMedium.copyWith(
@@ -443,25 +435,112 @@ class AppTopBar extends StatelessWidget {
               ),
             ],
           ),
-          Row(
-            children: [
-              SvgPicture.asset(
-                "assets/icons/search_icon.svg",
-                width: 24,
-                height: 24,
-                colorFilter: const ColorFilter.mode(
-                  Colors.white,
-                  BlendMode.srcIn,
-                ),
-              ),
-              const SizedBox(width: 16),
-              const AppIconButton(
-                icon: Icons.more_vert, // Vertical Menu
-                color: Colors.white,
-              ),
-            ],
+          const AppIconButton(
+            icon: Icons.more_vert, // Vertical Menu
+            color: Colors.white,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class AppSearchBar extends StatelessWidget {
+  const AppSearchBar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+      ),
+      child: TextField(
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: "Search songs, artists, albums...",
+          hintStyle: TextStyle(
+            color: Colors.white.withOpacity(0.3),
+            fontSize: 14,
+          ),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(12),
+            child: SvgPicture.asset(
+              "assets/icons/search_icon.svg",
+              colorFilter: ColorFilter.mode(
+                Colors.white.withOpacity(0.3),
+                BlendMode.srcIn,
+              ),
+            ),
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
+    );
+  }
+}
+
+class AppPromoBanner extends StatelessWidget {
+  const AppPromoBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 120, // Reduced from 180
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        image: const DecorationImage(
+          image: NetworkImage(
+            "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=800",
+          ),
+          fit: BoxFit.cover,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Colors.black.withOpacity(0.8),
+              Colors.black.withOpacity(0.1),
+              Colors.transparent,
+            ],
+            stops: const [0.0, 0.6, 1.0],
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "After Hours",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20, // Reduced from 26
+                fontWeight: FontWeight.bold,
+                height: 1.1,
+              ),
+            ),
+            Text(
+              "The Weekend • Deluxe Edition",
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ],
+        ),
       ),
     );
   }

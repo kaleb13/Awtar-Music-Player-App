@@ -17,8 +17,9 @@ class MainMusicPlayer extends ConsumerStatefulWidget {
 }
 
 class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _controller;
+  late AnimationController _breathingController;
 
   @override
   void initState() {
@@ -30,9 +31,19 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
       upperBound: 2.0,
     );
 
+    _breathingController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    );
+
     // Sync current visual state
     final initialScreen = ref.read(screenProvider);
     _controller.value = initialScreen == AppScreen.home ? 0.0 : 1.0;
+
+    // Initial breathing state
+    if (ref.read(playerProvider).isPlaying) {
+      _breathingController.repeat(reverse: true);
+    }
 
     _controller.addListener(() {
       final val = _controller.value;
@@ -50,6 +61,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
   @override
   void dispose() {
     _controller.dispose();
+    _breathingController.dispose();
     super.dispose();
   }
 
@@ -132,6 +144,17 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     final song = ref.watch(sampleSongProvider);
     final screenHeight = MediaQuery.of(context).size.height;
     final currentMainTab = ref.watch(mainTabProvider);
+    // Observe isPlaying for reactive updates
+    ref.listen<bool>(playerProvider.select((s) => s.isPlaying), (
+      prev,
+      isPlaying,
+    ) {
+      if (isPlaying) {
+        _breathingController.repeat(reverse: true);
+      } else {
+        _breathingController.stop();
+      }
+    });
 
     // Fixed: ref.listen must be in build, not in a builder callback
     ref.listen(screenProvider, (prev, next) {
@@ -161,13 +184,19 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
         double currentMargin;
         Color currentColor = AppColors.surfaceWhite;
         if (val <= 1.0) {
-          // New Mini Player: Height ~60, Bottom Nav visible
+          // Dynamic starting position based on navigation bar visibility
+          final isNavVisible = ref.watch(bottomNavVisibleProvider);
+          final double miniPlayerBaseTop = isNavVisible
+              ? screenHeight - 150
+              : screenHeight - 95;
+
+          // New Mini Player: Height ~60, Bottom Nav visible (conditionally)
           currentHeight = Tween<double>(
             begin: 60,
             end: screenHeight * 0.85,
           ).transform(val);
           currentTop = Tween<double>(
-            begin: screenHeight - 160, // Above Nav Bar
+            begin: miniPlayerBaseTop,
             end: 0,
           ).transform(val);
           currentRadius = Tween<double>(
@@ -251,13 +280,13 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                     },
                   ),
                 ),
-              // Bottom Navigation Bar (New)
-              if (val < 0.2)
+              // Bottom Navigation Bar
+              if (val < 0.2 && ref.watch(bottomNavVisibleProvider))
                 Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: 140,
+                  height: 160, // Increased from 140 to move the fade "up"
                   child: Opacity(
                     opacity: (1 - val * 5).clamp(0.0, 1.0),
                     child: Container(
@@ -623,28 +652,43 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
       width: width,
       height: height,
       child: IgnorePointer(
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(radius),
-            boxShadow: [
-              if (val > 0.2 && val < 1.8)
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                  offset: const Offset(0, 10),
+        child: AnimatedBuilder(
+          animation: _breathingController,
+          builder: (context, child) {
+            // Apply breathing animation only in MiniPlayer mode (val < 0.1)
+            // and ensure it scales from center
+            final scale = val < 0.1
+                ? (1.0 + _breathingController.value * 0.3)
+                : 1.0;
+            return Transform.scale(
+              scale: scale,
+              alignment: Alignment.center,
+              child: child,
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              boxShadow: [
+                if (val > 0.2 && val < 1.8)
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    spreadRadius: 5,
+                    offset: const Offset(0, 10),
+                  ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(radius),
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+                child: Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  width: width,
+                  height: height,
                 ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(radius),
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-              child: Image.network(
-                url,
-                fit: BoxFit.cover,
-                width: width,
-                height: height,
               ),
             ),
           ),

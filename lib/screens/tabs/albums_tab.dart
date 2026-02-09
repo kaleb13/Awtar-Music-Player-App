@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../widgets/app_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../widgets/color_aware_album_card.dart';
 import '../details/album_details_screen.dart';
+import '../../providers/navigation_provider.dart';
 
-class AlbumsTab extends StatelessWidget {
+class AlbumsTab extends ConsumerWidget {
   const AlbumsTab({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // ... (rest of the list definition is fine)
     final albums = [
       {
@@ -43,28 +45,30 @@ class AlbumsTab extends StatelessWidget {
         "title": "Sweetener",
         "artist": "Ariana Grande",
         "img":
-            "https://images.unsplash.com/photo-1621112904887-419379ce6824?q=80&w=300",
+            "https://images.unsplash.com/photo-1621112904887-413379ce6824?q=80&w=300",
       },
     ];
 
     return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 24,
-        childAspectRatio: 0.75,
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 0.7, // Matching artist tab ratio
       ),
       itemCount: albums.length,
       itemBuilder: (context, index) {
         final album = albums[index];
-        return AppAlbumCard(
+        return ColorAwareAlbumCard(
+          // Replaced AppAlbumCard
           title: album["title"]!,
           artist: album["artist"]!,
           imageUrl: album["img"]!,
-          size: 160,
           flexible: true,
+          showThreeDotsMenu: true,
           onTap: () {
+            ref.read(bottomNavVisibleProvider.notifier).state = false;
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -74,7 +78,9 @@ class AlbumsTab extends StatelessWidget {
                   imageUrl: album["img"]!,
                 ),
               ),
-            );
+            ).then((_) {
+              ref.read(bottomNavVisibleProvider.notifier).state = true;
+            });
           },
         );
       },
