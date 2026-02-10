@@ -10,17 +10,21 @@ class ColorAwareAlbumCard extends StatelessWidget {
   final bool flexible;
   final bool showThreeDotsMenu;
   final VoidCallback? onTap;
+  final Widget? artwork;
+  final int? songId;
 
   const ColorAwareAlbumCard({
     super.key,
     required this.title,
     required this.artist,
-    required this.imageUrl,
+    this.imageUrl = "",
     this.size = 140,
     this.isMini = false,
     this.flexible = false,
     this.showThreeDotsMenu = false,
     this.onTap,
+    this.artwork,
+    this.songId,
   });
 
   @override
@@ -31,11 +35,12 @@ class ColorAwareAlbumCard extends StatelessWidget {
       title: title,
       subtitle: artist,
       imageUrl: imageUrl,
-      size:
-          size, // AppPremiumCard now handles flexible inside using LayoutBuilder
+      size: size,
       flexible: flexible,
       showMenu: showThreeDotsMenu,
       onTap: onTap,
+      artwork: artwork,
+      songId: songId,
     );
   }
 }

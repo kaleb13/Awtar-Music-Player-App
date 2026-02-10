@@ -1,0 +1,173 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../theme/app_theme.dart';
+import '../providers/library_provider.dart';
+import '../widgets/app_widgets.dart';
+
+class SettingsScreen extends ConsumerWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final libraryState = ref.watch(libraryProvider);
+    final isReloading = libraryState.isReloadingMetadata;
+    final progress = libraryState.metadataLoadProgress;
+
+    return Scaffold(
+      backgroundColor: AppColors.mainDark,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+            if (libraryState.errorMessage != null &&
+                libraryState.errorMessage!.contains("restart"))
+              Container(
+                color: Colors.red.withOpacity(0.2),
+                padding: const EdgeInsets.all(8),
+                width: double.infinity,
+                child: Text(
+                  libraryState.errorMessage!,
+                  style: const TextStyle(color: Colors.redAccent),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            if (libraryState.completionMessage != null)
+              Container(
+                color: Colors.green.withOpacity(0.2),
+                padding: const EdgeInsets.all(8),
+                width: double.infinity,
+                child: Text(
+                  libraryState.completionMessage!,
+                  style: const TextStyle(color: Colors.greenAccent),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  AppIconButton(
+                    icon: Icons.arrow_back,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 16),
+                  Text("Settings", style: AppTextStyles.titleMedium),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: ListView(
+                children: [
+                  _buildSettingsSection(
+                    title: "Library",
+                    children: [
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.refresh, color: Colors.white),
+                        ),
+                        title: const Text(
+                          "Reload Metadata",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: isReloading
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 8),
+                                  LinearProgressIndicator(
+                                    value: progress,
+                                    backgroundColor: Colors.white10,
+                                    valueColor:
+                                        const AlwaysStoppedAnimation<Color>(
+                                          AppColors.accentYellow,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "${(progress * 100).toInt()}%",
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : const Text(
+                                "Refresh all songs and lyrics",
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 14,
+                                ),
+                              ),
+                        onTap: isReloading
+                            ? null
+                            : () {
+                                ref
+                                    .read(libraryProvider.notifier)
+                                    .reloadMetadata();
+                              },
+                        trailing: isReloading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.accentYellow,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: Colors.white54,
+                              ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsSection({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.accentYellow,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+            ),
+          ),
+        ),
+        ...children,
+        const Divider(color: Colors.white10, height: 32),
+      ],
+    );
+  }
+}

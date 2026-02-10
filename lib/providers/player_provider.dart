@@ -1,53 +1,65 @@
+import 'package:audiotags/audiotags.dart';
 import 'package:audioplayers/audioplayers.dart' as ap;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/song.dart';
+import 'stats_provider.dart';
 
 class MusicPlayerState {
   final Song? currentSong;
+  final List<Song> queue;
+  final int currentIndex;
   final bool isPlaying;
   final Duration position;
   final Duration duration;
-  final bool? _isShuffling;
-  final bool? _isRepeating;
-
-  bool get isShuffling => _isShuffling ?? false;
-  bool get isRepeating => _isRepeating ?? false;
+  final bool isShuffling;
+  final RepeatMode repeatMode;
 
   MusicPlayerState({
     this.currentSong,
+    this.queue = const [],
+    this.currentIndex = -1,
     this.isPlaying = false,
     this.position = Duration.zero,
     this.duration = Duration.zero,
-    bool? isShuffling,
-    bool? isRepeating,
-  }) : _isShuffling = isShuffling,
-       _isRepeating = isRepeating;
+    this.isShuffling = false,
+    this.repeatMode = RepeatMode.off,
+  });
 
   MusicPlayerState copyWith({
     Song? currentSong,
+    List<Song>? queue,
+    int? currentIndex,
     bool? isPlaying,
     Duration? position,
     Duration? duration,
     bool? isShuffling,
-    bool? isRepeating,
+    RepeatMode? repeatMode,
   }) {
     return MusicPlayerState(
       currentSong: currentSong ?? this.currentSong,
+      queue: queue ?? this.queue,
+      currentIndex: currentIndex ?? this.currentIndex,
       isPlaying: isPlaying ?? this.isPlaying,
       position: position ?? this.position,
       duration: duration ?? this.duration,
       isShuffling: isShuffling ?? this.isShuffling,
-      isRepeating: isRepeating ?? this.isRepeating,
+      repeatMode: repeatMode ?? this.repeatMode,
     );
   }
 }
 
+enum RepeatMode { off, all, one }
+
 class PlayerNotifier extends StateNotifier<MusicPlayerState> {
   final ap.AudioPlayer _audioPlayer = ap.AudioPlayer();
+  final Ref _ref;
+  DateTime? _lastTrackingPoint;
 
-  PlayerNotifier() : super(MusicPlayerState()) {
+  PlayerNotifier(this._ref) : super(MusicPlayerState()) {
     _audioPlayer.onPositionChanged.listen((pos) {
       state = state.copyWith(position: pos);
+      _checkTracking(pos);
     });
 
     _audioPlayer.onDurationChanged.listen((dur) {
@@ -57,14 +69,79 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     _audioPlayer.onPlayerStateChanged.listen((s) {
       state = state.copyWith(isPlaying: s == ap.PlayerState.playing);
     });
+
+    _audioPlayer.onPlayerComplete.listen((event) {
+      if (state.repeatMode == RepeatMode.one) {
+        _audioPlayer.seek(Duration.zero);
+        _audioPlayer.resume();
+      } else {
+        next();
+      }
+    });
   }
 
-  Future<void> play(Song song) async {
-    if (state.currentSong?.url == song.url) {
-      await _audioPlayer.resume();
-    } else {
-      state = state.copyWith(currentSong: song);
-      await _audioPlayer.play(ap.UrlSource(song.url));
+  void _checkTracking(Duration pos) {
+    if (state.currentSong == null) return;
+    final now = DateTime.now();
+    if (_lastTrackingPoint == null ||
+        now.difference(_lastTrackingPoint!).inSeconds >= 60) {
+      _lastTrackingPoint = now;
+      _ref
+          .read(statsProvider.notifier)
+          .recordDuration(
+            state.currentSong!.id,
+            state.currentSong!.artist,
+            state.currentSong!.album ?? "Unknown",
+            60,
+          );
+    }
+  }
+
+  Future<void> play(Song song, {List<Song>? queue, int? index}) async {
+    final newQueue = queue ?? state.queue;
+    final newIndex =
+        index ?? (queue != null ? queue.indexOf(song) : state.currentIndex);
+
+    state = state.copyWith(
+      currentSong: song,
+      queue: newQueue,
+      currentIndex: newIndex,
+    );
+
+    _ref
+        .read(statsProvider.notifier)
+        .recordPlay(song.id, song.artist, song.album ?? "Unknown");
+
+    await _audioPlayer.play(ap.DeviceFileSource(song.url));
+
+    // Fetch real lyrics
+    _fetchLyrics(song);
+  }
+
+  Future<void> _fetchLyrics(Song song) async {
+    try {
+      final tag = await AudioTags.read(song.url);
+      final String? lyricsText = tag?.lyrics;
+
+      List<LyricLine> newLyrics = [];
+
+      if (lyricsText != null && lyricsText.isNotEmpty) {
+        // Naive splitting by newline for unsynchronized lyrics
+        final lines = lyricsText.split('\n');
+        newLyrics = lines
+            .map((line) => LyricLine(time: Duration.zero, text: line.trim()))
+            .where((l) => l.text.isNotEmpty)
+            .toList();
+      }
+
+      // If we found lyrics, update the song in the state
+      // We only update if the current song is still the same one we fetched for
+      if (state.currentSong?.id == song.id) {
+        final updatedSong = song.copyWith(lyrics: newLyrics);
+        state = state.copyWith(currentSong: updatedSong);
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch lyrics: $e");
     }
   }
 
@@ -89,72 +166,56 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
   }
 
   void next() {
-    // TODO: Implement actual next logic (playlist)
-    print("Action: Next Song");
+    if (state.queue.isEmpty) return;
+    int nextIndex = state.currentIndex + 1;
+    if (nextIndex >= state.queue.length) {
+      if (state.repeatMode == RepeatMode.all) {
+        nextIndex = 0;
+      } else {
+        return;
+      }
+    }
+    play(state.queue[nextIndex], index: nextIndex);
   }
 
   void previous() {
-    // TODO: Implement actual previous logic
-    print("Action: Previous Song");
+    if (state.queue.isEmpty) return;
+    int prevIndex = state.currentIndex - 1;
+    if (prevIndex < 0) {
+      if (state.repeatMode == RepeatMode.all) {
+        prevIndex = state.queue.length - 1;
+      } else {
+        return;
+      }
+    }
+    play(state.queue[prevIndex], index: prevIndex);
   }
 
   void toggleShuffle() {
     final newValue = !state.isShuffling;
-    state = state.copyWith(isShuffling: newValue);
-    print("Action: Shuffle $newValue");
+    List<Song> newQueue = List.from(state.queue);
+    if (newValue) {
+      newQueue.shuffle();
+    } else {
+      // Restore original order if we cared, but for now just shuffle
+    }
+    state = state.copyWith(isShuffling: newValue, queue: newQueue);
+  }
+
+  Future<void> playPlaylist(List<Song> playlist, int index) async {
+    if (playlist.isEmpty) return;
+    await play(playlist[index], queue: playlist, index: index);
   }
 
   void toggleRepeat() {
-    final newValue = !state.isRepeating;
-    state = state.copyWith(isRepeating: newValue);
-    print("Action: Repeat $newValue");
+    final nextMode = RepeatMode
+        .values[(state.repeatMode.index + 1) % RepeatMode.values.length];
+    state = state.copyWith(repeatMode: nextMode);
   }
 }
 
 final playerProvider = StateNotifierProvider<PlayerNotifier, MusicPlayerState>((
   ref,
 ) {
-  return PlayerNotifier();
-});
-
-final sampleSongProvider = Provider<Song>((ref) {
-  return Song(
-    title: "God's Plan",
-    artist: "Drake",
-    albumArt:
-        "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=1000&auto=format&fit=crop",
-    url:
-        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", // Sample MP3
-    lyrics: [
-      LyricLine(time: Duration(seconds: 0), text: "[intro]"),
-      LyricLine(
-        time: Duration(seconds: 5),
-        text: "And they wishin' and wishin'",
-      ),
-      LyricLine(time: Duration(seconds: 10), text: "And wishin' and wishin'"),
-      LyricLine(time: Duration(seconds: 15), text: "They wishin' on me, yuh"),
-      LyricLine(time: Duration(seconds: 20), text: "[verse 1]"),
-      LyricLine(
-        time: Duration(seconds: 25),
-        text: "I been movin' calm, don't start",
-      ),
-      LyricLine(time: Duration(seconds: 30), text: "No trouble with me"),
-      LyricLine(
-        time: Duration(seconds: 35),
-        text: "Tryna keep it peaceful is a struggle for me",
-      ),
-      LyricLine(
-        time: Duration(seconds: 40),
-        text: "Don't pull up at 6 AM to cuddle with me",
-      ),
-      LyricLine(
-        time: Duration(seconds: 45),
-        text: "You know how I like it when you lovin'",
-      ),
-      LyricLine(
-        time: Duration(seconds: 50),
-        text: "I don't wanna die for them to miss me",
-      ),
-    ],
-  );
+  return PlayerNotifier(ref);
 });

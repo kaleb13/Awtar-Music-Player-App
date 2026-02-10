@@ -2,13 +2,15 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:palette_generator/palette_generator.dart';
+// PaletteGenerator removed
+import 'package:awtart_music_player/services/palette_service.dart';
 import 'package:awtart_music_player/providers/player_provider.dart';
+import 'package:awtart_music_player/providers/library_provider.dart';
 import 'package:awtart_music_player/providers/navigation_provider.dart';
 import 'package:awtart_music_player/theme/app_theme.dart';
+import 'package:awtart_music_player/widgets/app_artwork.dart';
 import 'package:awtart_music_player/widgets/app_widgets.dart';
 import 'package:awtart_music_player/models/song.dart';
-
 import 'player_screen.dart';
 
 class MainMusicPlayer extends ConsumerStatefulWidget {
@@ -64,29 +66,21 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
   }
 
   Future<void> _updatePalette() async {
-    try {
-      final Song song =
-          ref.read(playerProvider).currentSong ?? ref.read(sampleSongProvider);
-      final PaletteGenerator generator =
-          await PaletteGenerator.fromImageProvider(
-            NetworkImage(song.albumArt),
-            size: const Size(50, 50),
-            maximumColorCount: 5,
-          );
-      if (mounted) {
-        setState(() {
-          _dominantColor =
-              generator.vibrantColor?.color ??
-              generator.dominantColor?.color ??
-              AppColors.accentYellow;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _dominantColor = AppColors.accentYellow;
-        });
-      }
+    final playerState = ref.read(playerProvider);
+    final library = ref.read(libraryProvider);
+
+    // Use current song or first from library as fallback
+    final Song? song =
+        playerState.currentSong ??
+        (library.songs.isNotEmpty ? library.songs.first : null);
+
+    if (song == null || song.albumArt == null) return;
+
+    final color = await PaletteService.getColor(song.albumArt!);
+    if (mounted) {
+      setState(() {
+        _dominantColor = color;
+      });
     }
   }
 
@@ -174,7 +168,12 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
   @override
   Widget build(BuildContext context) {
     final playerState = ref.watch(playerProvider);
-    final Song song = playerState.currentSong ?? ref.watch(sampleSongProvider);
+    final Song? song = playerState.currentSong;
+
+    // Don't render if no song available
+    if (song == null) {
+      return const SizedBox.shrink();
+    }
     final screenHeight = MediaQuery.of(context).size.height;
     final currentMainTab = ref.watch(mainTabProvider);
 
@@ -229,7 +228,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
           final isNavVisible = ref.watch(bottomNavVisibleProvider);
           final double miniPlayerBaseTop = isNavVisible
               ? screenHeight - 150
-              : screenHeight - 95;
+              : screenHeight - 75; // Lowered from 95 to sit at bottom
 
           // New Mini Player: Height ~60, Bottom Nav visible (conditionally)
           currentHeight = Tween<double>(
@@ -449,7 +448,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                   _buildMorphingAlbumArt(
                                     context,
                                     val,
-                                    song.albumArt,
+                                    song.albumArt ?? "https://placeholder.com",
+                                    songId: song.id,
                                   ),
                                   if (val < 0.5)
                                     Positioned.fill(
@@ -645,7 +645,12 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     );
   }
 
-  Widget _buildMorphingAlbumArt(BuildContext context, double val, String url) {
+  Widget _buildMorphingAlbumArt(
+    BuildContext context,
+    double val,
+    String url, {
+    int? songId,
+  }) {
     final screenWidth = MediaQuery.of(context).size.width;
     final borderColor = _dominantColor ?? AppColors.accentYellow;
 
@@ -662,7 +667,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
         end: screenWidth - 48,
       ).transform(val);
       height = Tween<double>(begin: 60, end: screenWidth - 48).transform(val);
-      top = Tween<double>(begin: 0, end: 75).transform(val);
+      top = Tween<double>(begin: 0, end: 70).transform(val);
       left = Tween<double>(begin: 0, end: 0).transform(val);
       radius = Tween<double>(begin: 0, end: AppRadius.large).transform(val);
       blur = Tween<double>(begin: 20, end: 0).transform(val);
@@ -670,7 +675,11 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
       double t = val - 1.0;
       width = Tween<double>(begin: screenWidth - 48, end: 50).transform(t);
       height = width;
-      top = Tween<double>(begin: 75, end: 32).transform(t);
+      // fixed: Ensure top aligns correctly. When expanded (t=0, val=1), top should result in
+      // the art being placed correctly.
+      // Previous logic might have been slightly off.
+      // Transition to top: 32 when fully morphed to lyrics (val=2.0, t=1.0)
+      top = Tween<double>(begin: 70, end: 32).transform(t);
       left = 0;
       radius = Tween<double>(
         begin: AppRadius.large,
@@ -720,12 +729,25 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
               ),
               child: ImageFiltered(
                 imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-                child: Image.network(
-                  url,
-                  fit: BoxFit.cover,
-                  width: width,
-                  height: height,
-                ),
+                child: songId != null
+                    ? AppArtwork(
+                        songId: songId,
+                        size: width > height ? width : height,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.network(
+                        url,
+                        fit: BoxFit.cover,
+                        width: width,
+                        height: height,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: AppColors.mainDarkLight,
+                          child: const Icon(
+                            Icons.music_note,
+                            color: Colors.white24,
+                          ),
+                        ),
+                      ),
               ),
             ),
           ),
@@ -779,13 +801,13 @@ class PlayerBottomBar extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "Lyrics by",
+                    "Lyric by",
                     style: AppTextStyles.caption.copyWith(
                       color: Colors.white70,
                     ),
                   ),
                   Text(
-                    "GENIUS",
+                    "AWTAR",
                     style: AppTextStyles.titleMedium.copyWith(
                       letterSpacing: 2,
                       fontSize: 20,
@@ -827,7 +849,12 @@ class LyricsBottomBarContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playerState = ref.watch(playerProvider);
-    final Song song = playerState.currentSong ?? ref.watch(sampleSongProvider);
+    final library = ref.watch(libraryProvider);
+    final Song? song =
+        playerState.currentSong ??
+        (library.songs.isNotEmpty ? library.songs.first : null);
+
+    if (song == null) return const SizedBox.shrink();
     return Container(
       height: 160,
       decoration: BoxDecoration(

@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:awtart_music_player/providers/player_provider.dart';
+import 'package:awtart_music_player/providers/library_provider.dart';
 import 'package:awtart_music_player/providers/navigation_provider.dart';
 import 'package:awtart_music_player/theme/app_theme.dart';
 import 'package:awtart_music_player/widgets/app_widgets.dart';
+import '../models/song.dart';
 
 class PlayerScreenContent extends ConsumerWidget {
   const PlayerScreenContent({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isPlaying = ref.watch(playerProvider.select((s) => s.isPlaying));
-    final song = ref.watch(sampleSongProvider);
+    final playerState = ref.watch(playerProvider);
+    final isPlaying = playerState.isPlaying;
+    final Song? song = playerState.currentSong;
+
+    if (song == null) return const SizedBox.shrink();
 
     return Column(
       children: [
@@ -35,7 +40,7 @@ class PlayerScreenContent extends ConsumerWidget {
             const AppIconButton(icon: Icons.more_horiz),
           ],
         ),
-        const Spacer(),
+        SizedBox(height: (MediaQuery.of(context).size.width - 48) + 70),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -59,7 +64,7 @@ class PlayerScreenContent extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.primaryGreen,
+                color: Colors.white.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(AppRadius.medium),
               ),
               child: Row(
@@ -123,8 +128,10 @@ class PlayerScreenContent extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             AppIconButton(
-              icon: Icons.repeat,
-              color: ref.watch(playerProvider).isRepeating
+              icon: playerState.repeatMode == RepeatMode.one
+                  ? Icons.repeat_one
+                  : Icons.repeat,
+              color: playerState.repeatMode != RepeatMode.off
                   ? AppColors.primaryGreen
                   : AppColors.textGrey,
               onTap: () => ref.read(playerProvider.notifier).toggleRepeat(),
@@ -154,6 +161,40 @@ class PlayerScreenContent extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.mic_none,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  song.artist.split(' ').first,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+            const AppIconButton(
+              icon: Icons.queue_music,
+              color: Colors.white70,
+              size: 24,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
       ],
     );
   }
@@ -169,7 +210,12 @@ class LyricsHeaderContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final song = ref.watch(sampleSongProvider);
+    final playerState = ref.watch(playerProvider);
+    final library = ref.watch(libraryProvider);
+    final song =
+        playerState.currentSong ??
+        (library.songs.isNotEmpty ? library.songs.first : null);
+    if (song == null) return const SizedBox.shrink();
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -200,7 +246,7 @@ class LyricsHeaderContent extends ConsumerWidget {
             const SizedBox(width: 16),
             const AppIconButton(
               icon: Icons.favorite,
-              color: AppColors.primaryGreen,
+              color: Colors.white24,
               size: 22,
             ),
           ],
@@ -228,7 +274,11 @@ class LyricsScreenContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playerState = ref.watch(playerProvider);
-    final song = ref.watch(sampleSongProvider);
+    final library = ref.watch(libraryProvider);
+    final song =
+        playerState.currentSong ??
+        (library.songs.isNotEmpty ? library.songs.first : null);
+    if (song == null) return const SizedBox.shrink();
 
     return GestureDetector(
       onVerticalDragUpdate: (details) {
@@ -276,7 +326,7 @@ class LyricsScreenContent extends ConsumerWidget {
                           child: SvgPicture.asset(
                             "assets/icons/play_icon.svg",
                             colorFilter: const ColorFilter.mode(
-                              AppColors.primaryGreen,
+                              AppColors.accentYellow,
                               BlendMode.srcIn,
                             ),
                             width: 20,

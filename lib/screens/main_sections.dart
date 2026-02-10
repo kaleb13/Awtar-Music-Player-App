@@ -91,8 +91,8 @@ class DiscoverScreen extends ConsumerWidget {
               child: AppSongListTile(
                 title: song.title,
                 artist: song.artist,
-                duration: "3:45", // Mock duration
-                imageUrl: song.albumArt,
+                duration: _formatDuration(song.duration),
+                imageUrl: song.albumArt ?? "https://placeholder.com",
                 onTap: () {
                   ref.read(playerProvider.notifier).play(song);
                 },
@@ -188,6 +188,12 @@ class DiscoverScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _formatDuration(int ms) {
+    final d = Duration(milliseconds: ms);
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    return "${twoDigits(d.inMinutes.remainder(60))}:${twoDigits(d.inSeconds.remainder(60))}";
   }
 }
 

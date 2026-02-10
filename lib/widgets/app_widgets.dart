@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:palette_generator/palette_generator.dart';
+// PaletteGenerator removed
 import '../theme/app_theme.dart';
+import '../models/song.dart';
 import '../providers/search_provider.dart';
 import '../providers/navigation_provider.dart';
+import '../providers/library_provider.dart';
+import '../providers/player_provider.dart';
+import '../services/palette_service.dart';
+import 'app_artwork.dart';
+import '../screens/settings_screen.dart';
 
 class AppPlayButton extends StatelessWidget {
   final bool isPlaying;
@@ -172,18 +178,22 @@ class AppPremiumCard extends StatefulWidget {
   final VoidCallback? onTap;
   final bool isCircular;
   final bool flexible;
+  final Widget? artwork;
+  final int? songId;
 
   const AppPremiumCard({
     super.key,
     required this.title,
     this.subtitle,
-    required this.imageUrl,
+    this.imageUrl = "",
     this.badgeText,
     this.showMenu = false,
     this.size = 90,
     this.onTap,
     this.isCircular = false,
     this.flexible = false,
+    this.artwork,
+    this.songId,
   });
 
   @override
@@ -202,33 +212,21 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
   @override
   void didUpdateWidget(covariant AppPremiumCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageUrl != widget.imageUrl) {
+    if (oldWidget.imageUrl != widget.imageUrl ||
+        oldWidget.songId != widget.songId) {
       _updatePalette();
     }
   }
 
   Future<void> _updatePalette() async {
-    try {
-      final PaletteGenerator generator =
-          await PaletteGenerator.fromImageProvider(
-            NetworkImage(widget.imageUrl),
-            size: const Size(50, 50),
-            maximumColorCount: 5,
-          );
-      if (mounted) {
-        setState(() {
-          _dominantColor =
-              generator.vibrantColor?.color ??
-              generator.dominantColor?.color ??
-              AppColors.accentYellow;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _dominantColor = AppColors.accentYellow;
-        });
-      }
+    final color = await PaletteService.getColor(
+      widget.imageUrl,
+      songId: widget.songId,
+    );
+    if (mounted) {
+      setState(() {
+        _dominantColor = color;
+      });
     }
   }
 
@@ -257,17 +255,32 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
         borderRadius: widget.isCircular
             ? BorderRadius.circular(borderRadiusOuter)
             : BorderRadius.circular(borderRadiusInner),
-        child: widget.flexible
-            ? AspectRatio(
-                aspectRatio: 1.0,
-                child: Image.network(widget.imageUrl, fit: BoxFit.cover),
-              )
-            : Image.network(
-                widget.imageUrl,
-                fit: BoxFit.cover,
-                width: widget.size,
-                height: widget.size,
-              ),
+        child:
+            widget.artwork ??
+            (widget.songId != null
+                ? AppArtwork(songId: widget.songId!, size: widget.size)
+                : (widget.imageUrl.isNotEmpty
+                      ? (widget.flexible
+                            ? AspectRatio(
+                                aspectRatio: 1.0,
+                                child: Image.network(
+                                  widget.imageUrl,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : Image.network(
+                                widget.imageUrl,
+                                fit: BoxFit.cover,
+                                width: widget.size,
+                                height: widget.size,
+                              ))
+                      : Container(
+                          color: AppColors.surfaceDark,
+                          child: const Icon(
+                            Icons.music_note,
+                            color: Colors.white24,
+                          ),
+                        ))),
       ),
     );
 
@@ -365,6 +378,8 @@ class AppPopularArtistCard extends StatelessWidget {
   final String imageUrl;
   final String playTime;
   final VoidCallback onTap;
+  final Widget? artwork;
+  final int? songId;
 
   const AppPopularArtistCard({
     super.key,
@@ -373,6 +388,8 @@ class AppPopularArtistCard extends StatelessWidget {
     required this.imageUrl,
     required this.playTime,
     required this.onTap,
+    this.artwork,
+    this.songId,
   });
 
   @override
@@ -383,6 +400,9 @@ class AppPopularArtistCard extends StatelessWidget {
       imageUrl: imageUrl,
       badgeText: playTime,
       onTap: onTap,
+      isCircular: true,
+      artwork: artwork,
+      songId: songId,
     );
   }
 }
@@ -395,6 +415,8 @@ class AppAlbumCard extends StatelessWidget {
   final bool isMini;
   final bool flexible;
   final VoidCallback? onTap;
+  final Widget? artwork;
+  final int? songId;
 
   const AppAlbumCard({
     super.key,
@@ -405,6 +427,8 @@ class AppAlbumCard extends StatelessWidget {
     this.isMini = false,
     this.flexible = false,
     this.onTap,
+    this.artwork,
+    this.songId,
   });
 
   @override
@@ -416,6 +440,8 @@ class AppAlbumCard extends StatelessWidget {
       size: size,
       flexible: flexible,
       onTap: onTap,
+      artwork: artwork,
+      songId: songId,
     );
   }
 }
@@ -557,27 +583,11 @@ class _AppMiniPlayerState extends State<AppMiniPlayer> {
   }
 
   Future<void> _updatePalette() async {
-    try {
-      final PaletteGenerator generator =
-          await PaletteGenerator.fromImageProvider(
-            NetworkImage(widget.imageUrl),
-            size: const Size(50, 50),
-            maximumColorCount: 5,
-          );
-      if (mounted) {
-        setState(() {
-          _dominantColor =
-              generator.vibrantColor?.color ??
-              generator.dominantColor?.color ??
-              AppColors.accentYellow;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _dominantColor = AppColors.accentYellow;
-        });
-      }
+    final color = await PaletteService.getColor(widget.imageUrl);
+    if (mounted) {
+      setState(() {
+        _dominantColor = color;
+      });
     }
   }
 
@@ -715,9 +725,34 @@ class AppTopBar extends StatelessWidget {
               ),
             ],
           ),
-          const AppIconButton(
-            icon: Icons.more_vert, // Vertical Menu
-            color: Colors.white,
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            color: AppColors.surfaceDark,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            onSelected: (value) {
+              if (value == 'settings') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsScreen(),
+                  ),
+                );
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings, color: Colors.white, size: 20),
+                    SizedBox(width: 12),
+                    Text('Settings', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -776,134 +811,154 @@ class AppSearchBar extends ConsumerWidget {
   }
 }
 
-class AppPromoBanner extends StatefulWidget {
+class AppPromoBanner extends ConsumerStatefulWidget {
   const AppPromoBanner({super.key});
 
   @override
-  State<AppPromoBanner> createState() => _AppPromoBannerState();
+  ConsumerState<AppPromoBanner> createState() => _AppPromoBannerState();
 }
 
-class _AppPromoBannerState extends State<AppPromoBanner> {
+class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
   Color? _dominantColor;
-  final String imageUrl =
-      "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=800";
-
-  @override
-  void initState() {
-    super.initState();
-    _updatePalette();
-  }
-
-  Future<void> _updatePalette() async {
-    try {
-      final PaletteGenerator generator =
-          await PaletteGenerator.fromImageProvider(
-            NetworkImage(imageUrl),
-            size: const Size(50, 50),
-            maximumColorCount: 5,
-          );
-      if (mounted) {
-        setState(() {
-          _dominantColor =
-              generator.vibrantColor?.color ??
-              generator.dominantColor?.color ??
-              AppColors.accentYellow;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _dominantColor = AppColors.accentYellow;
-        });
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final libraryState = ref.watch(libraryProvider);
+    final bannerSong = libraryState.bannerSong;
+    ref.listen<Song?>(libraryProvider.select((s) => s.bannerSong), (
+      prev,
+      next,
+    ) {
+      if (next != null) {
+        final url =
+            next.albumArt ??
+            "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=800";
+        _updatePalette(url, songId: next.id);
+      }
+    });
+
+    if (bannerSong == null) {
+      return Container(
+        width: double.infinity,
+        height: 120,
+        decoration: BoxDecoration(
+          color: AppColors.mainDarkLight,
+          borderRadius: BorderRadius.circular(32),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: AppColors.accentYellow),
+        ),
+      );
+    }
+
+    final imageUrl =
+        bannerSong.albumArt ??
+        "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=800";
+
+    // Initial call if _dominantColor is null
+    if (_dominantColor == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updatePalette(imageUrl, songId: bannerSong.id);
+      });
+    }
+
     final borderColor = _dominantColor ?? AppColors.accentYellow;
 
-    return Container(
-      width: double.infinity,
-      height: 120,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-        border: Border.all(color: borderColor.withOpacity(0.9), width: 2.5),
-      ),
-      padding: const EdgeInsets.all(5), // The "Double Stroke" gap
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Stack(
-          children: [
-            // Background Image
-            Positioned.fill(
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: AppColors.mainDarkLight,
-                  child: const Icon(Icons.music_note, color: Colors.white24),
-                ),
-              ),
+    return GestureDetector(
+      onTap: () => ref.read(playerProvider.notifier).play(bannerSong),
+      child: Container(
+        width: double.infinity,
+        height: 120,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
-            // Gradient Overlay
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      Colors.black.withOpacity(0.85),
-                      Colors.black.withOpacity(0.4),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
+          ],
+          border: Border.all(color: borderColor.withOpacity(0.9), width: 2.5),
+        ),
+        padding: const EdgeInsets.all(5),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: bannerSong.albumArt != null
+                    ? AppArtwork(songId: bannerSong.id, fit: BoxFit.cover)
+                    : Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: AppColors.mainDarkLight,
+                          child: const Icon(
+                            Icons.music_note,
+                            color: Colors.white24,
+                          ),
+                        ),
+                      ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        Colors.black.withOpacity(0.85),
+                        Colors.black.withOpacity(0.4),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
                   ),
                 ),
               ),
-            ),
-            // Content centered vertically
-            Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      "After Hours",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        height: 1.1,
-                        letterSpacing: 0.5,
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        bannerSong.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          height: 1.1,
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "The Weekend • Deluxe Edition",
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
-                        fontSize: 13,
-                        letterSpacing: 0.2,
+                      const SizedBox(height: 4),
+                      Text(
+                        "${bannerSong.artist} • ${bannerSong.album ?? 'Single'}",
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 13,
+                          letterSpacing: 0.2,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _updatePalette(String imageUrl, {int? songId}) async {
+    final color = await PaletteService.getColor(imageUrl, songId: songId);
+    if (mounted) {
+      setState(() {
+        _dominantColor = color;
+      });
+    }
   }
 }

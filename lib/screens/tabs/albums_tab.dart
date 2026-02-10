@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../theme/app_theme.dart';
+import '../../providers/library_provider.dart';
+import '../../models/song.dart';
 import '../../widgets/color_aware_album_card.dart';
 import '../details/album_details_screen.dart';
 import '../../providers/navigation_provider.dart';
@@ -9,45 +12,56 @@ class AlbumsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // ... (rest of the list definition is fine)
-    final albums = [
-      {
-        "title": "After Hours",
-        "artist": "The Weekend",
-        "img":
-            "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=300",
-      },
-      {
-        "title": "Scorpion",
-        "artist": "Drake",
-        "img":
-            "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=300",
-      },
-      {
-        "title": "Hollywood's Bleeding",
-        "artist": "Post Malone",
-        "img":
-            "https://images.unsplash.com/photo-1459749411177-042180ce673c?q=80&w=300",
-      },
-      {
-        "title": "Anti",
-        "artist": "Rihanna",
-        "img":
-            "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=300",
-      },
-      {
-        "title": "Astroworld",
-        "artist": "Travis Scott",
-        "img":
-            "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=300",
-      },
-      {
-        "title": "Sweetener",
-        "artist": "Ariana Grande",
-        "img":
-            "https://images.unsplash.com/photo-1621112904887-413379ce6824?q=80&w=300",
-      },
-    ];
+    final libraryState = ref.watch(libraryProvider);
+    final albums = libraryState.albums;
+
+    if (libraryState.permissionStatus != LibraryPermissionStatus.granted) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.lock_outline, size: 64, color: Colors.white24),
+            const SizedBox(height: 16),
+            const Text(
+              "Storage access required",
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "To see your albums, please grant storage permission",
+              style: TextStyle(color: Colors.white54, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () =>
+                  ref.read(libraryProvider.notifier).requestPermission(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentYellow,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: const Text("Grant Permission"),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (albums.isEmpty && !libraryState.isLoading) {
+      return const Center(
+        child: Text(
+          "No albums found on your device",
+          style: TextStyle(color: Colors.white54),
+        ),
+      );
+    }
 
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -55,16 +69,29 @@ class AlbumsTab extends ConsumerWidget {
         crossAxisCount: 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 0.62, // Increased vertical space to prevent overflow
+        childAspectRatio: 0.55,
       ),
       itemCount: albums.length,
       itemBuilder: (context, index) {
         final album = albums[index];
+        final albumSong = libraryState.songs.firstWhere(
+          (s) => s.album == album.album,
+          orElse: () => libraryState.songs.isNotEmpty
+              ? libraryState.songs.first
+              : Song(
+                  id: 0,
+                  title: "",
+                  url: "",
+                  artist: "",
+                  duration: 0,
+                  lyrics: [],
+                ),
+        );
+
         return ColorAwareAlbumCard(
-          // Replaced AppAlbumCard
-          title: album["title"]!,
-          artist: album["artist"]!,
-          imageUrl: album["img"]!,
+          title: album.album,
+          artist: album.artist,
+          songId: albumSong.id,
           flexible: true,
           showThreeDotsMenu: true,
           onTap: () {
@@ -73,9 +100,9 @@ class AlbumsTab extends ConsumerWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => AlbumDetailsScreen(
-                  title: album["title"]!,
-                  artist: album["artist"]!,
-                  imageUrl: album["img"]!,
+                  title: album.album,
+                  artist: album.artist,
+                  imageUrl: "",
                 ),
               ),
             ).then((_) {

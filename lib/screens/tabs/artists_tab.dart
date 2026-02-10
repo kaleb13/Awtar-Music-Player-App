@@ -1,72 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../theme/app_theme.dart';
+import '../../providers/library_provider.dart';
+import '../../models/song.dart';
 import '../details/artist_details_screen.dart';
-import '../../widgets/app_widgets.dart'; // Import this to use AppPremiumCard
+import '../../widgets/app_widgets.dart';
+import '../../providers/navigation_provider.dart';
 
 class ArtistsTab extends ConsumerWidget {
   const ArtistsTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Enhanced mock data with track and album counts
-    final artists = [
-      {
-        "name": "Belete Ermias",
-        "tracks": "3",
-        "albums": "3",
-        "img":
-            "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?q=80&w=400",
-      },
-      {
-        "name": "Bereket Tesfaye",
-        "tracks": "60",
-        "albums": "5",
-        "img":
-            "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400",
-      },
-      {
-        "name": "Biruk Gebretsadik",
-        "tracks": "17",
-        "albums": "2",
-        "img":
-            "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=400",
-      },
-      {
-        "name": "Dagi Tilahun",
-        "tracks": "38",
-        "albums": "3",
-        "img":
-            "https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=400",
-      },
-      {
-        "name": "Dawit Getachew",
-        "tracks": "39",
-        "albums": "5",
-        "img":
-            "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=400",
-      },
-      {
-        "name": "Ephrem Alemu",
-        "tracks": "37",
-        "albums": "3",
-        "img":
-            "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=400",
-      },
-      {
-        "name": "Fenan Befkadu",
-        "tracks": "12",
-        "albums": "1",
-        "img":
-            "https://images.unsplash.com/photo-1531123414780-f74242c2b052?q=80&w=400",
-      },
-      {
-        "name": "Kaleb B",
-        "tracks": "10",
-        "albums": "1",
-        "img":
-            "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400",
-      },
-    ];
+    final libraryState = ref.watch(libraryProvider);
+    final artists = libraryState.artists;
+
+    if (libraryState.permissionStatus != LibraryPermissionStatus.granted) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.lock_outline, size: 64, color: Colors.white24),
+            const SizedBox(height: 16),
+            const Text(
+              "Storage access required",
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "To see your artists, please grant storage permission",
+              style: TextStyle(color: Colors.white54, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () =>
+                  ref.read(libraryProvider.notifier).requestPermission(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentYellow,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: const Text("Grant Permission"),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (artists.isEmpty && !libraryState.isLoading) {
+      return const Center(
+        child: Text(
+          "No artists found on your device",
+          style: TextStyle(color: Colors.white54),
+        ),
+      );
+    }
 
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -74,28 +69,40 @@ class ArtistsTab extends ConsumerWidget {
         crossAxisCount: 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 0.65, // Increased vertical space to fix overflow
+        childAspectRatio: 0.65,
       ),
       itemCount: artists.length,
       itemBuilder: (context, index) {
         final artist = artists[index];
+        final artistSong = libraryState.songs.firstWhere(
+          (s) => s.artist == artist.artist,
+          orElse: () => libraryState.songs.isNotEmpty
+              ? libraryState.songs.first
+              : Song(
+                  id: 0,
+                  title: "",
+                  url: "",
+                  artist: "",
+                  duration: 0,
+                  lyrics: [],
+                ),
+        );
+
         return AppPremiumCard(
-          title: artist["name"]!,
-          subtitle: "${artist["tracks"]} Tracks ${artist["albums"]} Albums",
-          imageUrl: artist["img"]!,
-          isCircular:
-              false, // User requested the square-rounded look like popular artists
+          title: artist.artist,
+          subtitle: "${artist.numberOfTracks} Tracks",
+          songId: artistSong.id,
           onTap: () {
-            // ref.read(bottomNavVisibleProvider.notifier).state = false;
+            ref.read(bottomNavVisibleProvider.notifier).state = false;
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ArtistDetailsScreen(
-                  name: artist["name"]!,
-                  imageUrl: artist["img"]!,
-                ),
+                builder: (context) =>
+                    ArtistDetailsScreen(name: artist.artist, imageUrl: ""),
               ),
-            );
+            ).then((_) {
+              ref.read(bottomNavVisibleProvider.notifier).state = true;
+            });
           },
         );
       },

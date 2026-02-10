@@ -72,40 +72,50 @@ final searchResultsProvider = Provider<SearchResult>((ref) {
 
 final List<Song> _mockSongs = [
   Song(
+    id: 1,
     title: "God's Plan",
     artist: "Drake",
+    duration: 200000,
     albumArt:
         "https://images.unsplash.com/photo-1621112904887-419379ce6824?q=80&w=200",
     url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
     lyrics: [],
   ),
   Song(
+    id: 2,
     title: "Blinding Lights",
     artist: "The Weeknd",
+    duration: 180000,
     albumArt:
         "https://images.unsplash.com/photo-1549830729-197e88c03732?q=80&w=300",
     url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
     lyrics: [],
   ),
   Song(
+    id: 3,
     title: "Circles",
     artist: "Post Malone",
+    duration: 210000,
     albumArt:
         "https://images.unsplash.com/photo-1514525253361-bee8a187449b?q=80&w=300",
     url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
     lyrics: [],
   ),
   Song(
+    id: 4,
     title: "Diamonds",
     artist: "Rihanna",
+    duration: 240000,
     albumArt:
         "https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=200",
     url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
     lyrics: [],
   ),
   Song(
+    id: 5,
     title: "Bereket Tesfaye Title",
     artist: "Bereket Tesfaye",
+    duration: 220000,
     albumArt:
         "https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=300",
     url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
