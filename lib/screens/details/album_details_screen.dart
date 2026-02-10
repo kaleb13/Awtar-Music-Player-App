@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_theme.dart';
@@ -24,28 +25,12 @@ class AlbumDetailsScreen extends ConsumerStatefulWidget {
 }
 
 class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
-  Color _dominantColor = AppColors.surfaceDark;
-  late ScrollController _scrollController;
-  double _scrollOffset = 0.0;
+  Color _dominantColor = AppColors.accentYellow;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController()
-      ..addListener(() {
-        if (mounted) {
-          setState(() {
-            _scrollOffset = _scrollController.offset;
-          });
-        }
-      });
     _updatePalette();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
   }
 
   Future<void> _updatePalette() async {
@@ -68,169 +53,266 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final libraryState = ref.watch(libraryProvider);
+    final playerState = ref.watch(playerProvider);
+    final currentSong = playerState.currentSong;
+
     final albumSongs = libraryState.songs
         .where((s) => s.album == widget.title)
         .toList();
 
-    final backgroundColor = _dominantColor;
-    final double expandedHeight = MediaQuery.of(context).size.width * 0.66;
-    final double threshold = expandedHeight - kToolbarHeight;
-    final double opacity = (threshold > 0)
-        ? (_scrollOffset / threshold).clamp(0.0, 1.0)
-        : 0.0;
-
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          if (albumSongs.isNotEmpty)
-            Positioned(
-              top: -_scrollOffset * 0.4,
-              left: 0,
-              right: 0,
-              height: MediaQuery.of(context).size.width,
-              child: ShaderMask(
-                shaderCallback: (rect) {
-                  return LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [backgroundColor.withOpacity(0.6), backgroundColor],
-                    stops: const [0.0, 1.0],
-                  ).createShader(rect);
-                },
-                blendMode: BlendMode.srcOver,
-                child: AppArtwork(
-                  songId: albumSongs.first.id,
-                  size: double.infinity,
-                  fit: BoxFit.cover,
-                ),
+          // 1. Dynamic Blurred Background (Matching Home)
+          if (currentSong != null)
+            Positioned.fill(
+              child: AppArtwork(songId: currentSong.id, fit: BoxFit.cover),
+            ),
+
+          if (currentSong != null)
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                child: Container(color: Colors.transparent),
               ),
             ),
 
-          CustomScrollView(
-            controller: _scrollController,
-            slivers: [
-              SliverAppBar(
-                backgroundColor: backgroundColor.withOpacity(opacity),
-                title: Opacity(
-                  opacity: opacity,
-                  child: Text(
-                    widget.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ),
-                pinned: true,
-                elevation: 0,
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.mainDarkLight.withOpacity(0.92),
+                    AppColors.mainDark.withOpacity(0.92),
+                  ],
                 ),
               ),
-
-              SliverToBoxAdapter(
-                child: SizedBox(height: expandedHeight - kToolbarHeight),
-              ),
-
-              SliverToBoxAdapter(
-                child: Container(
-                  color: backgroundColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    children: [
-                      Text(
-                        widget.title,
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.titleLarge.copyWith(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        "${albumSongs.length} tracks • ${widget.artist}",
-                        style: AppTextStyles.bodyMain.copyWith(
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-              ),
-
-              SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final song = albumSongs[index];
-                  return Container(
-                    color: backgroundColor,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 4,
-                      ),
-                      leading: Text(
-                        "${index + 1}",
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 14,
-                        ),
-                      ),
-                      title: Text(
-                        song.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      subtitle: Text(
-                        song.artist,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 12,
-                        ),
-                      ),
-                      onTap: () => ref
-                          .read(playerProvider.notifier)
-                          .playPlaylist(albumSongs, index),
-                    ),
-                  );
-                }, childCount: albumSongs.length),
-              ),
-              const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
-            ],
+            ),
           ),
 
-          Positioned(
-            top: (expandedHeight - kToolbarHeight + 60 - _scrollOffset).clamp(
-              kToolbarHeight - 28,
-              double.infinity,
-            ),
-            right: 30,
-            child: Opacity(
-              opacity: (_scrollOffset > (expandedHeight + 20)) ? 0.0 : 1.0,
-              child: FloatingActionButton(
-                onPressed: () {
-                  if (albumSongs.isNotEmpty) {
-                    ref
-                        .read(playerProvider.notifier)
-                        .playPlaylist(albumSongs, 0);
-                  }
-                },
-                backgroundColor: Color.lerp(backgroundColor, Colors.black, 0.4),
-                shape: const CircleBorder(),
-                child: SvgPicture.asset(
-                  "assets/icons/play_icon.svg",
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
+          // 2. Content
+          SafeArea(
+            child: CustomScrollView(
+              slivers: [
+                // Custom App Bar
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
                   ),
-                  width: 24,
-                  height: 24,
                 ),
-              ),
+
+                // Album Header Section
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Album Art with Perforated Play Button
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 180,
+                              height: 180,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(50),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.2),
+                                  width: 2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(48),
+                                child: albumSongs.isNotEmpty
+                                    ? AppArtwork(
+                                        songId: albumSongs.first.id,
+                                        size: 180,
+                                      )
+                                    : Container(color: Colors.grey[900]),
+                              ),
+                            ),
+                            // Perforated Play Button
+                            Positioned(
+                              bottom: -15,
+                              right: -15,
+                              child: Container(
+                                padding: const EdgeInsets.all(
+                                  4,
+                                ), // Perforation Gap
+                                decoration: BoxDecoration(
+                                  color: AppColors.mainDark.withOpacity(0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Container(
+                                  width: 54,
+                                  height: 54,
+                                  decoration: BoxDecoration(
+                                    color: _dominantColor,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _dominantColor.withOpacity(0.4),
+                                        blurRadius: 15,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        if (albumSongs.isNotEmpty) {
+                                          ref
+                                              .read(playerProvider.notifier)
+                                              .playPlaylist(albumSongs, 0);
+                                        }
+                                      },
+                                      borderRadius: BorderRadius.circular(27),
+                                      child: Center(
+                                        child: SvgPicture.asset(
+                                          "assets/icons/play_icon.svg",
+                                          colorFilter: ColorFilter.mode(
+                                            _dominantColor.computeLuminance() >
+                                                    0.5
+                                                ? Colors.black
+                                                : Colors.white,
+                                            BlendMode.srcIn,
+                                          ),
+                                          width: 22,
+                                          height: 22,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 28),
+                        // Album Info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                widget.title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                widget.artist,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.6),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                "${albumSongs.length} Tracks",
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.4),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 10), // Alignment adjust
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 40)),
+
+                // Tracks List
+                SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final song = albumSongs[index];
+                    return Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.02),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 4,
+                        ),
+                        leading: Text(
+                          (index + 1).toString().padLeft(2, '0'),
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.2),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        title: Text(
+                          song.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        subtitle: Text(
+                          "Track ${index + 1}", // Or duration if available
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.4),
+                            fontSize: 11,
+                          ),
+                        ),
+                        trailing: Icon(
+                          Icons.more_vert,
+                          color: Colors.white.withOpacity(0.3),
+                          size: 20,
+                        ),
+                        onTap: () => ref
+                            .read(playerProvider.notifier)
+                            .playPlaylist(albumSongs, index),
+                      ),
+                    );
+                  }, childCount: albumSongs.length),
+                ),
+                const SliverPadding(padding: EdgeInsets.only(bottom: 150)),
+              ],
             ),
           ),
         ],

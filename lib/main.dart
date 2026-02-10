@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:awtart_music_player/providers/navigation_provider.dart';
 import 'package:awtart_music_player/providers/library_provider.dart';
+import 'package:awtart_music_player/providers/player_provider.dart';
 import 'package:awtart_music_player/theme/app_theme.dart';
 import 'screens/main_sections.dart';
 import 'screens/home_screen.dart';
 import 'screens/main_player_screen.dart';
+import 'screens/permission_onboarding_screen.dart';
+import 'widgets/app_artwork.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/stats_provider.dart';
@@ -30,19 +34,42 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = ref.watch(sharedPreferencesProvider);
+    final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
     return MaterialApp(
       title: 'Awtar',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.black,
+          brightness: Brightness.dark,
+        ),
         useMaterial3: true,
+        splashColor: Colors.white.withOpacity(0.05),
+        highlightColor: Colors.transparent,
+        indicatorColor: AppColors.accentYellow,
+        tabBarTheme: TabBarThemeData(
+          indicatorColor: AppColors.accentYellow,
+          overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return Colors.white.withOpacity(0.05);
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return Colors.white.withOpacity(0.03);
+            }
+            return null;
+          }),
+        ),
       ),
-      home: const RootLayout(),
+      home: onboardingCompleted
+          ? const RootLayout()
+          : const PermissionOnboardingScreen(),
     );
   }
 }
@@ -54,34 +81,31 @@ class RootLayout extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final libraryState = ref.watch(libraryProvider);
     final currentTab = ref.watch(mainTabProvider);
+    final playerState = ref.watch(playerProvider); // Added
+    final currentSong = playerState.currentSong; // Added
 
     // Set status bar color for dark backgrounds (main app)
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness:
-            Brightness.light, // Light icons for dark background
-        statusBarBrightness: Brightness.dark, // For iOS
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
     );
 
-    // Handle permission states first
-    switch (libraryState.permissionStatus) {
-      case LibraryPermissionStatus.initial:
-      case LibraryPermissionStatus.requesting:
-        return const PermissionRequestScreen();
-      case LibraryPermissionStatus.denied:
-      case LibraryPermissionStatus.permanentlyDenied:
-        return PermissionDeniedScreen(
-          isPermanent:
-              libraryState.permissionStatus ==
-              LibraryPermissionStatus.permanentlyDenied,
-        );
-      case LibraryPermissionStatus.granted:
-        // Permission granted, check loading state
-        if (libraryState.isLoading) {
-          return const LibraryLoadingScreen();
-        }
+    // Auto-request permission silently if in initial state
+    // (onboarding has already shown permission UI)
+    if (libraryState.permissionStatus == LibraryPermissionStatus.initial) {
+      // Request permission silently without showing UI
+      Future.microtask(() {
+        ref.read(libraryProvider.notifier).requestPermission();
+      });
+      return const LibraryLoadingScreen();
+    }
+
+    // Show loading screen while scanning
+    if (libraryState.isLoading) {
+      return const LibraryLoadingScreen();
     }
 
     // Show error if scanning failed
@@ -102,7 +126,40 @@ class RootLayout extends ConsumerWidget {
 
     return Stack(
       children: [
-        Scaffold(backgroundColor: Colors.black, body: content),
+        // 1. Dynamic Blurred Background
+        if (currentSong != null)
+          Positioned.fill(
+            child: AppArtwork(songId: currentSong.id, fit: BoxFit.cover),
+          ),
+
+        // 2. Blur Filter
+        if (currentSong != null)
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+
+        // 3. Current background color with 25% opacity (Overground)
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.mainDarkLight.withOpacity(0.9),
+                  AppColors.mainDark.withOpacity(0.9),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // 4. Main App Scaffold (must be transparent to see the background)
+        Scaffold(backgroundColor: Colors.transparent, body: content),
+
         const MainMusicPlayer(),
       ],
     );

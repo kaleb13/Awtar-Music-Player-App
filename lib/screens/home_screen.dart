@@ -30,7 +30,7 @@ class HomeScreen extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Container(
-          decoration: const BoxDecoration(gradient: AppColors.mainGradient),
+          decoration: const BoxDecoration(color: Colors.transparent),
           child: SafeArea(
             bottom: false,
             child: Column(

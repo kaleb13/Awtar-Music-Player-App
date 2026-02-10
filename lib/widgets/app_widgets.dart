@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // PaletteGenerator removed
@@ -785,45 +786,51 @@ class AppSearchBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
-      ),
-      child: TextField(
-        autofocus: autoFocus,
-        onChanged: (value) {
-          ref.read(searchQueryProvider.notifier).state = value;
-          if (ref.read(mainTabProvider) != MainTab.discover) {
-            ref.read(mainTabProvider.notifier).state = MainTab.discover;
-          }
-        },
-        onTap: () {
-          if (ref.read(mainTabProvider) != MainTab.discover) {
-            ref.read(mainTabProvider.notifier).state = MainTab.discover;
-          }
-        },
-        style: const TextStyle(color: Colors.white, fontSize: 14),
-        decoration: InputDecoration(
-          hintText: "Search songs, artists, albums...",
-          hintStyle: TextStyle(
-            color: Colors.white.withOpacity(0.3),
-            fontSize: 14,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
           ),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.all(12),
-            child: SvgPicture.asset(
-              AppAssets.search,
-              colorFilter: ColorFilter.mode(
-                Colors.white.withOpacity(0.3),
-                BlendMode.srcIn,
+          child: TextField(
+            autofocus: autoFocus,
+            onChanged: (value) {
+              ref.read(searchQueryProvider.notifier).state = value;
+              if (ref.read(mainTabProvider) != MainTab.discover) {
+                ref.read(mainTabProvider.notifier).state = MainTab.discover;
+              }
+            },
+            onTap: () {
+              if (ref.read(mainTabProvider) != MainTab.discover) {
+                ref.read(mainTabProvider.notifier).state = MainTab.discover;
+              }
+            },
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: InputDecoration(
+              hintText: "Search songs, artists, albums...",
+              hintStyle: TextStyle(
+                color: Colors.white.withOpacity(0.3),
+                fontSize: 14,
               ),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.all(12),
+                child: SvgPicture.asset(
+                  AppAssets.search,
+                  colorFilter: ColorFilter.mode(
+                    Colors.white.withOpacity(0.3),
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
         ),
       ),
     );
@@ -859,7 +866,7 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
     if (bannerSong == null) {
       return Container(
         width: double.infinity,
-        height: 120,
+        height: 180,
         decoration: BoxDecoration(
           color: AppColors.mainDarkLight,
           borderRadius: BorderRadius.circular(32),
@@ -887,7 +894,7 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
       onTap: () => ref.read(playerProvider.notifier).play(bannerSong),
       child: Container(
         width: double.infinity,
-        height: 120,
+        height: 180,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
@@ -946,18 +953,18 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
                         bannerSong.title,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 26,
                           fontWeight: FontWeight.bold,
                           height: 1.1,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         "${bannerSong.artist} • ${bannerSong.album ?? 'Single'}",
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.7),
-                          fontSize: 13,
+                          fontSize: 15,
                           letterSpacing: 0.2,
                         ),
                       ),

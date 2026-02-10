@@ -1,9 +1,14 @@
 import 'package:audiotags/audiotags.dart';
 import 'package:audioplayers/audioplayers.dart' as ap;
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:audio_service/audio_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/song.dart';
 import 'stats_provider.dart';
+import '../services/audio_handler.dart';
 
 class MusicPlayerState {
   final Song? currentSong;
@@ -55,11 +60,22 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
   final ap.AudioPlayer _audioPlayer = ap.AudioPlayer();
   final Ref _ref;
   DateTime? _lastTrackingPoint;
+  AudioPlayerHandler? _audioHandler;
+  bool _isInitializingHandler = false;
 
   PlayerNotifier(this._ref) : super(MusicPlayerState()) {
+    _loadLastPlayedSong();
+    _initAudioHandler();
+
     _audioPlayer.onPositionChanged.listen((pos) {
       state = state.copyWith(position: pos);
       _checkTracking(pos);
+
+      // Update notification position
+      _audioHandler?.updatePlaybackState(
+        playing: state.isPlaying,
+        position: pos,
+      );
     });
 
     _audioPlayer.onDurationChanged.listen((dur) {
@@ -67,7 +83,14 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     });
 
     _audioPlayer.onPlayerStateChanged.listen((s) {
-      state = state.copyWith(isPlaying: s == ap.PlayerState.playing);
+      final isPlaying = s == ap.PlayerState.playing;
+      state = state.copyWith(isPlaying: isPlaying);
+
+      // Update notification state
+      _audioHandler?.updatePlaybackState(
+        playing: isPlaying,
+        position: state.position,
+      );
     });
 
     _audioPlayer.onPlayerComplete.listen((event) {
@@ -78,6 +101,93 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
         next();
       }
     });
+  }
+
+  Future<void> _loadLastPlayedSong() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastSongJson = prefs.getString('last_played_song');
+
+      if (lastSongJson != null) {
+        final songMap = jsonDecode(lastSongJson) as Map<String, dynamic>;
+        final lastSong = Song.fromMap(songMap);
+
+        // Set the last played song without playing it
+        state = state.copyWith(currentSong: lastSong);
+
+        debugPrint('✅ Loaded last played song: ${lastSong.title}');
+      }
+    } catch (e) {
+      debugPrint('Error loading last played song: $e');
+    }
+  }
+
+  Future<void> _saveLastPlayedSong(Song song) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final songJson = jsonEncode(song.toMap());
+      await prefs.setString('last_played_song', songJson);
+      debugPrint('💾 Saved last played song: ${song.title}');
+    } catch (e) {
+      debugPrint('Error saving last played song: $e');
+    }
+  }
+
+  Future<void> _initAudioHandler() async {
+    if (_isInitializingHandler || _audioHandler != null) return;
+    _isInitializingHandler = true;
+
+    try {
+      debugPrint('🎵 Starting audio handler initialization...');
+
+      // Request notification permission on Android 13+ (API 33+)
+      // This is required for media notifications to appear
+      final notificationPermission = await Permission.notification.request();
+      debugPrint('Notification permission status: $notificationPermission');
+
+      if (!notificationPermission.isGranted) {
+        debugPrint(
+          '⚠️ Notification permission not granted. Media notifications may not appear.',
+        );
+      }
+
+      _audioHandler = await AudioService.init(
+        builder: () => AudioPlayerHandler(),
+        config: AudioServiceConfig(
+          androidNotificationChannelId: 'com.awtart.music.playback.v1',
+          androidNotificationChannelName: 'Music Playback',
+          androidNotificationOngoing: true,
+          androidShowNotificationBadge: true,
+          androidNotificationIcon: 'mipmap/ic_launcher',
+          androidStopForegroundOnPause: false,
+          notificationColor: const Color(
+            0xFF1DB954,
+          ), // Spotify green or similar
+        ),
+      );
+
+      // Connect handler callbacks to player actions
+      _audioHandler?.onPlayPressed = () async {
+        if (state.currentSong != null) {
+          await _audioPlayer.resume();
+        }
+      };
+
+      _audioHandler?.onPausePressed = () async {
+        await pause();
+      };
+
+      _audioHandler?.onNext = () => next();
+      _audioHandler?.onPrevious = () => previous();
+      _audioHandler?.onSeekPressed = (position) => seek(position);
+
+      debugPrint('✅ Audio handler initialized successfully');
+    } catch (e) {
+      debugPrint('❌ Error initializing audio handler: $e');
+      _audioHandler = null;
+    } finally {
+      _isInitializingHandler = false;
+    }
   }
 
   void _checkTracking(Duration pos) {
@@ -98,6 +208,11 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
   }
 
   Future<void> play(Song song, {List<Song>? queue, int? index}) async {
+    // Ensure audio handler is initialized before proceeding
+    if (_audioHandler == null) {
+      await _initAudioHandler();
+    }
+
     final newQueue = queue ?? state.queue;
     final newIndex =
         index ?? (queue != null ? queue.indexOf(song) : state.currentIndex);
@@ -108,11 +223,40 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       currentIndex: newIndex,
     );
 
+    // Save this song as the last played song
+    await _saveLastPlayedSong(song);
+
     _ref
         .read(statsProvider.notifier)
         .recordPlay(song.id, song.artist, song.album ?? "Unknown");
 
     await _audioPlayer.play(ap.DeviceFileSource(song.url));
+
+    // Update notification with current song info
+    debugPrint('Updating notification: ${song.title} by ${song.artist}');
+
+    Uri? artUri;
+    if (song.albumArt != null && song.albumArt!.isNotEmpty) {
+      try {
+        artUri = Uri.parse(song.albumArt!);
+      } catch (e) {
+        debugPrint('Error parsing albumArt URI: $e');
+      }
+    }
+
+    await _audioHandler?.setMediaItem(
+      id: song.id.toString(),
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      artUri: artUri,
+      duration: Duration(seconds: song.duration),
+    );
+
+    // Force call updatePlaybackState to ensure notification triggers
+    _audioHandler?.updatePlaybackState(playing: true, position: Duration.zero);
+
+    debugPrint('Notification updated successfully');
 
     // Fetch real lyrics
     _fetchLyrics(song);

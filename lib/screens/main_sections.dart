@@ -27,7 +27,7 @@ class DiscoverScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.mainGradient),
+        decoration: const BoxDecoration(color: Colors.transparent),
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,7 +283,7 @@ class CollectionScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Container(
-          decoration: const BoxDecoration(gradient: AppColors.mainGradient),
+          decoration: const BoxDecoration(color: Colors.transparent),
           child: SafeArea(
             bottom: false,
             child: Column(

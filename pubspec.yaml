@@ -47,6 +47,7 @@ dependencies:
   storage_space: ^1.2.0
   audiotags: ^1.4.5
   image_picker: ^1.2.1
+  audio_service: ^0.18.18
 
 
 dev_dependencies:

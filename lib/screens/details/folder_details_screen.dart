@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/library_provider.dart';
 import '../../providers/player_provider.dart';
@@ -19,6 +20,8 @@ class FolderDetailsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final library = ref.watch(libraryProvider);
+    final playerState = ref.watch(playerProvider);
+    final currentSong = playerState.currentSong;
 
     // Filter songs that are contained within this folder (at any depth)
     final allSongsInFolder = library.songs
@@ -47,104 +50,146 @@ class FolderDetailsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.mainGradient),
-        child: Column(
-          children: [
-            _buildHeader(context, allSongsInFolder.length),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 20,
-                ),
-                children: [
-                  if (sortedSubfolders.isNotEmpty) ...[
-                    Text(
-                      "FOLDERS",
-                      style: AppTextStyles.caption.copyWith(
-                        letterSpacing: 2,
-                        color: Colors.white24,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ...sortedSubfolders.map((subName) {
-                      final subPath = "$folderPath/$subName";
-                      // Count songs in this subfolder for subtext
-                      final subCount = allSongsInFolder
-                          .where((s) => s.url.startsWith(subPath))
-                          .length;
+      body: Stack(
+        children: [
+          // 1. Dynamic Blurred Background
+          if (currentSong != null)
+            Positioned.fill(
+              child: AppArtwork(songId: currentSong.id, fit: BoxFit.cover),
+            ),
 
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.folder,
-                            color: AppColors.accentYellow,
-                            size: 18,
-                          ),
-                        ),
-                        title: Text(
-                          subName,
-                          style: AppTextStyles.bodyMain.copyWith(fontSize: 14),
-                        ),
-                        subtitle: Text(
-                          "$subCount Tracks",
-                          style: AppTextStyles.caption.copyWith(fontSize: 10),
-                        ),
-                        trailing: const Icon(
-                          Icons.chevron_right,
-                          color: Colors.white24,
-                          size: 16,
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => FolderDetailsScreen(
-                                folderPath: subPath,
-                                folderName: subName,
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    }),
-                    const SizedBox(height: 32),
+          if (currentSong != null)
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+
+          // 2. Gradient Overlay (90% opacity)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.mainDarkLight.withOpacity(0.9),
+                    AppColors.mainDark.withOpacity(0.9),
                   ],
-                  if (immediateSongs.isNotEmpty) ...[
-                    Text(
-                      "TRACKS",
-                      style: AppTextStyles.caption.copyWith(
-                        letterSpacing: 2,
-                        color: Colors.white24,
-                      ),
+                ),
+              ),
+            ),
+          ),
+
+          // 3. Main Content
+          SafeArea(
+            top: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildHeader(context, allSongsInFolder.length),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
                     ),
-                    const SizedBox(height: 12),
-                    ...immediateSongs.map((song) => _buildSongItem(ref, song)),
-                  ],
-                  if (sortedSubfolders.isEmpty && immediateSongs.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 100),
-                        child: Text(
-                          "Empty Folder",
-                          style: AppTextStyles.bodyMain.copyWith(
+                    children: [
+                      if (sortedSubfolders.isNotEmpty) ...[
+                        Text(
+                          "FOLDERS",
+                          style: AppTextStyles.caption.copyWith(
+                            letterSpacing: 2,
                             color: Colors.white24,
                           ),
                         ),
-                      ),
-                    ),
-                ],
-              ),
+                        const SizedBox(height: 12),
+                        ...sortedSubfolders.map((subName) {
+                          final subPath = "$folderPath/$subName";
+                          // Count songs in this subfolder for subtext
+                          final subCount = allSongsInFolder
+                              .where((s) => s.url.startsWith(subPath))
+                              .length;
+
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.folder,
+                                color: AppColors.accentYellow,
+                                size: 18,
+                              ),
+                            ),
+                            title: Text(
+                              subName,
+                              style: AppTextStyles.bodyMain.copyWith(
+                                fontSize: 14,
+                              ),
+                            ),
+                            subtitle: Text(
+                              "$subCount Tracks",
+                              style: AppTextStyles.caption.copyWith(
+                                fontSize: 10,
+                              ),
+                            ),
+                            trailing: const Icon(
+                              Icons.chevron_right,
+                              color: Colors.white24,
+                              size: 16,
+                            ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => FolderDetailsScreen(
+                                    folderPath: subPath,
+                                    folderName: subName,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        }),
+                        const SizedBox(height: 32),
+                      ],
+                      if (immediateSongs.isNotEmpty) ...[
+                        Text(
+                          "TRACKS",
+                          style: AppTextStyles.caption.copyWith(
+                            letterSpacing: 2,
+                            color: Colors.white24,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ...immediateSongs.map(
+                          (song) => _buildSongItem(ref, song),
+                        ),
+                      ],
+                      if (sortedSubfolders.isEmpty && immediateSongs.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 100),
+                            child: Text(
+                              "Empty Folder",
+                              style: AppTextStyles.bodyMain.copyWith(
+                                color: Colors.white24,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

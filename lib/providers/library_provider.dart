@@ -29,6 +29,7 @@ class LibraryState {
   final List<Playlist> playlists;
   final List<String> folders;
   final Map<String, List<String>> storageMap;
+  final Set<String> excludedFolders; // Folders that are excluded from library
   final Song? bannerSong;
   final bool isLoading;
   final LibraryPermissionStatus permissionStatus;
@@ -44,6 +45,7 @@ class LibraryState {
     this.playlists = const [],
     this.folders = const [],
     this.storageMap = const {},
+    this.excludedFolders = const {},
     this.bannerSong,
     this.isLoading = false,
     this.permissionStatus = LibraryPermissionStatus.initial,
@@ -60,6 +62,7 @@ class LibraryState {
     List<Playlist>? playlists,
     List<String>? folders,
     Map<String, List<String>>? storageMap,
+    Set<String>? excludedFolders,
     Song? bannerSong,
     bool? isLoading,
     LibraryPermissionStatus? permissionStatus,
@@ -75,6 +78,7 @@ class LibraryState {
       playlists: playlists ?? this.playlists,
       folders: folders ?? this.folders,
       storageMap: storageMap ?? this.storageMap,
+      excludedFolders: excludedFolders ?? this.excludedFolders,
       bannerSong: bannerSong ?? this.bannerSong,
       isLoading: isLoading ?? this.isLoading,
       permissionStatus: permissionStatus ?? this.permissionStatus,
@@ -121,6 +125,9 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
             .map((p) => Playlist.fromMap(p))
             .toList();
         final folders = List<String>.from(decoded['folders'] ?? []);
+        final Set<String> excludedFolders = Set<String>.from(
+          decoded['excludedFolders'] ?? [],
+        );
         final Map<String, List<String>> storageMap = {};
         if (decoded['storageMap'] != null) {
           (decoded['storageMap'] as Map).forEach((k, v) {
@@ -135,6 +142,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           playlists: playlists,
           folders: folders,
           storageMap: storageMap,
+          excludedFolders: excludedFolders,
         );
 
         if (songs.isNotEmpty) {
@@ -163,6 +171,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         'playlists': state.playlists.map((p) => p.toMap()).toList(),
         'folders': state.folders,
         'storageMap': state.storageMap,
+        'excludedFolders': state.excludedFolders.toList(),
       });
       await prefs.setString('library_cache_v3', cacheData);
     } catch (e) {
@@ -502,6 +511,122 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       }).toList(),
     );
     _saveToCache();
+  }
+
+  Future<void> updateArtistImage(String artistName, String imagePath) async {
+    // Save image permanently to app documents if it's from a temp location
+    String finalPath = imagePath;
+    try {
+      final file = File(imagePath);
+      if (await file.exists()) {
+        final docDir = await getApplicationDocumentsDirectory();
+        final fileName =
+            'artist_${artistName.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final savedImage = await file.copy('${docDir.path}/$fileName');
+        finalPath = savedImage.path;
+      }
+    } catch (e) {
+      debugPrint("Error saving artist image: $e");
+    }
+
+    state = state.copyWith(
+      artists: state.artists.map((a) {
+        if (a.artist == artistName) {
+          return a.copyWith(imagePath: finalPath);
+        }
+        return a;
+      }).toList(),
+    );
+    _saveToCache();
+  }
+
+  // Folder Exclusion Management
+  void toggleFolderExclusion(String folderPath) {
+    final excludedFolders = Set<String>.from(state.excludedFolders);
+
+    if (excludedFolders.contains(folderPath)) {
+      // Include the folder (remove from excluded)
+      excludedFolders.remove(folderPath);
+    } else {
+      // Exclude the folder (add to excluded)
+      excludedFolders.add(folderPath);
+    }
+
+    // Filter songs, artists, and albums based on excluded folders
+    final filteredSongs = _filterSongsByFolders(state.songs, excludedFolders);
+    final filteredArtists = _rebuildArtists(filteredSongs);
+    final filteredAlbums = _rebuildAlbums(filteredSongs);
+
+    state = state.copyWith(
+      excludedFolders: excludedFolders,
+      songs: filteredSongs,
+      artists: filteredArtists,
+      albums: filteredAlbums,
+    );
+
+    _saveToCache();
+  }
+
+  List<Song> _filterSongsByFolders(
+    List<Song> allSongs,
+    Set<String> excludedFolders,
+  ) {
+    if (excludedFolders.isEmpty) return allSongs;
+
+    return allSongs.where((song) {
+      // Check if song's path starts with any excluded folder
+      for (final excludedPath in excludedFolders) {
+        if (song.url.startsWith(excludedPath)) {
+          return false; // Exclude this song
+        }
+      }
+      return true; // Include this song
+    }).toList();
+  }
+
+  List<Artist> _rebuildArtists(List<Song> songs) {
+    final Map<String, List<Song>> artistSongs = {};
+    for (final song in songs) {
+      artistSongs.putIfAbsent(song.artist, () => []).add(song);
+    }
+
+    return artistSongs.entries.map((entry) {
+      final artistAlbums = entry.value
+          .map((s) => s.album)
+          .where((a) => a != null)
+          .toSet()
+          .length;
+      return Artist(
+        id: entry.value.first.id, // Use first song's ID as artist ID
+        artist: entry.key,
+        numberOfTracks: entry.value.length,
+        numberOfAlbums: artistAlbums,
+      );
+    }).toList();
+  }
+
+  List<Album> _rebuildAlbums(List<Song> songs) {
+    final Map<String, List<Song>> albumSongs = {};
+    for (final song in songs) {
+      if (song.album != null) {
+        final key = '${song.album}_${song.artist}';
+        albumSongs.putIfAbsent(key, () => []).add(song);
+      }
+    }
+
+    return albumSongs.entries.map((entry) {
+      final songs = entry.value;
+      return Album(
+        id: songs.first.id, // Use first song's ID as album ID
+        album: songs.first.album!,
+        artist: songs.first.artist,
+        numberOfSongs: songs.length,
+      );
+    }).toList();
+  }
+
+  bool isFolderExcluded(String folderPath) {
+    return state.excludedFolders.contains(folderPath);
   }
 
   void _updateBannerSong(List<Song> songs) {

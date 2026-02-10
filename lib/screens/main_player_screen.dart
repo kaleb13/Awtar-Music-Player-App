@@ -172,10 +172,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     final playerState = ref.watch(playerProvider);
     final Song? song = playerState.currentSong;
 
-    // Don't render if no song available
-    if (song == null) {
-      return const SizedBox.shrink();
-    }
     final screenHeight = MediaQuery.of(context).size.height;
     final currentMainTab = ref.watch(mainTabProvider);
 
@@ -218,6 +214,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
       listenable: _controller,
       builder: (context, child) {
         final val = _controller.value;
+        final hasSong = song != null;
 
         // 1. DIMENSIONS LOGIC
         double currentHeight;
@@ -288,7 +285,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
           type: MaterialType.transparency,
           child: Stack(
             children: [
-              if (val > 0.1)
+              if (val > 0.1 && hasSong)
                 Positioned.fill(
                   key: const ValueKey('bg'),
                   child: Opacity(
@@ -300,7 +297,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                     ),
                   ),
                 ),
-              if (val > 1.0)
+              if (val > 1.0 && hasSong)
                 Positioned(
                   key: const ValueKey('lyrics'),
                   top: ((2.0 - val) * screenHeight).clamp(0.0, screenHeight),
@@ -326,7 +323,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                     },
                   ),
                 ),
-              // Bottom Navigation Bar
+              // Bottom Navigation Bar - Always show if visible
               if (val < 0.2 && ref.watch(bottomNavVisibleProvider))
                 Positioned(
                   bottom: 0,
@@ -351,142 +348,156 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                         ),
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildBottomNavItem(
-                            ref,
-                            MainTab.home,
-                            "Home",
-                            currentMainTab == MainTab.home,
-                            svgPath: AppAssets.home,
+                          Expanded(
+                            child: _buildBottomNavItem(
+                              ref,
+                              MainTab.home,
+                              "Home",
+                              currentMainTab == MainTab.home,
+                              svgPath: AppAssets.home,
+                            ),
                           ),
-                          _buildBottomNavItem(
-                            ref,
-                            MainTab.discover,
-                            "Discovery",
-                            currentMainTab == MainTab.discover,
-                            svgPath: AppAssets.search,
+                          Expanded(
+                            child: _buildBottomNavItem(
+                              ref,
+                              MainTab.discover,
+                              "Discovery",
+                              currentMainTab == MainTab.discover,
+                              svgPath: AppAssets.search,
+                            ),
                           ),
-                          _buildBottomNavItem(
-                            ref,
-                            MainTab.collection,
-                            "Collection",
-                            currentMainTab == MainTab.collection,
-                            svgPath: AppAssets.collection,
+                          Expanded(
+                            child: _buildBottomNavItem(
+                              ref,
+                              MainTab.collection,
+                              "Collection",
+                              currentMainTab == MainTab.collection,
+                              svgPath: AppAssets.collection,
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ),
                 ),
-              Positioned(
-                key: const ValueKey('card'),
-                top: currentTop,
-                left: currentMargin,
-                right: currentMargin,
-                height: currentHeight,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    if (_controller.value > 1.5) {
-                      ref.read(screenProvider.notifier).state =
-                          AppScreen.player;
-                    }
-                  },
-                  onVerticalDragUpdate: _onVerticalDragUpdate,
-                  onVerticalDragEnd: _onVerticalDragEnd,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: val > 1.0
-                          ? const BorderRadius.only(
-                              bottomLeft: Radius.circular(AppRadius.large),
-                              bottomRight: Radius.circular(AppRadius.large),
-                            )
-                          : BorderRadius.circular(currentRadius),
-                      boxShadow: val < 0.1
-                          ? []
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 20,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: val > 1.0
-                          ? const BorderRadius.only(
-                              bottomLeft: Radius.circular(AppRadius.large),
-                              bottomRight: Radius.circular(AppRadius.large),
-                            )
-                          : BorderRadius.circular(currentRadius),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(
-                          sigmaX: val < 0.5 ? 10 : 20,
-                          sigmaY: val < 0.5 ? 10 : 20,
-                        ),
-                        child: Container(
-                          color: val < 0.1
-                              ? Colors.black.withOpacity(0.3)
-                              : currentColor.withOpacity(0.95),
-                          child: SafeArea(
-                            bottom: false,
-                            top: false,
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                top: Tween<double>(
-                                  begin: 0,
-                                  end: MediaQuery.of(context).padding.top,
-                                ).transform(val.clamp(0.0, 1.0)),
-                                left: Tween<double>(
-                                  begin: 0,
-                                  end: 24,
-                                ).transform(val.clamp(0.0, 1.0)),
-                                right: Tween<double>(
-                                  begin: 0,
-                                  end: 24,
-                                ).transform(val.clamp(0.0, 1.0)),
-                              ),
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  _buildMorphingAlbumArt(
-                                    context,
-                                    val,
-                                    song.albumArt ?? "https://placeholder.com",
-                                    songId: song.id,
-                                  ),
-                                  if (val < 0.5)
-                                    Positioned.fill(
-                                      child: Opacity(
-                                        opacity: (1 - val * 2).clamp(0.0, 1.0),
-                                        child: _buildMiniPlayerUI(song, ref),
-                                      ),
+              if (hasSong)
+                Positioned(
+                  key: const ValueKey('card'),
+                  top: currentTop,
+                  left: currentMargin,
+                  right: currentMargin,
+                  height: currentHeight,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      if (_controller.value > 1.5) {
+                        ref.read(screenProvider.notifier).state =
+                            AppScreen.player;
+                      }
+                    },
+                    onVerticalDragUpdate: _onVerticalDragUpdate,
+                    onVerticalDragEnd: _onVerticalDragEnd,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: val > 1.0
+                            ? const BorderRadius.only(
+                                bottomLeft: Radius.circular(AppRadius.large),
+                                bottomRight: Radius.circular(AppRadius.large),
+                              )
+                            : BorderRadius.circular(currentRadius),
+                        boxShadow: val < 0.1
+                            ? []
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.15),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: val > 1.0
+                            ? const BorderRadius.only(
+                                bottomLeft: Radius.circular(AppRadius.large),
+                                bottomRight: Radius.circular(AppRadius.large),
+                              )
+                            : BorderRadius.circular(currentRadius),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(
+                            sigmaX: val < 0.5 ? 10 : 20,
+                            sigmaY: val < 0.5 ? 10 : 20,
+                          ),
+                          child: Container(
+                            color: val < 0.1
+                                ? Colors.black.withOpacity(0.3)
+                                : currentColor.withOpacity(0.95),
+                            child: SafeArea(
+                              bottom: false,
+                              top: false,
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  top: Tween<double>(
+                                    begin: 0,
+                                    end: MediaQuery.of(context).padding.top,
+                                  ).transform(val.clamp(0.0, 1.0)),
+                                  left: Tween<double>(
+                                    begin: 0,
+                                    end: 24,
+                                  ).transform(val.clamp(0.0, 1.0)),
+                                  right: Tween<double>(
+                                    begin: 0,
+                                    end: 24,
+                                  ).transform(val.clamp(0.0, 1.0)),
+                                ),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    _buildMorphingAlbumArt(
+                                      context,
+                                      val,
+                                      song.albumArt ??
+                                          "https://placeholder.com",
+                                      songId: song.id,
                                     ),
-                                  if (val > 0.2 && val < 1.8)
-                                    Positioned.fill(
-                                      child: Opacity(
-                                        opacity: val <= 1.0
-                                            ? (val * 2 - 0.4).clamp(0.0, 1.0)
-                                            : (2 - val * 2 + 1).clamp(0.0, 1.0),
-                                        child: const RepaintBoundary(
-                                          child: PlayerScreenContent(),
+                                    if (val < 0.5)
+                                      Positioned.fill(
+                                        child: Opacity(
+                                          opacity: (1 - val * 2).clamp(
+                                            0.0,
+                                            1.0,
+                                          ),
+                                          child: _buildMiniPlayerUI(song, ref),
                                         ),
                                       ),
-                                    ),
-                                  if (val > 1.2)
-                                    Positioned.fill(
-                                      child: Opacity(
-                                        opacity: ((val - 1.5) * 2).clamp(
-                                          0.0,
-                                          1.0,
-                                        ),
-                                        child: const RepaintBoundary(
-                                          child: LyricsHeaderContent(),
+                                    if (val > 0.2 && val < 1.8)
+                                      Positioned.fill(
+                                        child: Opacity(
+                                          opacity: val <= 1.0
+                                              ? (val * 2 - 0.4).clamp(0.0, 1.0)
+                                              : (2 - val * 2 + 1).clamp(
+                                                  0.0,
+                                                  1.0,
+                                                ),
+                                          child: const RepaintBoundary(
+                                            child: PlayerScreenContent(),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                ],
+                                    if (val > 1.2)
+                                      Positioned.fill(
+                                        child: Opacity(
+                                          opacity: ((val - 1.5) * 2).clamp(
+                                            0.0,
+                                            1.0,
+                                          ),
+                                          child: const RepaintBoundary(
+                                            child: LyricsHeaderContent(),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -495,8 +506,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                     ),
                   ),
                 ),
-              ),
-              if (val > 1.5)
+              if (val > 1.5 && hasSong)
                 Positioned(
                   key: const ValueKey('lyricsBar'),
                   bottom: 0,
@@ -509,7 +519,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                     ),
                   ),
                 ),
-              if (val > 0.5)
+              if (val > 0.5 && hasSong)
                 Positioned(
                   top: (currentTop + currentHeight).clamp(0.0, screenHeight),
                   bottom: 0,
