@@ -1,10 +1,20 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
+import '../widgets/app_song_list_tile.dart';
 import '../providers/search_provider.dart';
 import '../providers/player_provider.dart';
+import '../providers/library_provider.dart';
+import '../providers/navigation_provider.dart';
+import '../widgets/app_artwork.dart';
+import '../models/song.dart';
+import '../widgets/playlist_dialogs.dart';
+import 'details/album_details_screen.dart';
+import 'details/artist_details_screen.dart';
+import 'details/playlist_details_screen.dart';
 
 class DiscoverScreen extends ConsumerWidget {
   const DiscoverScreen({super.key});
@@ -89,10 +99,7 @@ class DiscoverScreen extends ConsumerWidget {
             (song) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: AppSongListTile(
-                title: song.title,
-                artist: song.artist,
-                duration: _formatDuration(song.duration),
-                imageUrl: song.albumArt ?? "https://placeholder.com",
+                song: song,
                 onTap: () {
                   ref.read(playerProvider.notifier).play(song);
                 },
@@ -111,12 +118,52 @@ class DiscoverScreen extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(width: 16),
               itemBuilder: (context, index) {
                 final album = results.albums[index];
+                final library = ref.watch(libraryProvider);
+
+                // Get a song from this album for artwork
+                final albumSong = library.songs.firstWhere(
+                  (s) => s.album == album.album,
+                  orElse: () => library.songs.isNotEmpty
+                      ? library.songs.first
+                      : Song(
+                          id: 0,
+                          title: '',
+                          artist: '',
+                          duration: 0,
+                          url: '',
+                          lyrics: [],
+                        ),
+                );
+
                 return AppAlbumCard(
-                  title: album.title,
+                  title: album.album,
                   artist: album.artist,
-                  imageUrl: album.imageUrl,
+                  imageUrl: "",
+                  songId: albumSong.id,
+                  artwork: AspectRatio(
+                    aspectRatio: 1.0,
+                    child: AppArtwork(
+                      songId: albumSong.id,
+                      borderRadius: 12,
+                      size: 120,
+                    ),
+                  ),
                   size: 120,
-                  onTap: () {},
+                  onTap: () {
+                    ref.read(bottomNavVisibleProvider.notifier).state = false;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AlbumDetailsScreen(
+                          title: album.album,
+                          artist: album.artist,
+                          imageUrl: "",
+                        ),
+                      ),
+                    ).then((_) {
+                      ref.read(bottomNavVisibleProvider.notifier).state = true;
+                    });
+                  },
                 );
               },
             ),
@@ -133,22 +180,57 @@ class DiscoverScreen extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(width: 16),
               itemBuilder: (context, index) {
                 final artist = results.artists[index];
+                final library = ref.watch(libraryProvider);
+
+                // Get a song from this artist for artwork
+                final artistSong = library.songs.firstWhere(
+                  (s) => s.artist == artist.artist,
+                  orElse: () => library.songs.isNotEmpty
+                      ? library.songs.first
+                      : Song(
+                          id: 0,
+                          title: '',
+                          artist: '',
+                          duration: 0,
+                          url: '',
+                          lyrics: [],
+                        ),
+                );
+
                 return Column(
                   children: [
                     GestureDetector(
-                      onTap: () {},
+                      onTap: () {
+                        ref.read(bottomNavVisibleProvider.notifier).state =
+                            false;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ArtistDetailsScreen(
+                              name: artist.artist,
+                              imageUrl: "",
+                            ),
+                          ),
+                        ).then((_) {
+                          ref.read(bottomNavVisibleProvider.notifier).state =
+                              true;
+                        });
+                      },
                       child: Container(
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          image: DecorationImage(
-                            image: NetworkImage(artist.imageUrl),
-                            fit: BoxFit.cover,
-                          ),
                           border: Border.all(
                             color: AppColors.primaryGreen.withOpacity(0.3),
                             width: 2,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: AppArtwork(
+                            songId: artistSong.id,
+                            size: 80,
+                            borderRadius: 0,
                           ),
                         ),
                       ),
@@ -157,7 +239,7 @@ class DiscoverScreen extends ConsumerWidget {
                     SizedBox(
                       width: 80,
                       child: Text(
-                        artist.name,
+                        artist.artist,
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -188,12 +270,6 @@ class DiscoverScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _formatDuration(int ms) {
-    final d = Duration(milliseconds: ms);
-    String twoDigits(int n) => n.toString().padLeft(2, "0");
-    return "${twoDigits(d.inMinutes.remainder(60))}:${twoDigits(d.inSeconds.remainder(60))}";
   }
 }
 
@@ -238,6 +314,7 @@ class CollectionScreen extends StatelessWidget {
                 const SizedBox(height: 20),
                 Expanded(
                   child: TabBarView(
+                    physics: const ClampingScrollPhysics(),
                     children: [const _FavoritesTab(), const _PlaylistsTab()],
                   ),
                 ),
@@ -250,23 +327,47 @@ class CollectionScreen extends StatelessWidget {
   }
 }
 
-class _FavoritesTab extends StatelessWidget {
+class _FavoritesTab extends ConsumerWidget {
   const _FavoritesTab();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favorites = ref.watch(
+      libraryProvider.select(
+        (s) => s.songs.where((song) => song.isFavorite).toList(),
+      ),
+    );
+
+    if (favorites.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.favorite_border, size: 64, color: Colors.white24),
+            const SizedBox(height: 16),
+            Text(
+              "No favorite songs yet",
+              style: TextStyle(color: Colors.white54, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      itemCount: 10,
+      itemCount: favorites.length,
       itemBuilder: (context, index) {
+        final song = favorites[index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.only(bottom: 12),
           child: AppSongListTile(
-            title: "Favorite Song ${index + 1}",
-            artist: "Artist Name",
-            duration: "3:45",
-            imageUrl: "https://source.unsplash.com/random/100x100?sig=$index",
-            onTap: () {},
+            song: song,
+            onTap: () {
+              ref
+                  .read(playerProvider.notifier)
+                  .play(song, queue: favorites, index: index);
+            },
           ),
         );
       },
@@ -274,103 +375,134 @@ class _FavoritesTab extends StatelessWidget {
   }
 }
 
-class _PlaylistsTab extends StatelessWidget {
+class _PlaylistsTab extends ConsumerWidget {
   const _PlaylistsTab();
 
   @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.8,
-      ),
-      itemCount: 6,
-      itemBuilder: (context, index) {
-        return AppAlbumCard(
-          title: "Playlist ${index + 1}",
-          artist: "${(index + 1) * 5} Songs",
-          imageUrl:
-              "https://source.unsplash.com/random/300x300?playlist=$index",
-          onTap: () {},
-          flexible: true,
-        );
-      },
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playlists = ref.watch(libraryProvider.select((s) => s.playlists));
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "${playlists.length} Playlists",
+                style: TextStyle(color: Colors.white54, fontSize: 14),
+              ),
+              ElevatedButton.icon(
+                onPressed: () =>
+                    PlaylistDialogs.showCreatePlaylist(context, ref),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text("New Playlist"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: playlists.isEmpty
+              ? _buildEmptyState()
+              : GridView.builder(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.75,
+                  ),
+                  itemCount: playlists.length,
+                  itemBuilder: (context, index) {
+                    final playlist = playlists[index];
+                    final firstSongId = playlist.songIds.isNotEmpty
+                        ? playlist.songIds.first
+                        : null;
+
+                    return AppAlbumCard(
+                      title: playlist.name,
+                      artist: "${playlist.songIds.length} Songs",
+                      imageUrl: "",
+                      songId: firstSongId,
+                      onTap: () {
+                        // Hide bottom nav for sub-screens
+                        ref.read(bottomNavVisibleProvider.notifier).state =
+                            false;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                PlaylistDetailsScreen(playlistId: playlist.id),
+                          ),
+                        ).then((_) {
+                          ref.read(bottomNavVisibleProvider.notifier).state =
+                              true;
+                        });
+                      },
+                      artwork: AspectRatio(
+                        aspectRatio: 1.0,
+                        child: playlist.imagePath != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(
+                                  File(playlist.imagePath!),
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : (firstSongId != null
+                                  ? AppArtwork(
+                                      songId: firstSongId,
+                                      borderRadius: 12,
+                                      size: 200,
+                                    )
+                                  : Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white10,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.playlist_play,
+                                        color: Colors.white24,
+                                        size: 40,
+                                      ),
+                                    )),
+                      ),
+                      flexible: true,
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
-}
 
-class AppSongListTile extends StatelessWidget {
-  final String title;
-  final String artist;
-  final String duration;
-  final String imageUrl;
-  final VoidCallback onTap;
-
-  const AppSongListTile({
-    super.key,
-    required this.title,
-    required this.artist,
-    required this.duration,
-    required this.imageUrl,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                imageUrl,
-                width: 50,
-                height: 50,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    artist,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              duration,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-            const SizedBox(width: 12),
-            const Icon(Icons.more_vert, color: Colors.grey, size: 20),
-          ],
-        ),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.playlist_add, size: 64, color: Colors.white24),
+          const SizedBox(height: 16),
+          Text(
+            "No playlists created yet",
+            style: TextStyle(color: Colors.white54, fontSize: 16),
+          ),
+        ],
       ),
     );
   }

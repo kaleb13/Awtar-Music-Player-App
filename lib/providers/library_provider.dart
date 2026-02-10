@@ -5,11 +5,14 @@ import 'package:permission_handler/permission_handler.dart';
 import '../models/song.dart';
 import '../models/artist.dart';
 import '../models/album.dart';
+import '../models/playlist.dart';
 import 'dart:math';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import '../main.dart';
+import 'player_provider.dart';
 
 enum LibraryPermissionStatus {
   initial,
@@ -23,6 +26,7 @@ class LibraryState {
   final List<Song> songs;
   final List<Artist> artists;
   final List<Album> albums;
+  final List<Playlist> playlists;
   final List<String> folders;
   final Map<String, List<String>> storageMap;
   final Song? bannerSong;
@@ -37,6 +41,7 @@ class LibraryState {
     this.songs = const [],
     this.artists = const [],
     this.albums = const [],
+    this.playlists = const [],
     this.folders = const [],
     this.storageMap = const {},
     this.bannerSong,
@@ -52,6 +57,7 @@ class LibraryState {
     List<Song>? songs,
     List<Artist>? artists,
     List<Album>? albums,
+    List<Playlist>? playlists,
     List<String>? folders,
     Map<String, List<String>>? storageMap,
     Song? bannerSong,
@@ -66,13 +72,13 @@ class LibraryState {
       songs: songs ?? this.songs,
       artists: artists ?? this.artists,
       albums: albums ?? this.albums,
+      playlists: playlists ?? this.playlists,
       folders: folders ?? this.folders,
       storageMap: storageMap ?? this.storageMap,
       bannerSong: bannerSong ?? this.bannerSong,
       isLoading: isLoading ?? this.isLoading,
       permissionStatus: permissionStatus ?? this.permissionStatus,
-      errorMessage:
-          errorMessage, // Allow clearing by passing null? No, copyWith semantics usually preserve. We will explicitly pass null if needed.
+      errorMessage: errorMessage,
       completionMessage: completionMessage,
       metadataLoadProgress: metadataLoadProgress ?? this.metadataLoadProgress,
       isReloadingMetadata: isReloadingMetadata ?? this.isReloadingMetadata,
@@ -98,7 +104,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   Future<void> _loadFromCache() async {
     try {
       final prefs = _ref.read(sharedPreferencesProvider);
-      final cacheData = prefs.getString('library_cache_v2');
+      final cacheData = prefs.getString('library_cache_v3'); // Updated version
       if (cacheData != null) {
         final Map<String, dynamic> decoded = jsonDecode(cacheData);
 
@@ -110,6 +116,9 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
             .toList();
         final albums = (decoded['albums'] as List)
             .map((a) => Album.fromMap(a))
+            .toList();
+        final playlists = (decoded['playlists'] as List? ?? [])
+            .map((p) => Playlist.fromMap(p))
             .toList();
         final folders = List<String>.from(decoded['folders'] ?? []);
         final Map<String, List<String>> storageMap = {};
@@ -123,12 +132,20 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           songs: songs,
           artists: artists,
           albums: albums,
+          playlists: playlists,
           folders: folders,
           storageMap: storageMap,
         );
 
         if (songs.isNotEmpty) {
           _updateBannerSong(songs);
+        }
+      } else {
+        // Migration from v2 if exists
+        final oldData = prefs.getString('library_cache_v2');
+        if (oldData != null) {
+          // We could migrate, but simple scan is fine too.
+          // For now just scan if v3 is not found.
         }
       }
     } catch (e) {
@@ -143,10 +160,11 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         'songs': state.songs.map((s) => s.toMap()).toList(),
         'artists': state.artists.map((a) => a.toMap()).toList(),
         'albums': state.albums.map((a) => a.toMap()).toList(),
+        'playlists': state.playlists.map((p) => p.toMap()).toList(),
         'folders': state.folders,
         'storageMap': state.storageMap,
       });
-      await prefs.setString('library_cache_v2', cacheData);
+      await prefs.setString('library_cache_v3', cacheData);
     } catch (e) {
       debugPrint("Error saving library cache: $e");
     }
@@ -345,8 +363,21 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         return MapEntry(key, value.toList());
       });
 
+      // Preserve favorite status from existing library
+      final favoritedIds = state.songs
+          .where((s) => s.isFavorite)
+          .map((s) => s.id)
+          .toSet();
+
+      final updatedSongs = songs.map((s) {
+        if (favoritedIds.contains(s.id)) {
+          return s.copyWith(isFavorite: true);
+        }
+        return s;
+      }).toList();
+
       state = state.copyWith(
-        songs: songs,
+        songs: updatedSongs,
         artists: artists,
         albums: albums,
         folders: folderSet.toList(),
@@ -354,8 +385,8 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         isLoading: false,
       );
 
-      if (songs.isNotEmpty) {
-        _updateBannerSong(songs);
+      if (updatedSongs.isNotEmpty) {
+        _updateBannerSong(updatedSongs);
       }
 
       _saveToCache();
@@ -366,6 +397,111 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         errorMessage: state.songs.isEmpty ? "Failed to scan library: $e" : null,
       );
     }
+  }
+
+  void toggleFavorite(Song song) {
+    // Get the most up-to-date song from our list to avoid stale state
+    final currentSongInLib = state.songs.firstWhere(
+      (s) => s.id == song.id,
+      orElse: () => song,
+    );
+    bool newStatus = !currentSongInLib.isFavorite;
+
+    // 1. Update library state
+    state = state.copyWith(
+      songs: state.songs.map((s) {
+        if (s.id == song.id) {
+          return s.copyWith(isFavorite: newStatus);
+        }
+        return s;
+      }).toList(),
+    );
+
+    // 2. Update player state via its notifier
+    _ref.read(playerProvider.notifier).updateFavoriteStatus(song.id, newStatus);
+
+    // 3. Update banner song if it matches
+    if (state.bannerSong?.id == song.id) {
+      state = state.copyWith(
+        bannerSong: state.bannerSong!.copyWith(isFavorite: newStatus),
+      );
+    }
+
+    _saveToCache();
+  }
+
+  // Playlist Management
+  void createPlaylist(String name) {
+    final newPlaylist = Playlist(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: name,
+      songIds: [],
+      createdAt: DateTime.now(),
+    );
+    state = state.copyWith(playlists: [...state.playlists, newPlaylist]);
+    _saveToCache();
+  }
+
+  void deletePlaylist(Playlist playlist) {
+    state = state.copyWith(
+      playlists: state.playlists.where((p) => p.id != playlist.id).toList(),
+    );
+    _saveToCache();
+  }
+
+  void addToPlaylist(String playlistId, int songId) {
+    state = state.copyWith(
+      playlists: state.playlists.map((p) {
+        if (p.id == playlistId) {
+          if (!p.songIds.contains(songId)) {
+            return p.copyWith(songIds: [...p.songIds, songId]);
+          }
+        }
+        return p;
+      }).toList(),
+    );
+    _saveToCache();
+  }
+
+  void removeFromPlaylist(String playlistId, int songId) {
+    state = state.copyWith(
+      playlists: state.playlists.map((p) {
+        if (p.id == playlistId) {
+          return p.copyWith(
+            songIds: p.songIds.where((id) => id != songId).toList(),
+          );
+        }
+        return p;
+      }).toList(),
+    );
+    _saveToCache();
+  }
+
+  Future<void> updatePlaylistImage(String playlistId, String imagePath) async {
+    // Save image permanently to app documents if it's from a temp location
+    String finalPath = imagePath;
+    try {
+      final file = File(imagePath);
+      if (await file.exists()) {
+        final docDir = await getApplicationDocumentsDirectory();
+        final fileName =
+            'playlist_${playlistId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final savedImage = await file.copy('${docDir.path}/$fileName');
+        finalPath = savedImage.path;
+      }
+    } catch (e) {
+      debugPrint("Error saving playlist image: $e");
+    }
+
+    state = state.copyWith(
+      playlists: state.playlists.map((p) {
+        if (p.id == playlistId) {
+          return p.copyWith(imagePath: finalPath);
+        }
+        return p;
+      }).toList(),
+    );
+    _saveToCache();
   }
 
   void _updateBannerSong(List<Song> songs) {

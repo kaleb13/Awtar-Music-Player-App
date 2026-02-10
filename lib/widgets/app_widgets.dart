@@ -177,6 +177,7 @@ class AppPremiumCard extends StatefulWidget {
   final double size;
   final VoidCallback? onTap;
   final bool isCircular;
+  final bool isPortrait;
   final bool flexible;
   final Widget? artwork;
   final int? songId;
@@ -191,6 +192,7 @@ class AppPremiumCard extends StatefulWidget {
     this.size = 90,
     this.onTap,
     this.isCircular = false,
+    this.isPortrait = false,
     this.flexible = false,
     this.artwork,
     this.songId,
@@ -242,7 +244,9 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
 
     Widget imageContainer = Container(
       width: widget.flexible ? double.infinity : widget.size,
-      height: widget.flexible ? null : widget.size,
+      height: widget.flexible
+          ? null
+          : (widget.isPortrait ? widget.size * 1.3 : widget.size),
       decoration: BoxDecoration(
         shape: widget.isCircular ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: widget.isCircular
@@ -258,11 +262,17 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
         child:
             widget.artwork ??
             (widget.songId != null
-                ? AppArtwork(songId: widget.songId!, size: widget.size)
+                ? AppArtwork(
+                    songId: widget.songId!,
+                    size: widget.size,
+                    fit: widget.isPortrait ? BoxFit.cover : BoxFit.cover,
+                  )
                 : (widget.imageUrl.isNotEmpty
                       ? (widget.flexible
                             ? AspectRatio(
-                                aspectRatio: 1.0,
+                                aspectRatio: widget.isPortrait
+                                    ? 1.0 / 1.3
+                                    : 1.0,
                                 child: Image.network(
                                   widget.imageUrl,
                                   fit: BoxFit.cover,
@@ -272,7 +282,9 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
                                 widget.imageUrl,
                                 fit: BoxFit.cover,
                                 width: widget.size,
-                                height: widget.size,
+                                height: widget.isPortrait
+                                    ? widget.size * 1.3
+                                    : widget.size,
                               ))
                       : Container(
                           color: AppColors.surfaceDark,
@@ -283,6 +295,13 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
                         ))),
       ),
     );
+
+    if (widget.flexible) {
+      imageContainer = AspectRatio(
+        aspectRatio: widget.isPortrait ? 1.0 / 1.3 : 1.0,
+        child: imageContainer,
+      );
+    }
 
     return GestureDetector(
       onTap: widget.onTap,

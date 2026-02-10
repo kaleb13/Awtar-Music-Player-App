@@ -7,6 +7,7 @@ class Song {
   final String url; // For path or network URL
   final int duration;
   final List<LyricLine> lyrics;
+  final bool isFavorite;
 
   Song({
     required this.id,
@@ -17,6 +18,7 @@ class Song {
     required this.url,
     required this.duration,
     required this.lyrics,
+    this.isFavorite = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -29,6 +31,7 @@ class Song {
       'url': url,
       'duration': duration,
       'lyrics': lyrics.map((l) => l.toMap()).toList(),
+      'isFavorite': isFavorite,
     };
   }
 
@@ -44,6 +47,7 @@ class Song {
       lyrics:
           (map['lyrics'] as List?)?.map((l) => LyricLine.fromMap(l)).toList() ??
           [],
+      isFavorite: map['isFavorite'] ?? false,
     );
   }
 
@@ -56,6 +60,7 @@ class Song {
     String? url,
     int? duration,
     List<LyricLine>? lyrics,
+    bool? isFavorite,
   }) {
     return Song(
       id: id ?? this.id,
@@ -66,6 +71,7 @@ class Song {
       url: url ?? this.url,
       duration: duration ?? this.duration,
       lyrics: lyrics ?? this.lyrics,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 }

@@ -8,6 +8,7 @@ class ColorAwareAlbumCard extends StatelessWidget {
   final double size;
   final bool isMini;
   final bool flexible;
+  final bool isPortrait;
   final bool showThreeDotsMenu;
   final VoidCallback? onTap;
   final Widget? artwork;
@@ -21,6 +22,7 @@ class ColorAwareAlbumCard extends StatelessWidget {
     this.size = 140,
     this.isMini = false,
     this.flexible = false,
+    this.isPortrait = false,
     this.showThreeDotsMenu = false,
     this.onTap,
     this.artwork,
@@ -37,6 +39,7 @@ class ColorAwareAlbumCard extends StatelessWidget {
       imageUrl: imageUrl,
       size: size,
       flexible: flexible,
+      isPortrait: isPortrait,
       showMenu: showThreeDotsMenu,
       onTap: onTap,
       artwork: artwork,

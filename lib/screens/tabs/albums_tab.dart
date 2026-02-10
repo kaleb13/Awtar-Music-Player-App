@@ -69,7 +69,7 @@ class AlbumsTab extends ConsumerWidget {
         crossAxisCount: 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 0.55,
+        childAspectRatio: 0.65, // Comfortable ratio for compact style
       ),
       itemCount: albums.length,
       itemBuilder: (context, index) {
@@ -92,7 +92,9 @@ class AlbumsTab extends ConsumerWidget {
           title: album.album,
           artist: album.artist,
           songId: albumSong.id,
-          flexible: true,
+          size: 100, // Reduced from 140 to fix overflow
+          flexible: true, // Use flexible scaling
+          isPortrait: false, // Ensure square 'compact' shape
           showThreeDotsMenu: true,
           onTap: () {
             ref.read(bottomNavVisibleProvider.notifier).state = false;

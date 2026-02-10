@@ -69,7 +69,7 @@ class ArtistsTab extends ConsumerWidget {
         crossAxisCount: 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 0.65,
+        childAspectRatio: 0.52, // Portrait ratio (taller cards)
       ),
       itemCount: artists.length,
       itemBuilder: (context, index) {
@@ -92,6 +92,8 @@ class ArtistsTab extends ConsumerWidget {
           title: artist.artist,
           subtitle: "${artist.numberOfTracks} Tracks",
           songId: artistSong.id,
+          flexible: true, // Replicate Album's old flexible style
+          isPortrait: true, // Replicate Album's old portrait style
           onTap: () {
             ref.read(bottomNavVisibleProvider.notifier).state = false;
             Navigator.push(

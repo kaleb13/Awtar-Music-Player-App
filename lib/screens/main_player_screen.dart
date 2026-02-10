@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // PaletteGenerator removed
@@ -10,6 +11,7 @@ import 'package:awtart_music_player/providers/navigation_provider.dart';
 import 'package:awtart_music_player/theme/app_theme.dart';
 import 'package:awtart_music_player/widgets/app_artwork.dart';
 import 'package:awtart_music_player/widgets/app_widgets.dart';
+import 'package:awtart_music_player/widgets/playlist_dialogs.dart';
 import 'package:awtart_music_player/models/song.dart';
 import 'player_screen.dart';
 
@@ -249,6 +251,28 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
             AppColors.surfaceWhite,
             val.clamp(0.0, 1.0),
           )!;
+
+          // Update status bar based on player state
+          // When val > 0.3, player is expanding and background is getting lighter
+          if (val > 0.3) {
+            SystemChrome.setSystemUIOverlayStyle(
+              const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness:
+                    Brightness.dark, // Dark icons for light background
+                statusBarBrightness: Brightness.light, // For iOS
+              ),
+            );
+          } else {
+            SystemChrome.setSystemUIOverlayStyle(
+              const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness:
+                    Brightness.light, // Light icons for dark background
+                statusBarBrightness: Brightness.dark, // For iOS
+              ),
+            );
+          }
         } else {
           double t = val - 1.0;
           currentHeight = Tween<double>(
@@ -272,25 +296,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                     child: Container(
                       decoration: const BoxDecoration(
                         gradient: AppColors.mainGradient,
-                      ),
-                    ),
-                  ),
-                ),
-              if (val > 0.5)
-                Positioned(
-                  key: const ValueKey('bottomBar'),
-                  top: (currentTop + currentHeight).clamp(0.0, screenHeight),
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Opacity(
-                    opacity: (val <= 1.0 ? (val - 0.5) * 2 : (2.0 - val) * 2)
-                        .clamp(0.0, 1.0),
-                    child: IgnorePointer(
-                      ignoring: val > 1.2,
-                      child: PlayerBottomBar(
-                        onVerticalDragUpdate: _onVerticalDragUpdate,
-                        onVerticalDragEnd: _onVerticalDragEnd,
                       ),
                     ),
                   ),
@@ -501,6 +506,24 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                     opacity: ((val - 1.7) * 3).clamp(0.0, 1.0),
                     child: const RepaintBoundary(
                       child: LyricsBottomBarContent(),
+                    ),
+                  ),
+                ),
+              if (val > 0.5)
+                Positioned(
+                  top: (currentTop + currentHeight).clamp(0.0, screenHeight),
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Opacity(
+                    opacity: (val <= 1.0 ? (val - 0.5) * 2 : (2.0 - val) * 2)
+                        .clamp(0.0, 1.0),
+                    child: IgnorePointer(
+                      ignoring: val > 1.2,
+                      child: PlayerBottomBar(
+                        onVerticalDragUpdate: _onVerticalDragUpdate,
+                        onVerticalDragEnd: _onVerticalDragEnd,
+                      ),
                     ),
                   ),
                 ),
@@ -769,75 +792,116 @@ class PlayerBottomBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return GestureDetector(
-      onTap: () => ref.read(screenProvider.notifier).state = AppScreen.lyrics,
-      onVerticalDragUpdate: onVerticalDragUpdate,
-      onVerticalDragEnd: onVerticalDragEnd,
-      child: Container(
-        decoration: const BoxDecoration(color: Colors.transparent),
-        padding: const EdgeInsets.only(left: 30, right: 30, bottom: 20),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 60,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    color: AppColors.accentYellow,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.mic_none,
-                    color: Colors.black,
-                    size: 24,
-                  ),
-                ),
-              ),
+    return SizedBox(
+      // Outer height for the bar
+      height: 100,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // 1. DRAG LAYER (Background)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onVerticalDragUpdate: onVerticalDragUpdate,
+              onVerticalDragEnd: onVerticalDragEnd,
             ),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "Lyric by",
-                    style: AppTextStyles.caption.copyWith(
-                      color: Colors.white70,
+          ),
+          // 2. INTERACTION LAYER (Foreground)
+          Positioned.fill(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // SECTION 1: Mic (Far Left)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    // Future Feature
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.only(left: 30, right: 10),
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: const BoxDecoration(
+                        color: AppColors.accentYellow,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.mic_none,
+                        color: Colors.black,
+                        size: 24,
+                      ),
                     ),
                   ),
-                  Text(
-                    "AWTAR",
-                    style: AppTextStyles.titleMedium.copyWith(
-                      letterSpacing: 2,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                ),
+                // SECTION 2: Lyrics (Center)
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => ref.read(screenProvider.notifier).state =
+                        AppScreen.lyrics,
+                    child: Container(
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            "Lyrics by",
+                            style: AppTextStyles.caption.copyWith(
+                              color: Colors.white70,
+                              fontSize: 10,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "AWTAR",
+                            style: AppTextStyles.titleMedium.copyWith(
+                              letterSpacing: 1.5,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            SizedBox(
-              width: 60,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.queue_music,
-                    color: Colors.white70,
-                    size: 24,
+                ),
+                // SECTION 3: Playlist (Far Right)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    final song = ref.read(playerProvider).currentSong;
+                    if (song != null) {
+                      PlaylistDialogs.showAddSongToPlaylist(
+                        context,
+                        ref,
+                        song,
+                        useRootNavigator: true,
+                      );
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.only(right: 30, left: 10),
+                    alignment: Alignment.centerRight,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.playlist_add,
+                        color: Colors.white70,
+                        size: 24,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -900,16 +964,28 @@ class LyricsBottomBarContent extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 15),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.queue_music,
-                color: Colors.white,
-                size: 20,
+            GestureDetector(
+              onTap: () {
+                // Fixed: The song is guaranteed non-null here due to the check at line 888
+                PlaylistDialogs.showAddSongToPlaylist(
+                  context,
+                  ref,
+                  song,
+                  useRootNavigator: true,
+                );
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.playlist_add,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
           ],

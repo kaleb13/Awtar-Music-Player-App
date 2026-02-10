@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:awtart_music_player/providers/navigation_provider.dart';
 import 'package:awtart_music_player/providers/library_provider.dart';
@@ -42,18 +43,6 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const RootLayout(),
-      builder: (context, child) {
-        return Stack(
-          children: [
-            child ?? const SizedBox(),
-            Overlay(
-              initialEntries: [
-                OverlayEntry(builder: (context) => const MainMusicPlayer()),
-              ],
-            ),
-          ],
-        );
-      },
     );
   }
 }
@@ -65,6 +54,16 @@ class RootLayout extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final libraryState = ref.watch(libraryProvider);
     final currentTab = ref.watch(mainTabProvider);
+
+    // Set status bar color for dark backgrounds (main app)
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness:
+            Brightness.light, // Light icons for dark background
+        statusBarBrightness: Brightness.dark, // For iOS
+      ),
+    );
 
     // Handle permission states first
     switch (libraryState.permissionStatus) {
@@ -101,7 +100,12 @@ class RootLayout extends ConsumerWidget {
         content = const HomeScreen();
     }
 
-    return Scaffold(backgroundColor: Colors.black, body: content);
+    return Stack(
+      children: [
+        Scaffold(backgroundColor: Colors.black, body: content),
+        const MainMusicPlayer(),
+      ],
+    );
   }
 }
 

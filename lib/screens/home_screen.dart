@@ -79,6 +79,7 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: 0),
                 const Expanded(
                   child: TabBarView(
+                    physics: ClampingScrollPhysics(),
                     children: [
                       HomeOverviewContent(),
                       FoldersTab(),
@@ -177,7 +178,7 @@ class HomeOverviewContent extends ConsumerWidget {
 
           // 1st Section: Popular Artists
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: 16),
             child: AppSectionHeader(title: "Popular Artists"),
           ),
           const SizedBox(height: 20),
@@ -186,19 +187,16 @@ class HomeOverviewContent extends ConsumerWidget {
 
           // 2nd Section: Popular Albums
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: 16),
             child: AppSectionHeader(title: "Popular Albums"),
           ),
           const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: _buildAlbumsSection(context, ref, libraryState, stats),
-          ),
+          _buildAlbumsSection(context, ref, libraryState, stats),
           const SizedBox(height: 40),
 
           // 3rd Section: Most Played
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: 16),
             child: AppSectionHeader(title: "Most Played"),
           ),
           const SizedBox(height: 20),
@@ -207,7 +205,7 @@ class HomeOverviewContent extends ConsumerWidget {
 
           // 4th Section: Recently Played
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: 16),
             child: AppSectionHeader(title: "Recently Played"),
           ),
           const SizedBox(height: 20),
@@ -216,12 +214,12 @@ class HomeOverviewContent extends ConsumerWidget {
 
           // 5th Section: Summary
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: 16),
             child: AppSectionHeader(title: "Monthly Summary"),
           ),
           const SizedBox(height: 20),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _buildSummarySection(stats),
           ),
           const SizedBox(height: 180),
@@ -265,39 +263,39 @@ class HomeOverviewContent extends ConsumerWidget {
       );
     }).toList();
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: topArtists.map((artist) {
-            final name = artist.artist;
-            final duration = stats.artistPlayDuration[name] ?? 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: topArtists.map((artist) {
+          final name = artist.artist;
+          final duration = stats.artistPlayDuration[name] ?? 0;
 
-            String durationStr;
-            if (duration >= 3600) {
-              durationStr = "${(duration / 3600).toStringAsFixed(1)}h";
-            } else {
-              durationStr = "${(duration / 60).toInt()}m";
-            }
+          String durationStr;
+          if (duration >= 3600) {
+            durationStr = "${(duration / 3600).toStringAsFixed(1)}h";
+          } else {
+            durationStr = "${(duration / 60).toInt()}m";
+          }
 
-            final artistSong = libraryState.songs.firstWhere(
-              (s) => s.artist == name,
-              orElse: () => libraryState.songs.first,
-            );
+          final artistSong = libraryState.songs.firstWhere(
+            (s) => s.artist == name,
+            orElse: () => libraryState.songs.first,
+          );
 
-            // Use Expanded or Flexible if needed, but with reduced size fixed width might work.
-            // Using a slightly smaller fixed size to ensure 3 fit.
-            return Padding(
+          return Expanded(
+            child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: AppPopularArtistCard(
                 name: name,
                 imageUrl: "",
                 songId: artistSong.id,
-                artwork: AppArtwork(
-                  songId: artistSong.id,
-                  size: 100,
-                  borderRadius: 50,
+                artwork: AspectRatio(
+                  aspectRatio: 1.0,
+                  child: AppArtwork(
+                    songId: artistSong.id,
+                    size: 100,
+                    borderRadius: 50,
+                  ),
                 ),
                 playTime: durationStr,
                 subtitle: "${artist.numberOfTracks} Tracks",
@@ -314,9 +312,9 @@ class HomeOverviewContent extends ConsumerWidget {
                   });
                 },
               ),
-            );
-          }).toList(),
-        ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -334,8 +332,8 @@ class HomeOverviewContent extends ConsumerWidget {
     final sortedAlbums = stats.albumPlayDuration.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    // Take top 5 as requested
-    final topAlbums = sortedAlbums.take(5).map((e) {
+    // Take top 2 as requested
+    final topAlbums = sortedAlbums.take(2).map((e) {
       final title = e.key;
       return libraryState.albums.firstWhere(
         (a) => a.album == title,
@@ -348,92 +346,20 @@ class HomeOverviewContent extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SizedBox(
-        height: 340, // Fixed height for the layout
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Left: Top 1 Album (Big)
-            Expanded(
-              flex: 4,
+      child: Row(
+        children: topAlbums.map((album) {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: _buildResponsiveAlbumCard(
-                topAlbums[0],
+                album,
                 libraryState,
                 context,
                 ref,
-                isBig: true,
               ),
             ),
-            const SizedBox(width: 12),
-            // Right: Grid of 4 Albums (Smaller)
-            Expanded(
-              flex: 5,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (topAlbums.length > 1)
-                          Expanded(
-                            child: _buildResponsiveAlbumCard(
-                              topAlbums[1],
-                              libraryState,
-                              context,
-                              ref,
-                            ),
-                          ),
-                        const SizedBox(width: 6), // Minimal gap
-                        if (topAlbums.length > 2)
-                          Expanded(
-                            child: _buildResponsiveAlbumCard(
-                              topAlbums[2],
-                              libraryState,
-                              context,
-                              ref,
-                            ),
-                          )
-                        else
-                          const Spacer(),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 6), // Minimal gap
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (topAlbums.length > 3)
-                          Expanded(
-                            child: _buildResponsiveAlbumCard(
-                              topAlbums[3],
-                              libraryState,
-                              context,
-                              ref,
-                            ),
-                          )
-                        else
-                          const Spacer(),
-                        const SizedBox(width: 6), // Minimal gap
-                        if (topAlbums.length > 4)
-                          Expanded(
-                            child: _buildResponsiveAlbumCard(
-                              topAlbums[4],
-                              libraryState,
-                              context,
-                              ref,
-                            ),
-                          )
-                        else
-                          const Spacer(),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -442,9 +368,8 @@ class HomeOverviewContent extends ConsumerWidget {
     Album album,
     LibraryState libraryState,
     BuildContext context,
-    WidgetRef ref, {
-    bool isBig = false,
-  }) {
+    WidgetRef ref,
+  ) {
     final albumSong = libraryState.songs.firstWhere(
       (s) => s.album == album.album,
       orElse: () => libraryState.songs.first,
@@ -455,13 +380,12 @@ class HomeOverviewContent extends ConsumerWidget {
       artist: album.artist,
       imageUrl: "",
       songId: albumSong.id,
-      artwork: AppArtwork(
-        songId: albumSong.id,
-        borderRadius: 12,
-        size: isBig ? 300 : 100,
+      artwork: AspectRatio(
+        aspectRatio: 1.0,
+        child: AppArtwork(songId: albumSong.id, borderRadius: 12, size: 200),
       ),
       flexible: true,
-      size: isBig ? 180 : 100,
+      size: 100,
       onTap: () {
         ref.read(bottomNavVisibleProvider.notifier).state = false;
         Navigator.push(
@@ -492,7 +416,7 @@ class HomeOverviewContent extends ConsumerWidget {
     final sortedSongs = stats.songPlayCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final topSongIds = sortedSongs.take(8).map((e) => e.key).toList();
+    final topSongIds = sortedSongs.take(3).map((e) => e.key).toList();
     final displaySongs = topSongIds
         .map(
           (id) => libraryState.songs.firstWhere(
@@ -502,7 +426,7 @@ class HomeOverviewContent extends ConsumerWidget {
         )
         .toList();
 
-    return _buildSongScroll(ref, displaySongs);
+    return _buildSongRow(ref, displaySongs);
   }
 
   Widget _buildRecentSection(
@@ -515,6 +439,7 @@ class HomeOverviewContent extends ConsumerWidget {
     }
 
     final displaySongs = stats.recentPlayedIds
+        .take(3)
         .map(
           (id) => libraryState.songs.firstWhere(
             (s) => s.id == id,
@@ -523,7 +448,7 @@ class HomeOverviewContent extends ConsumerWidget {
         )
         .toList();
 
-    return _buildSongScroll(ref, displaySongs);
+    return _buildSongRow(ref, displaySongs);
   }
 
   Widget _buildSummarySection(PlayStats stats) {
@@ -567,26 +492,30 @@ class HomeOverviewContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildSongScroll(WidgetRef ref, List<Song> songs) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+  Widget _buildSongRow(WidgetRef ref, List<Song> songs) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: songs
             .map(
-              (song) => Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: ColorAwareAlbumCard(
-                  onTap: () => ref.read(playerProvider.notifier).play(song),
-                  title: song.title,
-                  artist: song.artist,
-                  imageUrl: "",
-                  artwork: AppArtwork(
-                    songId: song.id,
-                    size: 100,
-                    borderRadius: 12,
+              (song) => Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: ColorAwareAlbumCard(
+                    onTap: () => ref.read(playerProvider.notifier).play(song),
+                    title: song.title,
+                    artist: song.artist,
+                    imageUrl: "",
+                    artwork: AspectRatio(
+                      aspectRatio: 1.0,
+                      child: AppArtwork(
+                        songId: song.id,
+                        size: 100,
+                        borderRadius: 12,
+                      ),
+                    ),
+                    flexible: true,
                   ),
-                  size: 100,
                 ),
               ),
             )

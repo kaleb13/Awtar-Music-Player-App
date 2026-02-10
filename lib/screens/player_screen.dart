@@ -20,8 +20,11 @@ class PlayerScreenContent extends ConsumerWidget {
     if (song == null) return const SizedBox.shrink();
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 15),
+        const SizedBox(
+          height: 25,
+        ), // Increased from 15 to push the top bar down slightly
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -40,54 +43,79 @@ class PlayerScreenContent extends ConsumerWidget {
             const AppIconButton(icon: Icons.more_horiz),
           ],
         ),
-        SizedBox(height: (MediaQuery.of(context).size.width - 48) + 70),
+        SizedBox(
+          height: (MediaQuery.of(context).size.width - 48) + 35,
+        ), // Reduced from 45 to 35 to fix overflow
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  song.title,
-                  style: AppTextStyles.titleLarge.copyWith(
-                    color: AppColors.textLight,
-                  ),
-                ),
-                Text(
-                  song.artist,
-                  style: AppTextStyles.bodyMain.copyWith(
-                    color: AppColors.textGrey,
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppRadius.medium),
-              ),
-              child: Row(
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.favorite_border,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 4),
                   Text(
-                    "Saved",
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: Colors.white,
+                    song.title,
+                    style: AppTextStyles.titleLarge.copyWith(
+                      color: AppColors.textLight,
+                      fontSize: 24, // Slightly reduced from 26
                       fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    song.artist,
+                    style: AppTextStyles.bodyMain.copyWith(
+                      color: AppColors.textGrey,
+                      fontSize: 16, // Slightly reduced from 18
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
+            GestureDetector(
+              onTap: () =>
+                  ref.read(libraryProvider.notifier).toggleFavorite(song),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: song.isFavorite
+                      ? AppColors.primaryGreen
+                      : Colors.black.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(30),
+                  border: song.isFavorite
+                      ? null
+                      : Border.all(color: Colors.black12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      song.isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: song.isFavorite ? Colors.white : Colors.black54,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Favorite",
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: song.isFavorite ? Colors.white : Colors.black54,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 20), // Reduced from 30
         Consumer(
           builder: (context, ref, child) {
             final position = ref.watch(
@@ -111,11 +139,11 @@ class PlayerScreenContent extends ConsumerWidget {
                   children: [
                     Text(
                       _formatDuration(position),
-                      style: AppTextStyles.caption,
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
                     ),
                     Text(
                       _formatDuration(duration),
-                      style: AppTextStyles.caption,
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
                     ),
                   ],
                 ),
@@ -123,7 +151,7 @@ class PlayerScreenContent extends ConsumerWidget {
             );
           },
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22), // Reduced from 28 to fix overflow
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
@@ -131,6 +159,7 @@ class PlayerScreenContent extends ConsumerWidget {
               icon: playerState.repeatMode == RepeatMode.one
                   ? Icons.repeat_one
                   : Icons.repeat,
+              size: 26, // Scaled up
               color: playerState.repeatMode != RepeatMode.off
                   ? AppColors.primaryGreen
                   : AppColors.textGrey,
@@ -138,21 +167,23 @@ class PlayerScreenContent extends ConsumerWidget {
             ),
             AppIconButton(
               icon: Icons.skip_previous,
-              size: 36,
+              size: 40, // Significantly increased from 32
               onTap: () => ref.read(playerProvider.notifier).previous(),
             ),
             AppPlayButton(
+              size: 68, // Increased from 56
               isPlaying: isPlaying,
               onTap: () =>
                   ref.read(playerProvider.notifier).togglePlayPause(song),
             ),
             AppIconButton(
               icon: Icons.skip_next,
-              size: 36,
+              size: 40, // Significantly increased from 32
               onTap: () => ref.read(playerProvider.notifier).next(),
             ),
             AppIconButton(
               icon: Icons.shuffle,
+              size: 26, // Scaled up
               color: ref.watch(playerProvider).isShuffling
                   ? AppColors.primaryGreen
                   : AppColors.textGrey,
@@ -160,41 +191,7 @@ class PlayerScreenContent extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.mic_none,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  song.artist.split(' ').first,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
-            ),
-            const AppIconButton(
-              icon: Icons.queue_music,
-              color: Colors.white70,
-              size: 24,
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 10), // Cleaned up bottom gap
       ],
     );
   }
@@ -218,46 +215,64 @@ class LyricsHeaderContent extends ConsumerWidget {
     if (song == null) return const SizedBox.shrink();
 
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            const SizedBox(width: 62),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    song.title,
-                    style: AppTextStyles.titleMedium.copyWith(
-                      color: AppColors.textLight,
-                      fontSize: 16,
+        const SizedBox(height: 32), // Match the album art's top position
+        SizedBox(
+          height: 50, // Match the album art's height
+          child: Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.center, // Vertically center text with art
+            children: [
+              const SizedBox(width: 62), // 50px art + 12px gap
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      song.title,
+                      style: AppTextStyles.titleMedium.copyWith(
+                        color: AppColors.textLight,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  Text(song.artist, style: AppTextStyles.bodySmall),
-                ],
+                    Text(
+                      song.artist,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textGrey,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const AppIconButton(
-              icon: Icons.more_horiz,
-              color: AppColors.textGrey,
-            ),
-            const SizedBox(width: 16),
-            const AppIconButton(
-              icon: Icons.favorite,
-              color: Colors.white24,
-              size: 22,
-            ),
-          ],
+              const AppIconButton(
+                icon: Icons.more_horiz,
+                color: AppColors.textGrey,
+              ),
+              const SizedBox(width: 8),
+              const AppIconButton(
+                icon: Icons.favorite,
+                color: Colors.white24,
+                size: 22,
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 10),
-        Container(
-          width: 40,
-          height: 4,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(2),
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
         ),
       ],

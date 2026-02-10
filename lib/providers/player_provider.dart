@@ -207,6 +207,26 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     await play(playlist[index], queue: playlist, index: index);
   }
 
+  void updateFavoriteStatus(int songId, bool isFavorite) {
+    if (state.currentSong?.id == songId) {
+      state = state.copyWith(
+        currentSong: state.currentSong!.copyWith(isFavorite: isFavorite),
+      );
+    }
+
+    // Also update in the current queue to keep it consistent
+    if (state.queue.any((s) => s.id == songId)) {
+      state = state.copyWith(
+        queue: state.queue.map((s) {
+          if (s.id == songId) {
+            return s.copyWith(isFavorite: isFavorite);
+          }
+          return s;
+        }).toList(),
+      );
+    }
+  }
+
   void toggleRepeat() {
     final nextMode = RepeatMode
         .values[(state.repeatMode.index + 1) % RepeatMode.values.length];
