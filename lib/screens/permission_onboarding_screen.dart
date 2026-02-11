@@ -142,7 +142,7 @@ class _PermissionOnboardingScreenState
     if (mounted) {
       Navigator.of(
         context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const RootLayout()));
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const AppShell()));
     }
   }
 

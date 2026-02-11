@@ -113,6 +113,7 @@ class PlaylistDetailsScreen extends ConsumerWidget {
                   else if (songs.isNotEmpty)
                     AppArtwork(
                       songId: songs.first.id,
+                      songPath: songs.first.url,
                       size: 300,
                       borderRadius: 0,
                     )

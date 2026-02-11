@@ -67,7 +67,11 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
           // 1. Dynamic Blurred Background (Matching Home)
           if (currentSong != null)
             Positioned.fill(
-              child: AppArtwork(songId: currentSong.id, fit: BoxFit.cover),
+              child: AppArtwork(
+                songId: currentSong.id,
+                songPath: currentSong.url,
+                fit: BoxFit.cover,
+              ),
             ),
 
           if (currentSong != null)
@@ -150,6 +154,7 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
                                 child: albumSongs.isNotEmpty
                                     ? AppArtwork(
                                         songId: albumSongs.first.id,
+                                        songPath: albumSongs.first.url,
                                         size: 180,
                                       )
                                     : Container(color: Colors.grey[900]),

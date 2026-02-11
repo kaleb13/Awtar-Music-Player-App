@@ -15,6 +15,8 @@ import 'widgets/app_artwork.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/stats_provider.dart';
 
+final GlobalKey<NavigatorState> innerNavigatorKey = GlobalKey<NavigatorState>();
+
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError();
 });
@@ -68,8 +70,45 @@ class MyApp extends ConsumerWidget {
         ),
       ),
       home: onboardingCompleted
-          ? const RootLayout()
+          ? const AppShell()
           : const PermissionOnboardingScreen(),
+    );
+  }
+}
+
+class AppShell extends ConsumerWidget {
+  const AppShell({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final NavigatorState? navigator = innerNavigatorKey.currentState;
+        if (navigator != null && navigator.canPop()) {
+          navigator.pop();
+        } else {
+          // If we are at the root of the inner navigator, we can close the app or go back to android home
+          SystemNavigator.pop();
+        }
+      },
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Navigator(
+              key: innerNavigatorKey,
+              onGenerateRoute: (settings) {
+                return MaterialPageRoute(
+                  builder: (context) => const RootLayout(),
+                  settings: settings,
+                );
+              },
+            ),
+          ),
+          const Positioned.fill(child: MainMusicPlayer()),
+        ],
+      ),
     );
   }
 }
@@ -159,8 +198,6 @@ class RootLayout extends ConsumerWidget {
 
         // 4. Main App Scaffold (must be transparent to see the background)
         Scaffold(backgroundColor: Colors.transparent, body: content),
-
-        const MainMusicPlayer(),
       ],
     );
   }

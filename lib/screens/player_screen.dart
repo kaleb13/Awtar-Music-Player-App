@@ -19,180 +19,188 @@ class PlayerScreenContent extends ConsumerWidget {
 
     if (song == null) return const SizedBox.shrink();
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(
-          height: 25,
-        ), // Increased from 15 to push the top bar down slightly
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            AppIconButton(
-              icon: Icons.arrow_back,
-              onTap: () =>
-                  ref.read(screenProvider.notifier).state = AppScreen.home,
-            ),
-            Text(
-              "Songs",
-              style: AppTextStyles.caption.copyWith(
-                color: Colors.black,
-                fontSize: 16,
+    return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            height: 25,
+          ), // Increased from 15 to push the top bar down slightly
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              AppIconButton(
+                icon: Icons.arrow_back,
+                onTap: () =>
+                    ref.read(screenProvider.notifier).state = AppScreen.home,
               ),
-            ),
-            const AppIconButton(icon: Icons.more_horiz),
-          ],
-        ),
-        SizedBox(
-          height: (MediaQuery.of(context).size.width - 48) + 35,
-        ), // Reduced from 45 to 35 to fix overflow
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    song.title,
-                    style: AppTextStyles.titleLarge.copyWith(
-                      color: AppColors.textLight,
-                      fontSize: 24, // Slightly reduced from 26
-                      fontWeight: FontWeight.bold,
+              Text(
+                "Songs",
+                style: AppTextStyles.caption.copyWith(
+                  color: Colors.black,
+                  fontSize: 16,
+                ),
+              ),
+              const AppIconButton(icon: Icons.more_horiz),
+            ],
+          ),
+          SizedBox(
+            height:
+                ((MediaQuery.of(context).size.width - 48)).clamp(0, 450) + 35,
+          ), // Capped and reduced to prevent massive overflows on wide screens
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      song.title,
+                      style: AppTextStyles.titleLarge.copyWith(
+                        color: AppColors.textLight,
+                        fontSize: 24, // Slightly reduced from 26
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    Text(
+                      song.artist,
+                      style: AppTextStyles.bodyMain.copyWith(
+                        color: AppColors.textGrey,
+                        fontSize: 16, // Slightly reduced from 18
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () =>
+                    ref.read(libraryProvider.notifier).toggleFavorite(song),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 8,
                   ),
-                  Text(
-                    song.artist,
-                    style: AppTextStyles.bodyMain.copyWith(
-                      color: AppColors.textGrey,
-                      fontSize: 16, // Slightly reduced from 18
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  decoration: BoxDecoration(
+                    color: song.isFavorite
+                        ? AppColors.primaryGreen
+                        : Colors.black.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(30),
+                    border: song.isFavorite
+                        ? null
+                        : Border.all(color: Colors.black12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        song.isFavorite
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: song.isFavorite ? Colors.white : Colors.black54,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Favorite",
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: song.isFavorite
+                              ? Colors.white
+                              : Colors.black54,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20), // Reduced from 30
+          Consumer(
+            builder: (context, ref, child) {
+              final position = ref.watch(
+                playerProvider.select((s) => s.position),
+              );
+              final duration = ref.watch(
+                playerProvider.select((s) => s.duration),
+              );
+              return Column(
+                children: [
+                  AppProgressBar(
+                    value: position.inSeconds.toDouble(),
+                    max: duration.inSeconds.toDouble(),
+                    onChanged: (v) => ref
+                        .read(playerProvider.notifier)
+                        .seek(Duration(seconds: v.toInt())),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatDuration(position),
+                        style: AppTextStyles.caption.copyWith(fontSize: 11),
+                      ),
+                      Text(
+                        _formatDuration(duration),
+                        style: AppTextStyles.caption.copyWith(fontSize: 11),
+                      ),
+                    ],
                   ),
                 ],
+              );
+            },
+          ),
+          const SizedBox(height: 22), // Reduced from 28 to fix overflow
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              AppIconButton(
+                icon: playerState.repeatMode == RepeatMode.one
+                    ? Icons.repeat_one
+                    : Icons.repeat,
+                size: 26, // Scaled up
+                color: playerState.repeatMode != RepeatMode.off
+                    ? AppColors.primaryGreen
+                    : AppColors.textGrey,
+                onTap: () => ref.read(playerProvider.notifier).toggleRepeat(),
               ),
-            ),
-            GestureDetector(
-              onTap: () =>
-                  ref.read(libraryProvider.notifier).toggleFavorite(song),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: song.isFavorite
-                      ? AppColors.primaryGreen
-                      : Colors.black.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(30),
-                  border: song.isFavorite
-                      ? null
-                      : Border.all(color: Colors.black12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      song.isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: song.isFavorite ? Colors.white : Colors.black54,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      "Favorite",
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: song.isFavorite ? Colors.white : Colors.black54,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
+              AppIconButton(
+                icon: Icons.skip_previous,
+                size: 40, // Significantly increased from 32
+                onTap: () => ref.read(playerProvider.notifier).previous(),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20), // Reduced from 30
-        Consumer(
-          builder: (context, ref, child) {
-            final position = ref.watch(
-              playerProvider.select((s) => s.position),
-            );
-            final duration = ref.watch(
-              playerProvider.select((s) => s.duration),
-            );
-            return Column(
-              children: [
-                AppProgressBar(
-                  value: position.inSeconds.toDouble(),
-                  max: duration.inSeconds.toDouble(),
-                  onChanged: (v) => ref
-                      .read(playerProvider.notifier)
-                      .seek(Duration(seconds: v.toInt())),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatDuration(position),
-                      style: AppTextStyles.caption.copyWith(fontSize: 11),
-                    ),
-                    Text(
-                      _formatDuration(duration),
-                      style: AppTextStyles.caption.copyWith(fontSize: 11),
-                    ),
-                  ],
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 22), // Reduced from 28 to fix overflow
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            AppIconButton(
-              icon: playerState.repeatMode == RepeatMode.one
-                  ? Icons.repeat_one
-                  : Icons.repeat,
-              size: 26, // Scaled up
-              color: playerState.repeatMode != RepeatMode.off
-                  ? AppColors.primaryGreen
-                  : AppColors.textGrey,
-              onTap: () => ref.read(playerProvider.notifier).toggleRepeat(),
-            ),
-            AppIconButton(
-              icon: Icons.skip_previous,
-              size: 40, // Significantly increased from 32
-              onTap: () => ref.read(playerProvider.notifier).previous(),
-            ),
-            AppPlayButton(
-              size: 68, // Increased from 56
-              isPlaying: isPlaying,
-              onTap: () =>
-                  ref.read(playerProvider.notifier).togglePlayPause(song),
-            ),
-            AppIconButton(
-              icon: Icons.skip_next,
-              size: 40, // Significantly increased from 32
-              onTap: () => ref.read(playerProvider.notifier).next(),
-            ),
-            AppIconButton(
-              icon: Icons.shuffle,
-              size: 26, // Scaled up
-              color: ref.watch(playerProvider).isShuffling
-                  ? AppColors.primaryGreen
-                  : AppColors.textGrey,
-              onTap: () => ref.read(playerProvider.notifier).toggleShuffle(),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10), // Cleaned up bottom gap
-      ],
+              AppPlayButton(
+                size: 68, // Increased from 56
+                isPlaying: isPlaying,
+                onTap: () =>
+                    ref.read(playerProvider.notifier).togglePlayPause(song),
+              ),
+              AppIconButton(
+                icon: Icons.skip_next,
+                size: 40, // Significantly increased from 32
+                onTap: () => ref.read(playerProvider.notifier).next(),
+              ),
+              AppIconButton(
+                icon: Icons.shuffle,
+                size: 26, // Scaled up
+                color: ref.watch(playerProvider).isShuffling
+                    ? AppColors.primaryGreen
+                    : AppColors.textGrey,
+                onTap: () => ref.read(playerProvider.notifier).toggleShuffle(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10), // Cleaned up bottom gap
+        ],
+      ),
     );
   }
 

@@ -303,6 +303,12 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         );
       }).toList();
 
+      // Preserve custom artist images
+      final Map<String, String> artistImageMap = {
+        for (var a in state.artists)
+          if (a.imagePath != null) a.artist: a.imagePath!,
+      };
+
       final artists = artistModels
           .map(
             (a) => Artist(
@@ -310,6 +316,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
               artist: a.artist,
               numberOfTracks: a.numberOfTracks ?? 0,
               numberOfAlbums: a.numberOfAlbums ?? 0,
+              imagePath: artistImageMap[a.artist],
             ),
           )
           .toList();
@@ -320,7 +327,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
               id: a.id,
               album: a.album,
               artist: a.artist ?? "Unknown Artist",
-              numberOfSongs: a.numOfSongs ?? 0,
+              numberOfSongs: a.numOfSongs,
             ),
           )
           .toList();
@@ -590,6 +597,12 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       artistSongs.putIfAbsent(song.artist, () => []).add(song);
     }
 
+    // Preserve custom artist images
+    final Map<String, String> artistImageMap = {
+      for (var a in state.artists)
+        if (a.imagePath != null) a.artist: a.imagePath!,
+    };
+
     return artistSongs.entries.map((entry) {
       final artistAlbums = entry.value
           .map((s) => s.album)
@@ -601,6 +614,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         artist: entry.key,
         numberOfTracks: entry.value.length,
         numberOfAlbums: artistAlbums,
+        imagePath: artistImageMap[entry.key],
       );
     }).toList();
   }
@@ -665,16 +679,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     if (state.songs.isEmpty) return;
 
     // Clear error/completion messages at start
-    state = LibraryState(
-      songs: state.songs,
-      artists: state.artists,
-      albums: state.albums,
-      folders: state.folders,
-      storageMap: state.storageMap,
-      bannerSong: state.bannerSong,
-      isLoading: state.isLoading,
-      permissionStatus: state.permissionStatus,
-      // explicit reset
+    state = state.copyWith(
       errorMessage: null,
       completionMessage: null,
       isReloadingMetadata: true,

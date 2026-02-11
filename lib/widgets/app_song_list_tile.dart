@@ -51,7 +51,11 @@ class AppSongListTile extends ConsumerWidget {
               child: SizedBox(
                 width: 50,
                 height: 50,
-                child: AppArtwork(songId: song.id, size: 50),
+                child: AppArtwork(
+                  songId: song.id,
+                  songPath: song.url,
+                  size: 50,
+                ),
               ),
             ),
             const SizedBox(width: 14),

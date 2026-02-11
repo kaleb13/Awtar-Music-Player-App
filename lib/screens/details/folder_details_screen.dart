@@ -55,7 +55,11 @@ class FolderDetailsScreen extends ConsumerWidget {
           // 1. Dynamic Blurred Background
           if (currentSong != null)
             Positioned.fill(
-              child: AppArtwork(songId: currentSong.id, fit: BoxFit.cover),
+              child: AppArtwork(
+                songId: currentSong.id,
+                songPath: currentSong.url,
+                fit: BoxFit.cover,
+              ),
             ),
 
           if (currentSong != null)
@@ -272,7 +276,7 @@ class FolderDetailsScreen extends ConsumerWidget {
       contentPadding: const EdgeInsets.only(bottom: 16),
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: AppArtwork(songId: song.id, size: 50),
+        child: AppArtwork(songId: song.id, songPath: song.url, size: 50),
       ),
       title: Text(
         song.title,

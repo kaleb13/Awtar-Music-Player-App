@@ -194,7 +194,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
       }
     });
 
-    // Fixed: ref.listen must be in build, not in a builder callback
+    // Observe screen changes for programmatic docking
     ref.listen(screenProvider, (prev, next) {
       const fastDuration = Duration(milliseconds: 350);
       const fastCurve = Curves.easeOutCubic;
@@ -210,6 +210,19 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
       }
     });
 
+    // Auto-dock player when navigating to detail screens (where nav is hidden)
+    ref.listen<bool>(bottomNavVisibleProvider, (prev, next) {
+      if (prev == true && next == false) {
+        if (_controller.value > 0.0 && _controller.value < 1.0) {
+          _controller.animateTo(
+            0.0,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      }
+    });
+
     return ListenableBuilder(
       listenable: _controller,
       builder: (context, child) {
@@ -217,286 +230,313 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
         final hasSong = song != null;
 
         // 1. DIMENSIONS LOGIC
-        double currentHeight;
-        double currentTop;
-        double currentRadius;
-        double currentMargin;
-        Color currentColor = AppColors.surfaceWhite;
-        if (val <= 1.0) {
-          // Dynamic starting position based on navigation bar visibility
-          final isNavVisible = ref.watch(bottomNavVisibleProvider);
-          final double miniPlayerBaseTop = isNavVisible
-              ? screenHeight - 150
-              : screenHeight - 75; // Lowered from 95 to sit at bottom
+        final isNavVisible = ref.watch(bottomNavVisibleProvider);
+        final double miniPlayerBaseTopTarget = isNavVisible
+            ? screenHeight - 150
+            : screenHeight - 75;
 
-          // New Mini Player: Height ~60, Bottom Nav visible (conditionally)
-          currentHeight = Tween<double>(
-            begin: 60,
-            end: screenHeight * 0.85,
-          ).transform(val);
-          currentTop = Tween<double>(
-            begin: miniPlayerBaseTop,
-            end: 0,
-          ).transform(val);
-          currentRadius = Tween<double>(
-            begin: 30, // Pill Shape
-            end: AppRadius.large,
-          ).transform(val);
-          currentMargin = Tween<double>(begin: 16, end: 0).transform(val);
-          currentColor = Color.lerp(
-            Colors.transparent, // Transparent for blurring bg
-            AppColors.surfaceWhite,
-            val.clamp(0.0, 1.0),
-          )!;
+        return TweenAnimationBuilder<double>(
+          tween: Tween<double>(
+            begin: miniPlayerBaseTopTarget,
+            end: miniPlayerBaseTopTarget,
+          ),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          builder: (context, miniPlayerBaseTop, _) {
+            double currentHeight;
+            double currentTop;
+            double currentRadius;
+            double currentMargin;
+            Color currentColor = AppColors.surfaceWhite;
 
-          // Update status bar based on player state
-          // When val > 0.3, player is expanding and background is getting lighter
-          if (val > 0.3) {
-            SystemChrome.setSystemUIOverlayStyle(
-              const SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                statusBarIconBrightness:
-                    Brightness.dark, // Dark icons for light background
-                statusBarBrightness: Brightness.light, // For iOS
-              ),
-            );
-          } else {
-            SystemChrome.setSystemUIOverlayStyle(
-              const SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                statusBarIconBrightness:
-                    Brightness.light, // Light icons for dark background
-                statusBarBrightness: Brightness.dark, // For iOS
-              ),
-            );
-          }
-        } else {
-          double t = val - 1.0;
-          currentHeight = Tween<double>(
-            begin: screenHeight * 0.85,
-            end: screenHeight * 0.18,
-          ).transform(t);
-          currentTop = 0;
-          currentRadius = AppRadius.large;
-          currentMargin = 0;
-        }
+            if (val <= 1.0) {
+              currentHeight = Tween<double>(
+                begin: 60,
+                end: screenHeight * 0.85,
+              ).transform(val);
+              currentTop = Tween<double>(
+                begin: miniPlayerBaseTop,
+                end: 0,
+              ).transform(val);
+              currentRadius = Tween<double>(
+                begin: 30, // Pill Shape
+                end: AppRadius.large,
+              ).transform(val);
+              currentMargin = Tween<double>(begin: 16, end: 0).transform(val);
+              currentColor = Color.lerp(
+                Colors.transparent, // Transparent for blurring bg
+                AppColors.surfaceWhite,
+                val.clamp(0.0, 1.0),
+              )!;
 
-        return Material(
-          type: MaterialType.transparency,
-          child: Stack(
-            children: [
-              if (val > 0.1 && hasSong)
-                Positioned.fill(
-                  key: const ValueKey('bg'),
-                  child: Opacity(
-                    opacity: ((val - 0.1) * 1.25).clamp(0.0, 1.0),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        gradient: AppColors.mainGradient,
-                      ),
-                    ),
+              // Update status bar based on player state
+              if (val > 0.3) {
+                SystemChrome.setSystemUIOverlayStyle(
+                  const SystemUiOverlayStyle(
+                    statusBarColor: Colors.transparent,
+                    statusBarIconBrightness: Brightness.dark,
+                    statusBarBrightness: Brightness.light,
                   ),
-                ),
-              if (val > 1.0 && hasSong)
-                Positioned(
-                  key: const ValueKey('lyrics'),
-                  top: ((2.0 - val) * screenHeight).clamp(0.0, screenHeight),
-                  left: 0,
-                  right: 0,
-                  height: screenHeight,
-                  child: LyricsScreenContent(
-                    onDragUpdate: (delta) {
-                      double screenHeight = MediaQuery.of(context).size.height;
-                      double relativeDelta = delta / screenHeight;
-                      _controller.value = (_controller.value - relativeDelta)
-                          .clamp(1.0, 2.0);
-                    },
-                    onDragEnd: (velocity) {
-                      _onVerticalDragEnd(
-                        DragEndDetails(
-                          primaryVelocity: velocity,
-                          velocity: Velocity(
-                            pixelsPerSecond: Offset(0, velocity),
+                );
+              } else {
+                SystemChrome.setSystemUIOverlayStyle(
+                  const SystemUiOverlayStyle(
+                    statusBarColor: Colors.transparent,
+                    statusBarIconBrightness: Brightness.light,
+                    statusBarBrightness: Brightness.dark,
+                  ),
+                );
+              }
+            } else {
+              double t = val - 1.0;
+              currentHeight = Tween<double>(
+                begin: screenHeight * 0.85,
+                end: screenHeight * 0.18,
+              ).transform(t);
+              currentTop = 0;
+              currentRadius = AppRadius.large;
+              currentMargin = 0;
+            }
+
+            return Material(
+              type: MaterialType.transparency,
+              child: Stack(
+                children: [
+                  if (val > 0.1 && hasSong)
+                    Positioned.fill(
+                      key: const ValueKey('bg'),
+                      child: Opacity(
+                        opacity: ((val - 0.1) * 1.25).clamp(0.0, 1.0),
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            gradient: AppColors.mainGradient,
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-              // Bottom Navigation Bar - Always show if visible
-              if (val < 0.2 && ref.watch(bottomNavVisibleProvider))
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  height: 160,
-                  child: Opacity(
-                    opacity: (1 - val * 5).clamp(0.0, 1.0),
-                    child: Container(
-                      alignment: Alignment.bottomCenter,
-                      padding: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            AppColors.background,
-                            AppColors.background,
-                          ],
-                          stops: const [0.0, 0.4, 1.0],
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildBottomNavItem(
-                              ref,
-                              MainTab.home,
-                              "Home",
-                              currentMainTab == MainTab.home,
-                              svgPath: AppAssets.home,
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildBottomNavItem(
-                              ref,
-                              MainTab.discover,
-                              "Discovery",
-                              currentMainTab == MainTab.discover,
-                              svgPath: AppAssets.search,
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildBottomNavItem(
-                              ref,
-                              MainTab.collection,
-                              "Collection",
-                              currentMainTab == MainTab.collection,
-                              svgPath: AppAssets.collection,
-                            ),
-                          ),
-                        ],
                       ),
                     ),
-                  ),
-                ),
-              if (hasSong)
-                Positioned(
-                  key: const ValueKey('card'),
-                  top: currentTop,
-                  left: currentMargin,
-                  right: currentMargin,
-                  height: currentHeight,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      if (_controller.value > 1.5) {
-                        ref.read(screenProvider.notifier).state =
-                            AppScreen.player;
-                      }
-                    },
-                    onVerticalDragUpdate: _onVerticalDragUpdate,
-                    onVerticalDragEnd: _onVerticalDragEnd,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: val > 1.0
-                            ? const BorderRadius.only(
-                                bottomLeft: Radius.circular(AppRadius.large),
-                                bottomRight: Radius.circular(AppRadius.large),
-                              )
-                            : BorderRadius.circular(currentRadius),
-                        boxShadow: val < 0.1
-                            ? []
-                            : [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.15),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 5),
-                                ),
+                  if (val > 1.0 && hasSong)
+                    Positioned(
+                      key: const ValueKey('lyrics'),
+                      top: ((2.0 - val) * screenHeight).clamp(
+                        0.0,
+                        screenHeight,
+                      ),
+                      left: 0,
+                      right: 0,
+                      height: screenHeight,
+                      child: LyricsScreenContent(
+                        onDragUpdate: (delta) {
+                          double screenHeight = MediaQuery.of(
+                            context,
+                          ).size.height;
+                          double relativeDelta = delta / screenHeight;
+                          _controller.value =
+                              (_controller.value - relativeDelta).clamp(
+                                1.0,
+                                2.0,
+                              );
+                        },
+                        onDragEnd: (velocity) {
+                          _onVerticalDragEnd(
+                            DragEndDetails(
+                              primaryVelocity: velocity,
+                              velocity: Velocity(
+                                pixelsPerSecond: Offset(0, velocity),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  // Bottom Navigation Bar - Always show if visible
+                  if (val < 0.2 && ref.watch(bottomNavVisibleProvider))
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 160,
+                      child: Opacity(
+                        opacity: (1 - val * 5).clamp(0.0, 1.0),
+                        child: Container(
+                          alignment: Alignment.bottomCenter,
+                          padding: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                AppColors.background,
+                                AppColors.background,
                               ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: val > 1.0
-                            ? const BorderRadius.only(
-                                bottomLeft: Radius.circular(AppRadius.large),
-                                bottomRight: Radius.circular(AppRadius.large),
-                              )
-                            : BorderRadius.circular(currentRadius),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(
-                            sigmaX: val < 0.5 ? 10 : 20,
-                            sigmaY: val < 0.5 ? 10 : 20,
+                              stops: const [0.0, 0.4, 1.0],
+                            ),
                           ),
-                          child: Container(
-                            color: val < 0.1
-                                ? Colors.black.withOpacity(0.3)
-                                : currentColor.withOpacity(0.95),
-                            child: SafeArea(
-                              bottom: false,
-                              top: false,
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  top: Tween<double>(
-                                    begin: 0,
-                                    end: MediaQuery.of(context).padding.top,
-                                  ).transform(val.clamp(0.0, 1.0)),
-                                  left: Tween<double>(
-                                    begin: 0,
-                                    end: 24,
-                                  ).transform(val.clamp(0.0, 1.0)),
-                                  right: Tween<double>(
-                                    begin: 0,
-                                    end: 24,
-                                  ).transform(val.clamp(0.0, 1.0)),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildBottomNavItem(
+                                  ref,
+                                  MainTab.home,
+                                  "Home",
+                                  currentMainTab == MainTab.home,
+                                  svgPath: AppAssets.home,
                                 ),
-                                child: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    _buildMorphingAlbumArt(
-                                      context,
-                                      val,
-                                      song.albumArt ??
-                                          "https://placeholder.com",
-                                      songId: song.id,
+                              ),
+                              Expanded(
+                                child: _buildBottomNavItem(
+                                  ref,
+                                  MainTab.discover,
+                                  "Discovery",
+                                  currentMainTab == MainTab.discover,
+                                  svgPath: AppAssets.search,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildBottomNavItem(
+                                  ref,
+                                  MainTab.collection,
+                                  "Collection",
+                                  currentMainTab == MainTab.collection,
+                                  svgPath: AppAssets.collection,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (hasSong)
+                    Positioned(
+                      key: const ValueKey('card'),
+                      top: currentTop,
+                      left: currentMargin,
+                      right: currentMargin,
+                      height: currentHeight,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          if (_controller.value > 1.5) {
+                            ref.read(screenProvider.notifier).state =
+                                AppScreen.player;
+                          }
+                        },
+                        onVerticalDragUpdate: _onVerticalDragUpdate,
+                        onVerticalDragEnd: _onVerticalDragEnd,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: val > 1.0
+                                ? const BorderRadius.only(
+                                    bottomLeft: Radius.circular(
+                                      AppRadius.large,
                                     ),
-                                    if (val < 0.5)
-                                      Positioned.fill(
-                                        child: Opacity(
-                                          opacity: (1 - val * 2).clamp(
-                                            0.0,
-                                            1.0,
-                                          ),
-                                          child: _buildMiniPlayerUI(song, ref),
-                                        ),
-                                      ),
-                                    if (val > 0.2 && val < 1.8)
-                                      Positioned.fill(
-                                        child: Opacity(
-                                          opacity: val <= 1.0
-                                              ? (val * 2 - 0.4).clamp(0.0, 1.0)
-                                              : (2 - val * 2 + 1).clamp(
-                                                  0.0,
-                                                  1.0,
-                                                ),
-                                          child: const RepaintBoundary(
-                                            child: PlayerScreenContent(),
-                                          ),
-                                        ),
-                                      ),
-                                    if (val > 1.2)
-                                      Positioned.fill(
-                                        child: Opacity(
-                                          opacity: ((val - 1.5) * 2).clamp(
-                                            0.0,
-                                            1.0,
-                                          ),
-                                          child: const RepaintBoundary(
-                                            child: LyricsHeaderContent(),
-                                          ),
-                                        ),
-                                      ),
+                                    bottomRight: Radius.circular(
+                                      AppRadius.large,
+                                    ),
+                                  )
+                                : BorderRadius.circular(currentRadius),
+                            boxShadow: val < 0.1
+                                ? []
+                                : [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.15),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 5),
+                                    ),
                                   ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: val > 1.0
+                                ? const BorderRadius.only(
+                                    bottomLeft: Radius.circular(
+                                      AppRadius.large,
+                                    ),
+                                    bottomRight: Radius.circular(
+                                      AppRadius.large,
+                                    ),
+                                  )
+                                : BorderRadius.circular(currentRadius),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(
+                                sigmaX: val < 0.5 ? 10 : 20,
+                                sigmaY: val < 0.5 ? 10 : 20,
+                              ),
+                              child: Container(
+                                color: val < 0.1
+                                    ? Colors.black.withOpacity(0.3)
+                                    : currentColor.withOpacity(0.95),
+                                child: SafeArea(
+                                  bottom: false,
+                                  top: false,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(
+                                      top: Tween<double>(
+                                        begin: 0,
+                                        end: MediaQuery.of(context).padding.top,
+                                      ).transform(val.clamp(0.0, 1.0)),
+                                      left: Tween<double>(
+                                        begin: 0,
+                                        end: 24,
+                                      ).transform(val.clamp(0.0, 1.0)),
+                                      right: Tween<double>(
+                                        begin: 0,
+                                        end: 24,
+                                      ).transform(val.clamp(0.0, 1.0)),
+                                    ),
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        _buildMorphingAlbumArt(
+                                          context,
+                                          val,
+                                          song.albumArt ??
+                                              "https://placeholder.com",
+                                          songId: song.id,
+                                          songPath: song.url,
+                                        ),
+                                        if (val < 0.5)
+                                          Positioned.fill(
+                                            child: Opacity(
+                                              opacity: (1 - val * 2).clamp(
+                                                0.0,
+                                                1.0,
+                                              ),
+                                              child: _buildMiniPlayerUI(
+                                                song,
+                                                ref,
+                                              ),
+                                            ),
+                                          ),
+                                        if (val > 0.2 && val < 1.3)
+                                          Positioned.fill(
+                                            child: Opacity(
+                                              opacity: val <= 1.0
+                                                  ? (val * 2 - 0.4).clamp(
+                                                      0.0,
+                                                      1.0,
+                                                    )
+                                                  : (1.0 - (val - 1.0) * 3)
+                                                        .clamp(0.0, 1.0),
+                                              child: const RepaintBoundary(
+                                                child: PlayerScreenContent(),
+                                              ),
+                                            ),
+                                          ),
+                                        if (val > 1.2)
+                                          Positioned.fill(
+                                            child: Opacity(
+                                              opacity: ((val - 1.5) * 2).clamp(
+                                                0.0,
+                                                1.0,
+                                              ),
+                                              child: const RepaintBoundary(
+                                                child: LyricsHeaderContent(),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -504,41 +544,45 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                         ),
                       ),
                     ),
-                  ),
-                ),
-              if (val > 1.5 && hasSong)
-                Positioned(
-                  key: const ValueKey('lyricsBar'),
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Opacity(
-                    opacity: ((val - 1.7) * 3).clamp(0.0, 1.0),
-                    child: const RepaintBoundary(
-                      child: LyricsBottomBarContent(),
-                    ),
-                  ),
-                ),
-              if (val > 0.5 && hasSong)
-                Positioned(
-                  top: (currentTop + currentHeight).clamp(0.0, screenHeight),
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Opacity(
-                    opacity: (val <= 1.0 ? (val - 0.5) * 2 : (2.0 - val) * 2)
-                        .clamp(0.0, 1.0),
-                    child: IgnorePointer(
-                      ignoring: val > 1.2,
-                      child: PlayerBottomBar(
-                        onVerticalDragUpdate: _onVerticalDragUpdate,
-                        onVerticalDragEnd: _onVerticalDragEnd,
+                  if (val > 1.5 && hasSong)
+                    Positioned(
+                      key: const ValueKey('lyricsBar'),
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Opacity(
+                        opacity: ((val - 1.7) * 3).clamp(0.0, 1.0),
+                        child: const RepaintBoundary(
+                          child: LyricsBottomBarContent(),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-            ],
-          ),
+                  if (val > 0.5 && hasSong)
+                    Positioned(
+                      top: (currentTop + currentHeight).clamp(
+                        0.0,
+                        screenHeight,
+                      ),
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Opacity(
+                        opacity:
+                            (val <= 1.0 ? (val - 0.5) * 2 : (2.0 - val) * 2)
+                                .clamp(0.0, 1.0),
+                        child: IgnorePointer(
+                          ignoring: val > 1.2,
+                          child: PlayerBottomBar(
+                            onVerticalDragUpdate: _onVerticalDragUpdate,
+                            onVerticalDragEnd: _onVerticalDragEnd,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -683,6 +727,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     double val,
     String url, {
     int? songId,
+    String? songPath,
   }) {
     final screenWidth = MediaQuery.of(context).size.width;
     final borderColor = _dominantColor ?? AppColors.accentYellow;
@@ -765,6 +810,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                 child: songId != null
                     ? AppArtwork(
                         songId: songId,
+                        songPath: songPath,
                         size: width > height ? width : height,
                         fit: BoxFit.cover,
                       )

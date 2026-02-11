@@ -102,7 +102,11 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
           // 1. Dynamic Blurred Background (Matching Home)
           if (currentSong != null)
             Positioned.fill(
-              child: AppArtwork(songId: currentSong.id, fit: BoxFit.cover),
+              child: AppArtwork(
+                songId: currentSong.id,
+                songPath: currentSong.url,
+                fit: BoxFit.cover,
+              ),
             ),
 
           if (currentSong != null)
@@ -158,6 +162,7 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                         onLongPress: () {
                           showModalBottomSheet(
                             context: context,
+                            useRootNavigator: true,
                             backgroundColor: AppColors.mainDark,
                             shape: const RoundedRectangleBorder(
                               borderRadius: BorderRadius.vertical(
@@ -235,6 +240,7 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                                 : (artistSongs.isNotEmpty
                                       ? AppArtwork(
                                           songId: artistSongs.first.id,
+                                          songPath: artistSongs.first.url,
                                           size: double.infinity,
                                         )
                                       : Container(color: Colors.grey[900])),

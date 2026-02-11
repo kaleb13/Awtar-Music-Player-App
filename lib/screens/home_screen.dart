@@ -293,6 +293,7 @@ class HomeOverviewContent extends ConsumerWidget {
                   aspectRatio: 1.0,
                   child: AppArtwork(
                     songId: artistSong.id,
+                    songPath: artistSong.url,
                     size: 100,
                     borderRadius: 50,
                   ),
@@ -382,7 +383,12 @@ class HomeOverviewContent extends ConsumerWidget {
       songId: albumSong.id,
       artwork: AspectRatio(
         aspectRatio: 1.0,
-        child: AppArtwork(songId: albumSong.id, borderRadius: 12, size: 200),
+        child: AppArtwork(
+          songId: albumSong.id,
+          songPath: albumSong.url,
+          borderRadius: 12,
+          size: 200,
+        ),
       ),
       flexible: true,
       size: 100,

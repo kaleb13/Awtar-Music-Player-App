@@ -121,7 +121,7 @@ class AppProgressBar extends StatelessWidget {
         thumbColor: activeColor,
       ),
       child: Slider(
-        value: value,
+        value: value.clamp(0.0, max.clamp(0.001, double.infinity)),
         max: max.clamp(0.001, double.infinity),
         onChanged: onChanged,
       ),
@@ -182,6 +182,7 @@ class AppPremiumCard extends StatefulWidget {
   final bool flexible;
   final Widget? artwork;
   final int? songId;
+  final String? songPath;
 
   const AppPremiumCard({
     super.key,
@@ -197,6 +198,7 @@ class AppPremiumCard extends StatefulWidget {
     this.flexible = false,
     this.artwork,
     this.songId,
+    this.songPath,
   });
 
   @override
@@ -265,6 +267,7 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
             (widget.songId != null
                 ? AppArtwork(
                     songId: widget.songId!,
+                    songPath: widget.songPath,
                     size: widget.size,
                     fit: widget.isPortrait ? BoxFit.cover : BoxFit.cover,
                   )
@@ -400,6 +403,7 @@ class AppPopularArtistCard extends StatelessWidget {
   final VoidCallback onTap;
   final Widget? artwork;
   final int? songId;
+  final String? songPath;
 
   const AppPopularArtistCard({
     super.key,
@@ -410,6 +414,7 @@ class AppPopularArtistCard extends StatelessWidget {
     required this.onTap,
     this.artwork,
     this.songId,
+    this.songPath,
   });
 
   @override
@@ -423,6 +428,7 @@ class AppPopularArtistCard extends StatelessWidget {
       isCircular: true,
       artwork: artwork,
       songId: songId,
+      songPath: songPath,
     );
   }
 }
@@ -437,6 +443,7 @@ class AppAlbumCard extends StatelessWidget {
   final VoidCallback? onTap;
   final Widget? artwork;
   final int? songId;
+  final String? songPath;
 
   const AppAlbumCard({
     super.key,
@@ -449,6 +456,7 @@ class AppAlbumCard extends StatelessWidget {
     this.onTap,
     this.artwork,
     this.songId,
+    this.songPath,
   });
 
   @override
@@ -462,6 +470,7 @@ class AppAlbumCard extends StatelessWidget {
       onTap: onTap,
       artwork: artwork,
       songId: songId,
+      songPath: songPath,
     );
   }
 }
