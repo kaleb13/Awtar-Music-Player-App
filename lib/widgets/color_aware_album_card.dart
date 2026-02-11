@@ -11,8 +11,12 @@ class ColorAwareAlbumCard extends StatelessWidget {
   final bool isPortrait;
   final bool showThreeDotsMenu;
   final VoidCallback? onTap;
+  final VoidCallback? onMenuTap;
   final Widget? artwork;
   final int? songId;
+  final String? songPath;
+  final PopupMenuItemBuilder<String>? menuBuilder;
+  final void Function(String)? onMenuSelected;
 
   const ColorAwareAlbumCard({
     super.key,
@@ -25,8 +29,12 @@ class ColorAwareAlbumCard extends StatelessWidget {
     this.isPortrait = false,
     this.showThreeDotsMenu = false,
     this.onTap,
+    this.onMenuTap,
     this.artwork,
     this.songId,
+    this.songPath,
+    this.menuBuilder,
+    this.onMenuSelected,
   });
 
   @override
@@ -42,8 +50,12 @@ class ColorAwareAlbumCard extends StatelessWidget {
       isPortrait: isPortrait,
       showMenu: showThreeDotsMenu,
       onTap: onTap,
+      onMenuTap: onMenuTap,
       artwork: artwork,
       songId: songId,
+      songPath: songPath,
+      menuBuilder: menuBuilder,
+      onMenuSelected: onMenuSelected,
     );
   }
 }

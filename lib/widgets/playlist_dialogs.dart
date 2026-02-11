@@ -9,7 +9,7 @@ class PlaylistDialogs {
     BuildContext context,
     WidgetRef ref,
     Song song, {
-    bool useRootNavigator = false,
+    bool useRootNavigator = true,
   }) {
     showModalBottomSheet(
       context: context,
@@ -155,7 +155,7 @@ class PlaylistDialogs {
     BuildContext context,
     WidgetRef ref, {
     Song? songToAddAfter,
-    bool useRootNavigator = false,
+    bool useRootNavigator = true,
   }) {
     final controller = TextEditingController();
     showDialog(

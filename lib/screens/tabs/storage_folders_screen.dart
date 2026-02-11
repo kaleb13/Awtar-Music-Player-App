@@ -149,7 +149,7 @@ class StorageFoldersScreen extends ConsumerWidget {
                                           scale: 0.8,
                                           child: Switch(
                                             value: !isExcluded,
-                                            activeColor: AppColors.primaryGreen,
+                                            activeThumbColor: AppColors.primaryGreen,
                                             inactiveThumbColor: Colors.white24,
                                             inactiveTrackColor: Colors.white
                                                 .withOpacity(0.1),

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:awtart_music_player/providers/navigation_provider.dart';
-import 'package:awtart_music_player/providers/library_provider.dart';
-import 'package:awtart_music_player/providers/player_provider.dart';
-import 'package:awtart_music_player/theme/app_theme.dart';
+import 'package:awtar_music_player/providers/navigation_provider.dart';
+import 'package:awtar_music_player/providers/library_provider.dart';
+import 'package:awtar_music_player/providers/player_provider.dart';
+import 'package:awtar_music_player/theme/app_theme.dart';
 import 'screens/main_sections.dart';
 import 'screens/home_screen.dart';
 import 'screens/main_player_screen.dart';
@@ -55,7 +55,6 @@ class MyApp extends ConsumerWidget {
         useMaterial3: true,
         splashColor: Colors.white.withOpacity(0.05),
         highlightColor: Colors.transparent,
-        indicatorColor: AppColors.accentYellow,
         tabBarTheme: TabBarThemeData(
           indicatorColor: AppColors.accentYellow,
           overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
@@ -88,6 +87,14 @@ class AppShell extends ConsumerWidget {
         final NavigatorState? navigator = innerNavigatorKey.currentState;
         if (navigator != null && navigator.canPop()) {
           navigator.pop();
+          return;
+        }
+
+        final currentScreen = ref.read(screenProvider);
+        if (currentScreen == AppScreen.lyrics) {
+          ref.read(screenProvider.notifier).state = AppScreen.player;
+        } else if (currentScreen == AppScreen.player) {
+          ref.read(screenProvider.notifier).state = AppScreen.home;
         } else {
           // If we are at the root of the inner navigator, we can close the app or go back to android home
           SystemNavigator.pop();
@@ -120,8 +127,7 @@ class RootLayout extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final libraryState = ref.watch(libraryProvider);
     final currentTab = ref.watch(mainTabProvider);
-    final playerState = ref.watch(playerProvider); // Added
-    final currentSong = playerState.currentSong; // Added
+    final currentSong = ref.watch(playerProvider.select((s) => s.currentSong));
 
     // Set status bar color for dark backgrounds (main app)
     SystemChrome.setSystemUIOverlayStyle(

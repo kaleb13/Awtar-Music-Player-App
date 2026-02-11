@@ -4,15 +4,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // PaletteGenerator removed
-import 'package:awtart_music_player/services/palette_service.dart';
-import 'package:awtart_music_player/providers/player_provider.dart';
-import 'package:awtart_music_player/providers/library_provider.dart';
-import 'package:awtart_music_player/providers/navigation_provider.dart';
-import 'package:awtart_music_player/theme/app_theme.dart';
-import 'package:awtart_music_player/widgets/app_artwork.dart';
-import 'package:awtart_music_player/widgets/app_widgets.dart';
-import 'package:awtart_music_player/widgets/playlist_dialogs.dart';
-import 'package:awtart_music_player/models/song.dart';
+import 'package:awtar_music_player/services/palette_service.dart';
+import 'package:awtar_music_player/providers/player_provider.dart';
+import 'package:awtar_music_player/providers/library_provider.dart';
+import 'package:awtar_music_player/providers/navigation_provider.dart';
+import 'package:awtar_music_player/theme/app_theme.dart';
+import 'package:awtar_music_player/widgets/app_artwork.dart';
+import 'package:awtar_music_player/widgets/app_widgets.dart';
+import 'package:awtar_music_player/widgets/playlist_dialogs.dart';
+import 'package:awtar_music_player/models/song.dart';
 import 'player_screen.dart';
 
 class MainMusicPlayer extends ConsumerStatefulWidget {
@@ -76,13 +76,28 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
         playerState.currentSong ??
         (library.songs.isNotEmpty ? library.songs.first : null);
 
-    if (song == null || song.albumArt == null) return;
+    if (song == null) return;
 
-    final color = await PaletteService.getColor(song.albumArt!);
-    if (mounted) {
-      setState(() {
-        _dominantColor = color;
-      });
+    // Use a default path if albumArt is null
+    final String artPath = song.albumArt ?? "";
+    if (artPath.isEmpty) {
+      if (mounted) setState(() => _dominantColor = AppColors.accentYellow);
+      return;
+    }
+
+    try {
+      final color = await PaletteService.getColor(
+        artPath,
+        songId: song.id,
+        songPath: song.url,
+      );
+      if (mounted) {
+        setState(() {
+          _dominantColor = color;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error updating palette: $e");
     }
   }
 
@@ -811,7 +826,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                     ? AppArtwork(
                         songId: songId,
                         songPath: songPath,
-                        size: width > height ? width : height,
+                        size:
+                            screenWidth, // Stable size (max needed) to avoid re-decoding
                         fit: BoxFit.cover,
                       )
                     : Image.network(

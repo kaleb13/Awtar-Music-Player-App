@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:awtart_music_player/providers/player_provider.dart';
-import 'package:awtart_music_player/providers/library_provider.dart';
-import 'package:awtart_music_player/providers/navigation_provider.dart';
-import 'package:awtart_music_player/theme/app_theme.dart';
-import 'package:awtart_music_player/widgets/app_widgets.dart';
+import 'package:awtar_music_player/providers/player_provider.dart';
+import 'package:awtar_music_player/providers/library_provider.dart';
+import 'package:awtar_music_player/providers/navigation_provider.dart';
+import 'package:awtar_music_player/theme/app_theme.dart';
+import 'package:awtar_music_player/widgets/app_widgets.dart';
 import '../models/song.dart';
 
 class PlayerScreenContent extends ConsumerWidget {
@@ -198,7 +198,16 @@ class PlayerScreenContent extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10), // Cleaned up bottom gap
+          const SizedBox(height: 8),
+          Text(
+            "${playerState.currentIndex + 1} / ${playerState.queue.length}",
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.mainDark,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 20),
         ],
       ),
     );

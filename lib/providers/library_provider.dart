@@ -30,6 +30,8 @@ class LibraryState {
   final List<String> folders;
   final Map<String, List<String>> storageMap;
   final Set<String> excludedFolders; // Folders that are excluded from library
+  final Set<String> hiddenArtists; // Artists hidden from list
+  final Set<String> hiddenAlbums; // Albums hidden from list
   final Song? bannerSong;
   final bool isLoading;
   final LibraryPermissionStatus permissionStatus;
@@ -46,6 +48,8 @@ class LibraryState {
     this.folders = const [],
     this.storageMap = const {},
     this.excludedFolders = const {},
+    this.hiddenArtists = const {},
+    this.hiddenAlbums = const {},
     this.bannerSong,
     this.isLoading = false,
     this.permissionStatus = LibraryPermissionStatus.initial,
@@ -63,6 +67,8 @@ class LibraryState {
     List<String>? folders,
     Map<String, List<String>>? storageMap,
     Set<String>? excludedFolders,
+    Set<String>? hiddenArtists,
+    Set<String>? hiddenAlbums,
     Song? bannerSong,
     bool? isLoading,
     LibraryPermissionStatus? permissionStatus,
@@ -79,6 +85,8 @@ class LibraryState {
       folders: folders ?? this.folders,
       storageMap: storageMap ?? this.storageMap,
       excludedFolders: excludedFolders ?? this.excludedFolders,
+      hiddenArtists: hiddenArtists ?? this.hiddenArtists,
+      hiddenAlbums: hiddenAlbums ?? this.hiddenAlbums,
       bannerSong: bannerSong ?? this.bannerSong,
       isLoading: isLoading ?? this.isLoading,
       permissionStatus: permissionStatus ?? this.permissionStatus,
@@ -94,8 +102,10 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   final OnAudioQuery _audioQuery = OnAudioQuery();
   final Ref _ref;
 
-  LibraryNotifier(this._ref) : super(LibraryState()) {
-    _init();
+  LibraryNotifier(this._ref, {bool skipInit = false}) : super(LibraryState()) {
+    if (!skipInit) {
+      _init();
+    }
   }
 
   Future<void> _init() async {
@@ -128,6 +138,12 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         final Set<String> excludedFolders = Set<String>.from(
           decoded['excludedFolders'] ?? [],
         );
+        final Set<String> hiddenArtists = Set<String>.from(
+          decoded['hiddenArtists'] ?? [],
+        );
+        final Set<String> hiddenAlbums = Set<String>.from(
+          decoded['hiddenAlbums'] ?? [],
+        );
         final Map<String, List<String>> storageMap = {};
         if (decoded['storageMap'] != null) {
           (decoded['storageMap'] as Map).forEach((k, v) {
@@ -143,6 +159,8 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           folders: folders,
           storageMap: storageMap,
           excludedFolders: excludedFolders,
+          hiddenArtists: hiddenArtists,
+          hiddenAlbums: hiddenAlbums,
         );
 
         if (songs.isNotEmpty) {
@@ -172,11 +190,35 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         'folders': state.folders,
         'storageMap': state.storageMap,
         'excludedFolders': state.excludedFolders.toList(),
+        'hiddenArtists': state.hiddenArtists.toList(),
+        'hiddenAlbums': state.hiddenAlbums.toList(),
       });
       await prefs.setString('library_cache_v3', cacheData);
     } catch (e) {
       debugPrint("Error saving library cache: $e");
     }
+  }
+
+  void toggleArtistVisibility(String artistName) {
+    final hidden = Set<String>.from(state.hiddenArtists);
+    if (hidden.contains(artistName)) {
+      hidden.remove(artistName);
+    } else {
+      hidden.add(artistName);
+    }
+    state = state.copyWith(hiddenArtists: hidden);
+    _saveToCache();
+  }
+
+  void toggleAlbumVisibility(String albumKey) {
+    final hidden = Set<String>.from(state.hiddenAlbums);
+    if (hidden.contains(albumKey)) {
+      hidden.remove(albumKey);
+    } else {
+      hidden.add(albumKey);
+    }
+    state = state.copyWith(hiddenAlbums: hidden);
+    _saveToCache();
   }
 
   Future<void> _checkPermission() async {
@@ -282,8 +324,6 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       ]);
 
       final songModels = results[0] as List<SongModel>;
-      final artistModels = results[1] as List<ArtistModel>;
-      final albumModels = results[2] as List<AlbumModel>;
 
       final songs = songModels.map((s) {
         String? artworkUri;
@@ -303,34 +343,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         );
       }).toList();
 
-      // Preserve custom artist images
-      final Map<String, String> artistImageMap = {
-        for (var a in state.artists)
-          if (a.imagePath != null) a.artist: a.imagePath!,
-      };
-
-      final artists = artistModels
-          .map(
-            (a) => Artist(
-              id: a.id,
-              artist: a.artist,
-              numberOfTracks: a.numberOfTracks ?? 0,
-              numberOfAlbums: a.numberOfAlbums ?? 0,
-              imagePath: artistImageMap[a.artist],
-            ),
-          )
-          .toList();
-
-      final albums = albumModels
-          .map(
-            (a) => Album(
-              id: a.id,
-              album: a.album,
-              artist: a.artist ?? "Unknown Artist",
-              numberOfSongs: a.numOfSongs,
-            ),
-          )
-          .toList();
+      // artists and albums will be rebuilt from filtered songs later
 
       final Set<String> folderSet = {};
       final Map<String, Set<String>> storageParentFolders = {};
@@ -392,8 +405,19 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         return s;
       }).toList();
 
+      // IMPORTANT: Respect folder exclusions during scan
+      final filteredSongs = _filterSongsByFolders(
+        updatedSongs,
+        state.excludedFolders,
+      );
+
+      // Rebuild artists and albums from the filtered song list
+      // instead of using raw results which ignore folder exclusions.
+      final artists = _rebuildArtists(filteredSongs);
+      final albums = _rebuildAlbums(filteredSongs);
+
       state = state.copyWith(
-        songs: updatedSongs,
+        songs: filteredSongs,
         artists: artists,
         albums: albums,
         folders: folderSet.toList(),
@@ -401,8 +425,9 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         isLoading: false,
       );
 
-      if (updatedSongs.isNotEmpty) {
-        _updateBannerSong(updatedSongs);
+      // Trigger banner update with filtered songs
+      if (filteredSongs.isNotEmpty) {
+        _updateBannerSong(filteredSongs);
       }
 
       _saveToCache();

@@ -5,7 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../providers/library_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../widgets/app_artwork.dart';
-import 'package:awtart_music_player/services/palette_service.dart';
+import 'package:awtar_music_player/services/palette_service.dart';
 import 'album_details_screen.dart';
 import '../../models/song.dart';
 import 'package:image_picker/image_picker.dart';
@@ -84,7 +84,7 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
 
     final displayTopTracks = topTracks.take(5).toList();
 
-    Future<void> _pickArtistImage() async {
+    Future<void> pickArtistImage() async {
       final picker = ImagePicker();
       final image = await picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
@@ -204,7 +204,7 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                                     ),
                                     onTap: () {
                                       Navigator.pop(context);
-                                      _pickArtistImage();
+                                      pickArtistImage();
                                     },
                                   ),
                                   const SizedBox(height: 20),

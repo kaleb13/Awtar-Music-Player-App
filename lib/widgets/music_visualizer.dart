@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:awtart_music_player/providers/player_provider.dart';
-import 'package:awtart_music_player/theme/app_theme.dart';
+import 'package:awtar_music_player/providers/player_provider.dart';
+import 'package:awtar_music_player/theme/app_theme.dart';
 
 class MusicVisualizer extends ConsumerStatefulWidget {
   const MusicVisualizer({super.key});

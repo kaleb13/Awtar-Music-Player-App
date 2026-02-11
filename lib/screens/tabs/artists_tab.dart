@@ -13,7 +13,10 @@ class ArtistsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final libraryState = ref.watch(libraryProvider);
-    final artists = libraryState.artists;
+    // Filter hidden artists
+    final artists = libraryState.artists
+        .where((a) => !libraryState.hiddenArtists.contains(a.artist))
+        .toList();
 
     if (libraryState.permissionStatus != LibraryPermissionStatus.granted) {
       return Center(
@@ -106,8 +109,61 @@ class ArtistsTab extends ConsumerWidget {
               ref.read(bottomNavVisibleProvider.notifier).state = true;
             });
           },
+          onLongPress: () {
+            _showHideDialog(context, ref, artist.artist);
+          },
         );
       },
+    );
+  }
+
+  void _showHideDialog(BuildContext context, WidgetRef ref, String artistName) {
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetC) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceDark,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.visibility_off, color: Colors.white),
+              title: Text(
+                "Hide $artistName",
+                style: const TextStyle(color: Colors.white),
+              ),
+              subtitle: const Text(
+                "You can unhide it later from Settings",
+                style: TextStyle(color: Colors.white54),
+              ),
+              onTap: () {
+                ref
+                    .read(libraryProvider.notifier)
+                    .toggleArtistVisibility(artistName);
+                Navigator.pop(sheetC);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Hidden $artistName"),
+                    action: SnackBarAction(
+                      label: "Undo",
+                      onPressed: () {
+                        ref
+                            .read(libraryProvider.notifier)
+                            .toggleArtistVisibility(artistName);
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

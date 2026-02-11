@@ -250,8 +250,11 @@ class HomeOverviewContent extends ConsumerWidget {
       return _buildEmptyState("No artists played yet");
     }
 
-    final sortedArtists = stats.artistPlayDuration.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sortedArtists =
+        stats.artistPlayDuration.entries
+            .where((e) => !libraryState.hiddenArtists.contains(e.key))
+            .toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
 
     // Top 3 artists as requested
     final topArtists = sortedArtists.take(3).map((e) {
@@ -289,6 +292,7 @@ class HomeOverviewContent extends ConsumerWidget {
                 name: name,
                 imageUrl: "",
                 songId: artistSong.id,
+                songPath: artistSong.url,
                 artwork: AspectRatio(
                   aspectRatio: 1.0,
                   child: AppArtwork(
@@ -330,8 +334,11 @@ class HomeOverviewContent extends ConsumerWidget {
       return _buildEmptyState("No albums played yet");
     }
 
-    final sortedAlbums = stats.albumPlayDuration.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sortedAlbums =
+        stats.albumPlayDuration.entries
+            .where((e) => !libraryState.hiddenAlbums.contains(e.key))
+            .toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
 
     // Take top 2 as requested
     final topAlbums = sortedAlbums.take(2).map((e) {
@@ -381,6 +388,7 @@ class HomeOverviewContent extends ConsumerWidget {
       artist: album.artist,
       imageUrl: "",
       songId: albumSong.id,
+      songPath: albumSong.url,
       artwork: AspectRatio(
         aspectRatio: 1.0,
         child: AppArtwork(
@@ -422,17 +430,31 @@ class HomeOverviewContent extends ConsumerWidget {
     final sortedSongs = stats.songPlayCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final topSongIds = sortedSongs.take(3).map((e) => e.key).toList();
-    final displaySongs = topSongIds
-        .map(
-          (id) => libraryState.songs.firstWhere(
-            (s) => s.id == id,
-            orElse: () => libraryState.songs.first,
-          ),
-        )
-        .toList();
+    final fullQueue = <Song>[];
+    for (var entry in sortedSongs.take(50)) {
+      final song = libraryState.songs
+          .where((s) => s.id == entry.key)
+          .firstOrNull;
+      if (song != null) {
+        // Filter out if artist or album is hidden
+        final isHidden =
+            libraryState.hiddenArtists.contains(song.artist) ||
+            (song.album != null &&
+                libraryState.hiddenAlbums.contains(
+                  "${song.album}_${song.artist}",
+                ));
+        if (!isHidden) fullQueue.add(song);
+      }
+    }
 
-    return _buildSongRow(ref, displaySongs);
+    if (fullQueue.isEmpty) {
+      return _buildEmptyState("Play music to see your top songs");
+    }
+
+    final limitedQueue = fullQueue.take(30).toList();
+    final displaySongs = limitedQueue.take(3).toList();
+
+    return _buildSongRow(ref, displaySongs, limitedQueue);
   }
 
   Widget _buildRecentSection(
@@ -444,17 +466,29 @@ class HomeOverviewContent extends ConsumerWidget {
       return _buildEmptyState("History is currently empty");
     }
 
-    final displaySongs = stats.recentPlayedIds
-        .take(3)
-        .map(
-          (id) => libraryState.songs.firstWhere(
-            (s) => s.id == id,
-            orElse: () => libraryState.songs.first,
-          ),
-        )
-        .toList();
+    final fullQueue = <Song>[];
+    for (var id in stats.recentPlayedIds.take(50)) {
+      final song = libraryState.songs.where((s) => s.id == id).firstOrNull;
+      if (song != null) {
+        // Filter out if artist or album is hidden
+        final isHidden =
+            libraryState.hiddenArtists.contains(song.artist) ||
+            (song.album != null &&
+                libraryState.hiddenAlbums.contains(
+                  "${song.album}_${song.artist}",
+                ));
+        if (!isHidden) fullQueue.add(song);
+      }
+    }
 
-    return _buildSongRow(ref, displaySongs);
+    if (fullQueue.isEmpty) {
+      return _buildEmptyState("History is currently empty");
+    }
+
+    final limitedQueue = fullQueue.take(30).toList();
+    final displaySongs = limitedQueue.take(3).toList();
+
+    return _buildSongRow(ref, displaySongs, limitedQueue);
   }
 
   Widget _buildSummarySection(PlayStats stats) {
@@ -498,34 +532,47 @@ class HomeOverviewContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildSongRow(WidgetRef ref, List<Song> songs) {
+  Widget _buildSongRow(
+    WidgetRef ref,
+    List<Song> displaySongs,
+    List<Song> fullQueue,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        children: songs
-            .map(
-              (song) => Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ColorAwareAlbumCard(
-                    onTap: () => ref.read(playerProvider.notifier).play(song),
-                    title: song.title,
-                    artist: song.artist,
-                    imageUrl: "",
-                    artwork: AspectRatio(
-                      aspectRatio: 1.0,
-                      child: AppArtwork(
-                        songId: song.id,
-                        size: 100,
-                        borderRadius: 12,
-                      ),
-                    ),
-                    flexible: true,
+        children: displaySongs.map((song) {
+          final indexInQueue = fullQueue.indexOf(song);
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: ColorAwareAlbumCard(
+                onTap: () {
+                  if (indexInQueue != -1) {
+                    ref
+                        .read(playerProvider.notifier)
+                        .playPlaylist(fullQueue, indexInQueue);
+                  } else {
+                    ref.read(playerProvider.notifier).play(song);
+                  }
+                },
+                title: song.title,
+                artist: song.artist,
+                imageUrl: "",
+                songId: song.id,
+                songPath: song.url,
+                artwork: AspectRatio(
+                  aspectRatio: 1.0,
+                  child: AppArtwork(
+                    songId: song.id,
+                    size: 100,
+                    borderRadius: 12,
                   ),
                 ),
+                flexible: true,
               ),
-            )
-            .toList(),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

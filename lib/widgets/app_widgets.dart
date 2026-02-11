@@ -183,6 +183,10 @@ class AppPremiumCard extends StatefulWidget {
   final Widget? artwork;
   final int? songId;
   final String? songPath;
+  final VoidCallback? onMenuTap;
+  final VoidCallback? onLongPress;
+  final PopupMenuItemBuilder<String>? menuBuilder;
+  final void Function(String)? onMenuSelected;
 
   const AppPremiumCard({
     super.key,
@@ -199,6 +203,10 @@ class AppPremiumCard extends StatefulWidget {
     this.artwork,
     this.songId,
     this.songPath,
+    this.onMenuTap,
+    this.onLongPress,
+    this.menuBuilder,
+    this.onMenuSelected,
   });
 
   @override
@@ -227,6 +235,7 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
     final color = await PaletteService.getColor(
       widget.imageUrl,
       songId: widget.songId,
+      songPath: widget.songPath,
     );
     if (mounted) {
       setState(() {
@@ -309,6 +318,7 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
 
     return GestureDetector(
       onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -321,39 +331,78 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
                 Positioned(
                   top: 4,
                   right: -4,
-                  child: Container(
-                    padding: widget.showMenu
-                        ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4)
-                        : const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
+                  child: widget.menuBuilder != null && widget.showMenu
+                      ? PopupMenuButton<String>(
+                          itemBuilder: widget.menuBuilder!,
+                          onSelected: widget.onMenuSelected,
+                          offset: const Offset(0, 30),
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0D0D0F),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: widget.showMenu
-                        ? const Icon(
-                            Icons.more_horiz,
-                            color: Colors.white,
-                            size: 14,
-                          )
-                        : Text(
-                            widget.badgeText!,
-                            style: const TextStyle(
+                          color: AppColors.surfaceDark,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0D0D0F),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.more_horiz,
                               color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.normal,
+                              size: 14,
                             ),
                           ),
-                  ),
+                        )
+                      : GestureDetector(
+                          onTap: widget.showMenu ? widget.onMenuTap : null,
+                          child: Container(
+                            padding: widget.showMenu
+                                ? const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 4,
+                                  )
+                                : const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0D0D0F),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: widget.showMenu
+                                ? const Icon(
+                                    Icons.more_horiz,
+                                    color: Colors.white,
+                                    size: 14,
+                                  )
+                                : Text(
+                                    widget.badgeText!,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.normal,
+                                    ),
+                                  ),
+                          ),
+                        ),
                 ),
             ],
           ),

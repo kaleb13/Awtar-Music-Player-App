@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../providers/library_provider.dart';
 import '../widgets/app_widgets.dart';
+import 'hidden_assets_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -134,6 +135,48 @@ class SettingsScreen extends ConsumerWidget {
                                 size: 16,
                                 color: Colors.white54,
                               ),
+                      ),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.visibility_off,
+                            color: Colors.white,
+                          ),
+                        ),
+                        title: const Text(
+                          "Hidden Content",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          "Manage hidden artists and albums",
+                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.white54,
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HiddenAssetsScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),

@@ -63,7 +63,10 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
   AudioPlayerHandler? _audioHandler;
   bool _isInitializingHandler = false;
 
-  PlayerNotifier(this._ref) : super(MusicPlayerState()) {
+  PlayerNotifier(this._ref, {bool skipInit = false})
+    : super(MusicPlayerState()) {
+    if (skipInit) return;
+
     _loadLastPlayedSong();
     _initAudioHandler();
 
@@ -213,9 +216,10 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       await _initAudioHandler();
     }
 
-    final newQueue = queue ?? state.queue;
+    final newQueue = queue ?? [song];
+    // If no index provided, find the song in the queue (or use 0 for single-song queue)
     final newIndex =
-        index ?? (queue != null ? queue.indexOf(song) : state.currentIndex);
+        index ?? newQueue.indexOf(song).clamp(0, newQueue.length - 1);
 
     state = state.copyWith(
       currentSong: song,
@@ -375,6 +379,25 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     final nextMode = RepeatMode
         .values[(state.repeatMode.index + 1) % RepeatMode.values.length];
     state = state.copyWith(repeatMode: nextMode);
+  }
+
+  void addToQueue(List<Song> songs) {
+    if (songs.isEmpty) return;
+    // Remove duplicates if needed? standard players allow duplicates.
+    final newQueue = List<Song>.from(state.queue)..addAll(songs);
+    state = state.copyWith(queue: newQueue);
+  }
+
+  void addNext(List<Song> songs) {
+    if (songs.isEmpty) return;
+    if (state.queue.isEmpty) {
+      playPlaylist(songs, 0);
+      return;
+    }
+    final newQueue = List<Song>.from(state.queue);
+    // Insert after current index
+    newQueue.insertAll(state.currentIndex + 1, songs);
+    state = state.copyWith(queue: newQueue);
   }
 }
 

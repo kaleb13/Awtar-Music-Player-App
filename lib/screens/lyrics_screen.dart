@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/player_provider.dart';
 import '../providers/library_provider.dart';
-import 'package:awtart_music_player/providers/navigation_provider.dart';
-import 'package:awtart_music_player/widgets/app_artwork.dart';
+import 'package:awtar_music_player/providers/navigation_provider.dart';
+import 'package:awtar_music_player/widgets/app_artwork.dart';
 
 class LyricsScreen extends ConsumerWidget {
   const LyricsScreen({super.key});
