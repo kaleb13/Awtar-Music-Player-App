@@ -248,8 +248,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
 
   @override
   Widget build(BuildContext context) {
-    final playerState = ref.watch(playerProvider);
-    final Song? song = playerState.currentSong;
+    final currentSong = ref.watch(playerProvider.select((s) => s.currentSong));
+    final Song? song = currentSong;
 
     final screenHeight = MediaQuery.of(context).size.height;
     final currentMainTab = ref.watch(mainTabProvider);
@@ -624,7 +624,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
   }
 
   Widget _buildMiniPlayerUI(dynamic song, WidgetRef ref) {
-    final isPlaying = ref.watch(playerProvider).isPlaying;
+    final isPlaying = ref.watch(playerProvider.select((s) => s.isPlaying));
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(

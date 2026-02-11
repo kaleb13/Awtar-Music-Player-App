@@ -13,6 +13,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../main.dart';
 import 'player_provider.dart';
+import '../services/database_service.dart';
 
 enum LibraryPermissionStatus {
   initial,
@@ -42,6 +43,7 @@ class LibraryState {
   final String? completionMessage;
   final double metadataLoadProgress;
   final bool isReloadingMetadata;
+  final double scanProgress; // 0.0 to 1.0
 
   LibraryState({
     this.songs = const [],
@@ -63,6 +65,7 @@ class LibraryState {
     this.completionMessage,
     this.metadataLoadProgress = 0.0,
     this.isReloadingMetadata = false,
+    this.scanProgress = 0.0,
   });
 
   LibraryState copyWith({
@@ -85,6 +88,7 @@ class LibraryState {
     String? completionMessage,
     double? metadataLoadProgress,
     bool? isReloadingMetadata,
+    double? scanProgress,
   }) {
     return LibraryState(
       songs: songs ?? this.songs,
@@ -108,6 +112,7 @@ class LibraryState {
       completionMessage: completionMessage,
       metadataLoadProgress: metadataLoadProgress ?? this.metadataLoadProgress,
       isReloadingMetadata: isReloadingMetadata ?? this.isReloadingMetadata,
+      scanProgress: scanProgress ?? this.scanProgress,
     );
   }
 }
@@ -132,92 +137,122 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   Future<void> _loadFromCache() async {
     try {
       final prefs = _ref.read(sharedPreferencesProvider);
-      final cacheData = prefs.getString('library_cache_v3');
+
+      // 1. Load structured data from SQLite
+      final List<Song> songs = await DatabaseService.getAllSongs();
+      final List<Playlist> playlists = await DatabaseService.getAllPlaylists();
+      final Map<String, String> artistImages =
+          await DatabaseService.getAllArtistImages();
+
+      // 2. Load small settings/metadata from SharedPreferences
+      final cacheData = prefs.getString('library_metadata_v1');
+
+      Set<String> excludedFolders = {};
+      Set<String> hiddenArtists = {};
+      Set<String> hiddenAlbums = {};
+      Map<String, List<String>> storageMap = {};
+      Map<String, int> repArtists = {};
+      Map<String, int> repAlbums = {};
+      int lastScan = 0;
+
       if (cacheData != null) {
         final Map<String, dynamic> decoded = jsonDecode(cacheData);
+        excludedFolders = Set<String>.from(decoded['excludedFolders'] ?? []);
+        hiddenArtists = Set<String>.from(decoded['hiddenArtists'] ?? []);
+        hiddenAlbums = Set<String>.from(decoded['hiddenAlbums'] ?? []);
 
-        final songs = (decoded['songs'] as List)
-            .map((s) => Song.fromMap(s))
-            .toList();
-        final artists = (decoded['artists'] as List)
-            .map((a) => Artist.fromMap(a))
-            .toList();
-        final albums = (decoded['albums'] as List)
-            .map((a) => Album.fromMap(a))
-            .toList();
-        final playlists = (decoded['playlists'] as List? ?? [])
-            .map((p) => Playlist.fromMap(p))
-            .toList();
-        final folders = List<String>.from(decoded['folders'] ?? []);
-        final Set<String> excludedFolders = Set<String>.from(
-          decoded['excludedFolders'] ?? [],
-        );
-        final Set<String> hiddenArtists = Set<String>.from(
-          decoded['hiddenArtists'] ?? [],
-        );
-        final Set<String> hiddenAlbums = Set<String>.from(
-          decoded['hiddenAlbums'] ?? [],
-        );
-
-        final Map<String, List<String>> storageMap = {};
         if (decoded['storageMap'] != null) {
           (decoded['storageMap'] as Map).forEach((k, v) {
             storageMap[k.toString()] = List<String>.from(v);
           });
         }
+        repArtists = Map<String, int>.from(decoded['repArtists'] ?? {});
+        repAlbums = Map<String, int>.from(decoded['repAlbums'] ?? {});
+        lastScan = decoded['lastScan'] ?? 0;
+      }
 
-        final Map<String, int> repArtists = Map<String, int>.from(
-          decoded['repArtists'] ?? {},
-        );
-        final Map<String, int> repAlbums = Map<String, int>.from(
-          decoded['repAlbums'] ?? {},
-        );
-        final int lastScan = decoded['lastScan'] ?? 0;
+      // Rebuild Artist objects with the loaded images
+      final Map<String, List<Song>> artistSongsGroup = {};
+      for (final song in songs) {
+        artistSongsGroup.putIfAbsent(song.artist, () => []).add(song);
+      }
 
-        state = state.copyWith(
-          songs: songs,
-          artists: artists,
-          albums: albums,
-          playlists: playlists,
-          folders: folders,
-          storageMap: storageMap,
-          excludedFolders: excludedFolders,
-          hiddenArtists: hiddenArtists,
-          hiddenAlbums: hiddenAlbums,
-          representativeArtistSongs: repArtists,
-          representativeAlbumSongs: repAlbums,
-          lastScanTimestamp: lastScan,
+      final List<Artist> artists = artistSongsGroup.entries.map((entry) {
+        final artistAlbums = entry.value
+            .map((s) => s.album)
+            .where((a) => a != null)
+            .toSet()
+            .length;
+        return Artist(
+          id: repArtists[entry.key] ?? entry.value.first.id,
+          artist: entry.key,
+          numberOfTracks: entry.value.length,
+          numberOfAlbums: artistAlbums,
+          imagePath: artistImages[entry.key],
         );
+      }).toList();
 
-        if (songs.isNotEmpty) {
-          _updateBannerSong(songs);
+      // Rebuild Album objects
+      final Map<String, List<Song>> albumSongsGroup = {};
+      for (final song in songs) {
+        if (song.album != null) {
+          final key = '${song.album}_${song.artist}';
+          albumSongsGroup.putIfAbsent(key, () => []).add(song);
         }
       }
+
+      final List<Album> albums = albumSongsGroup.entries.map((entry) {
+        return Album(
+          id: repAlbums[entry.key] ?? entry.value.first.id,
+          album: entry.value.first.album!,
+          artist: entry.value.first.artist,
+          numberOfSongs: entry.value.length,
+        );
+      }).toList();
+
+      state = state.copyWith(
+        songs: songs,
+        artists: artists,
+        albums: albums,
+        playlists: playlists,
+        storageMap: storageMap,
+        excludedFolders: excludedFolders,
+        hiddenArtists: hiddenArtists,
+        hiddenAlbums: hiddenAlbums,
+        representativeArtistSongs: repArtists,
+        representativeAlbumSongs: repAlbums,
+        lastScanTimestamp: lastScan,
+      );
+
+      if (songs.isNotEmpty) {
+        _updateBannerSong(songs);
+      }
     } catch (e) {
-      debugPrint("Error loading library cache: $e");
+      debugPrint("Error loading from DB/Cache: $e");
     }
   }
 
   Future<void> _saveToCache() async {
     try {
       final prefs = _ref.read(sharedPreferencesProvider);
-      final cacheData = jsonEncode({
-        'songs': state.songs.map((s) => s.toMap()).toList(),
-        'artists': state.artists.map((a) => a.toMap()).toList(),
-        'albums': state.albums.map((a) => a.toMap()).toList(),
-        'playlists': state.playlists.map((p) => p.toMap()).toList(),
-        'folders': state.folders,
-        'storageMap': state.storageMap,
+
+      // 1. Save core data to SQLite
+      await DatabaseService.saveSongs(state.songs);
+      await DatabaseService.savePlaylists(state.playlists);
+
+      // 2. Save UI metadata to SharedPreferences
+      final metadata = jsonEncode({
         'excludedFolders': state.excludedFolders.toList(),
         'hiddenArtists': state.hiddenArtists.toList(),
         'hiddenAlbums': state.hiddenAlbums.toList(),
+        'storageMap': state.storageMap,
         'repArtists': state.representativeArtistSongs,
         'repAlbums': state.representativeAlbumSongs,
         'lastScan': state.lastScanTimestamp,
       });
-      await prefs.setString('library_cache_v3', cacheData);
+      await prefs.setString('library_metadata_v1', metadata);
     } catch (e) {
-      debugPrint("Error saving library cache: $e");
+      debugPrint("Error saving to DB/Cache: $e");
     }
   }
 
@@ -370,33 +405,45 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         return;
       }
 
-      final songs = songModels.map((s) {
+      state = state.copyWith(scanProgress: 0.1);
+
+      final int totalSongs = songModels.length;
+      final List<Song> songs = [];
+
+      for (int i = 0; i < totalSongs; i++) {
+        final s = songModels[i];
         String? artworkUri;
         if (s.id != 0) {
           artworkUri = 'content://media/external/audio/albumart/${s.albumId}';
         }
 
-        return Song(
-          id: s.id,
-          title: s.title,
-          artist: s.artist ?? "Unknown Artist",
-          album: s.album,
-          albumArt: artworkUri,
-          url: s.data,
-          duration: s.duration ?? 0,
-          lyrics: [],
+        songs.add(
+          Song(
+            id: s.id,
+            title: s.title,
+            artist: s.artist ?? "Unknown Artist",
+            album: s.album,
+            albumArt: artworkUri,
+            url: s.data,
+            duration: s.duration ?? 0,
+            lyrics: [],
+          ),
         );
-      }).toList();
+
+        if (i % 50 == 0) {
+          state = state.copyWith(scanProgress: 0.1 + (i / totalSongs) * 0.7);
+        }
+      }
+
+      state = state.copyWith(scanProgress: 0.85);
 
       final Set<String> folderSet = {};
       final Map<String, Set<String>> storageParentFolders = {};
 
-      // Precompute representative songs during this pass
       final Map<String, int> repArtists = {};
       final Map<String, int> repAlbums = {};
 
       for (final s in songs) {
-        // Representative items (first one we find)
         repArtists.putIfAbsent(s.artist, () => s.id);
         if (s.album != null) {
           repAlbums.putIfAbsent("${s.album}_${s.artist}", () => s.id);
@@ -408,7 +455,6 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           final dirPath = path.substring(0, index);
           folderSet.add(dirPath);
 
-          // Storage logic
           String storageRoot = "";
           if (path.startsWith("/storage/emulated/0")) {
             storageRoot = "/storage/emulated/0";
@@ -435,20 +481,19 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         }
       }
 
-      final storageMap = storageParentFolders.map((key, value) {
-        return MapEntry(key, value.toList());
-      });
+      final storageMap = storageParentFolders.map(
+        (key, value) => MapEntry(key, value.toList()),
+      );
 
-      // Preserve favorite status from existing library
-      final favoritedIds = state.songs
+      // Get favorites from DB to preserve them
+      final dbSongs = await DatabaseService.getAllSongs();
+      final favoritedIds = dbSongs
           .where((s) => s.isFavorite)
           .map((s) => s.id)
           .toSet();
 
       final updatedSongs = songs.map((s) {
-        if (favoritedIds.contains(s.id)) {
-          return s.copyWith(isFavorite: true);
-        }
+        if (favoritedIds.contains(s.id)) return s.copyWith(isFavorite: true);
         return s;
       }).toList();
 
@@ -456,7 +501,6 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         updatedSongs,
         state.excludedFolders,
       );
-
       final artists = _rebuildArtists(filteredSongs);
       final albums = _rebuildAlbums(filteredSongs);
 
@@ -470,13 +514,14 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         representativeAlbumSongs: repAlbums,
         lastScanTimestamp: DateTime.now().millisecondsSinceEpoch,
         isLoading: false,
+        scanProgress: 1.0,
       );
 
       if (filteredSongs.isNotEmpty) {
         _updateBannerSong(filteredSongs);
       }
 
-      _saveToCache();
+      await _saveToCache();
     } catch (e) {
       debugPrint("Error scanning library: $e");
       state = state.copyWith(
@@ -615,6 +660,9 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         return a;
       }).toList(),
     );
+
+    // Save to DB
+    DatabaseService.saveArtistImage(artistName, finalPath);
     _saveToCache();
   }
 

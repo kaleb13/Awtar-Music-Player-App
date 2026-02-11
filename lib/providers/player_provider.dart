@@ -10,6 +10,7 @@ import '../models/song.dart';
 import 'stats_provider.dart';
 import '../services/audio_handler.dart';
 import '../services/artwork_cache_service.dart';
+import '../services/lyrics_service.dart';
 
 class MusicPlayerState {
   final Song? currentSong;
@@ -235,10 +236,8 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
         .read(statsProvider.notifier)
         .recordPlay(song.id, song.artist, song.album ?? "Unknown");
 
-    await _audioPlayer.play(ap.DeviceFileSource(song.url));
-
-    // Update notification with current song info
-    debugPrint('Updating notification: ${song.title} by ${song.artist}');
+    // 1. Prepare and update notification with current song info BEFORE starting playback
+    debugPrint('Preparing notification: ${song.title} by ${song.artist}');
 
     Uri? artUri;
     if (song.albumArt != null && song.albumArt!.isNotEmpty) {
@@ -249,6 +248,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       }
     }
 
+    // Set the media item first
     await _audioHandler?.setMediaItem(
       id: song.id.toString(),
       title: song.title,
@@ -258,10 +258,13 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       duration: Duration(seconds: song.duration),
     );
 
-    // Force call updatePlaybackState to ensure notification triggers
+    // Update playback state to playing IMMEDIATELY to avoid "idle" glitch
     _audioHandler?.updatePlaybackState(playing: true, position: Duration.zero);
 
-    debugPrint('Notification updated successfully');
+    // 2. Start actual audio playback
+    await _audioPlayer.play(ap.DeviceFileSource(song.url));
+
+    debugPrint('Playback started and notification updated successfully');
 
     // Fetch real lyrics
     _fetchLyrics(song);
@@ -283,25 +286,48 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
 
   Future<void> _fetchLyrics(Song song) async {
     try {
+      // 1. Try discovery service (LRC files + local cache)
+      final List<LyricLine> newLyrics = await LyricsService.getLyricsForSong(
+        song,
+      );
+
+      if (newLyrics.isNotEmpty) {
+        if (state.currentSong?.id == song.id) {
+          state = state.copyWith(currentSong: song.copyWith(lyrics: newLyrics));
+        }
+        return;
+      }
+
+      // 2. Fallback to embedded tag if discovery failed
       final tag = await AudioTags.read(song.url);
       final String? lyricsText = tag?.lyrics;
 
-      List<LyricLine> newLyrics = [];
-
       if (lyricsText != null && lyricsText.isNotEmpty) {
-        // Naive splitting by newline for unsynchronized lyrics
+        // Try to parse as LRC if it contains timestamps
+        if (lyricsText.contains('[') && lyricsText.contains(']')) {
+          final lrcLyrics = LyricsService.parseLrc(lyricsText);
+          if (lrcLyrics.isNotEmpty) {
+            if (state.currentSong?.id == song.id) {
+              state = state.copyWith(
+                currentSong: song.copyWith(lyrics: lrcLyrics),
+              );
+            }
+            return;
+          }
+        }
+
+        // Naive fallback
         final lines = lyricsText.split('\n');
-        newLyrics = lines
+        final fallbackLyrics = lines
             .map((line) => LyricLine(time: Duration.zero, text: line.trim()))
             .where((l) => l.text.isNotEmpty)
             .toList();
-      }
 
-      // If we found lyrics, update the song in the state
-      // We only update if the current song is still the same one we fetched for
-      if (state.currentSong?.id == song.id) {
-        final updatedSong = song.copyWith(lyrics: newLyrics);
-        state = state.copyWith(currentSong: updatedSong);
+        if (state.currentSong?.id == song.id) {
+          state = state.copyWith(
+            currentSong: song.copyWith(lyrics: fallbackLyrics),
+          );
+        }
       }
     } catch (e) {
       debugPrint("Failed to fetch lyrics: $e");

@@ -305,12 +305,8 @@ class LyricsScreenContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final playerState = ref.watch(playerProvider);
-    final library = ref.watch(libraryProvider);
-    final song =
-        playerState.currentSong ??
-        (library.songs.isNotEmpty ? library.songs.first : null);
-    if (song == null) return const SizedBox.shrink();
+    final currentSong = ref.watch(playerProvider.select((s) => s.currentSong));
+    if (currentSong == null) return const SizedBox.shrink();
 
     return GestureDetector(
       onVerticalDragUpdate: (details) {
@@ -322,70 +318,75 @@ class LyricsScreenContent extends ConsumerWidget {
       child: Container(
         color: AppColors.mainDark,
         padding: const EdgeInsets.only(top: 140),
-        child: Opacity(
-          opacity: 1.0,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is ScrollUpdateNotification) {
-                if (notification.metrics.pixels <= 0 &&
-                    notification.dragDetails != null) {
-                  onDragUpdate?.call(notification.dragDetails!.delta.dy);
-                }
-              } else if (notification is ScrollEndNotification) {
-                // We only care if we were potentially dragging
-                onDragEnd?.call(notification.dragDetails?.primaryVelocity ?? 0);
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification) {
+              if (notification.metrics.pixels <= 0 &&
+                  notification.dragDetails != null) {
+                onDragUpdate?.call(notification.dragDetails!.delta.dy);
               }
-              return false;
+            } else if (notification is ScrollEndNotification) {
+              onDragEnd?.call(notification.dragDetails?.primaryVelocity ?? 0);
+            }
+            return false;
+          },
+          child: ListView.builder(
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(40, 40, 40, 160),
+            itemCount: currentSong.lyrics.length,
+            itemBuilder: (context, index) {
+              return _LyricLineItem(index: index, lyrics: currentSong.lyrics);
             },
-            child: ListView.builder(
-              physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(40, 40, 40, 160),
-              itemCount: song.lyrics.length,
-              itemBuilder: (context, index) {
-                final lyric = song.lyrics[index];
-                final isCurrent =
-                    playerState.position >= lyric.time &&
-                    (index == song.lyrics.length - 1 ||
-                        playerState.position < song.lyrics[index + 1].time);
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 28.0),
-                  child: Row(
-                    children: [
-                      if (isCurrent)
-                        Padding(
-                          padding: EdgeInsets.only(right: 12.0),
-                          child: SvgPicture.asset(
-                            "assets/icons/play_icon.svg",
-                            colorFilter: const ColorFilter.mode(
-                              AppColors.accentYellow,
-                              BlendMode.srcIn,
-                            ),
-                            width: 20,
-                            height: 20,
-                          ),
-                        ),
-                      Expanded(
-                        child: Text(
-                          lyric.text,
-                          style: AppTextStyles.outfit(
-                            fontSize: isCurrent ? 22 : 18,
-                            fontWeight: isCurrent
-                                ? FontWeight.bold
-                                : FontWeight.w500,
-                            color: isCurrent
-                                ? Colors.white
-                                : Colors.white.withOpacity(0.4),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _LyricLineItem extends ConsumerWidget {
+  final int index;
+  final List<LyricLine> lyrics;
+
+  const _LyricLineItem({required this.index, required this.lyrics});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final position = ref.watch(playerProvider.select((s) => s.position));
+    final lyric = lyrics[index];
+
+    final isCurrent =
+        position >= lyric.time &&
+        (index == lyrics.length - 1 || position < lyrics[index + 1].time);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 28.0),
+      child: Row(
+        children: [
+          if (isCurrent)
+            Padding(
+              padding: const EdgeInsets.only(right: 12.0),
+              child: SvgPicture.asset(
+                "assets/icons/play_icon.svg",
+                colorFilter: const ColorFilter.mode(
+                  AppColors.accentYellow,
+                  BlendMode.srcIn,
+                ),
+                width: 20,
+                height: 20,
+              ),
+            ),
+          Expanded(
+            child: Text(
+              lyric.text,
+              style: AppTextStyles.outfit(
+                fontSize: isCurrent ? 22 : 18,
+                fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                color: isCurrent ? Colors.white : Colors.white.withOpacity(0.4),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

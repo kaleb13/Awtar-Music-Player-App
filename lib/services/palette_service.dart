@@ -40,25 +40,31 @@ class PaletteService {
     try {
       Uint8List? bytes;
 
-      // 1. Try fetching directly from file if path available
-      if (songPath != null && !songPath.startsWith('content://')) {
-        final file = File(songPath);
-        if (await file.exists()) {
-          final tag = await AudioTags.read(songPath);
-          if (tag != null && tag.pictures.isNotEmpty) {
-            bytes = tag.pictures.first.bytes;
-          }
-        }
-      }
-
-      // 2. Fallback to on_audio_query
-      if (bytes == null && songId != null) {
+      // 1. Try on_audio_query (System Media Store)
+      if (songId != null) {
         bytes = await _audioQuery.queryArtwork(
           songId,
           ArtworkType.AUDIO,
           format: ArtworkFormat.JPEG,
           size: 40,
         );
+      }
+
+      // 2. Fallback to manual tag reading from file
+      if (bytes == null &&
+          songPath != null &&
+          !songPath.startsWith('content://')) {
+        final file = File(songPath);
+        if (await file.exists()) {
+          try {
+            final tag = await AudioTags.read(songPath);
+            if (tag != null && tag.pictures.isNotEmpty) {
+              bytes = tag.pictures.first.bytes;
+            }
+          } catch (e) {
+            debugPrint("Palette AudioTags fallback error: $e");
+          }
+        }
       }
 
       ImageProvider provider;

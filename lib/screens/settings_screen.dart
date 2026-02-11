@@ -113,6 +113,77 @@ class SettingsScreen extends ConsumerWidget {
                             color: Colors.white.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          child: const Icon(Icons.search, color: Colors.white),
+                        ),
+                        title: const Text(
+                          "Rescan Library",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: libraryState.isLoading
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 8),
+                                  LinearProgressIndicator(
+                                    value: libraryState.scanProgress,
+                                    backgroundColor: Colors.white10,
+                                    valueColor:
+                                        const AlwaysStoppedAnimation<Color>(
+                                          AppColors.primaryGreen,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "${(libraryState.scanProgress * 100).toInt()}%",
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : const Text(
+                                "Search for new audio files",
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 14,
+                                ),
+                              ),
+                        trailing: libraryState.isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primaryGreen,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: Colors.white54,
+                              ),
+                        onTap: libraryState.isLoading
+                            ? null
+                            : () => ref
+                                  .read(libraryProvider.notifier)
+                                  .scanLibrary(force: true),
+                      ),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                           child: const Icon(Icons.refresh, color: Colors.white),
                         ),
                         title: const Text(

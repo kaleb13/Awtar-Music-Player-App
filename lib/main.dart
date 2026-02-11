@@ -175,7 +175,11 @@ class RootLayout extends ConsumerWidget {
         // 1. Dynamic Blurred Background
         if (currentSong != null)
           Positioned.fill(
-            child: AppArtwork(songId: currentSong.id, fit: BoxFit.cover),
+            child: AppArtwork(
+              songId: currentSong.id,
+              fit: BoxFit.cover,
+              size: 300, // Background optimization: downsample for blur
+            ),
           ),
 
         // 2. Blur Filter
@@ -183,8 +187,8 @@ class RootLayout extends ConsumerWidget {
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(
-                sigmaX: ref.watch(lowPerformanceModeProvider) ? 20 : 80,
-                sigmaY: ref.watch(lowPerformanceModeProvider) ? 20 : 80,
+                sigmaX: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
+                sigmaY: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
               ),
               child: Container(color: Colors.transparent),
             ),

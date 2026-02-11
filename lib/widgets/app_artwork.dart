@@ -89,29 +89,32 @@ class _AppArtworkState extends State<AppArtwork> {
 
       Uint8List? bytes;
 
-      // 1. Try fetching directly from file if path available (and not content URI)
-      if (widget.songPath != null &&
+      // 1. Try on_audio_query (System Media Store)
+      final id = widget.albumId ?? widget.songId;
+      if (id != null) {
+        bytes = await _audioQuery.queryArtwork(
+          id,
+          widget.albumId != null ? ArtworkType.ALBUM : ArtworkType.AUDIO,
+          format: ArtworkFormat.JPEG,
+          size: querySize,
+          quality: 100,
+        );
+      }
+
+      // 2. Fallback to manual tag reading from file
+      if (bytes == null &&
+          widget.songPath != null &&
           !widget.songPath!.startsWith('content://')) {
         final file = File(widget.songPath!);
         if (await file.exists()) {
-          final tag = await AudioTags.read(widget.songPath!);
-          if (tag != null && tag.pictures.isNotEmpty) {
-            bytes = tag.pictures.first.bytes;
+          try {
+            final tag = await AudioTags.read(widget.songPath!);
+            if (tag != null && tag.pictures.isNotEmpty) {
+              bytes = tag.pictures.first.bytes;
+            }
+          } catch (e) {
+            debugPrint("AudioTags fallback error: $e");
           }
-        }
-      }
-
-      // 2. Fallback to on_audio_query
-      if (bytes == null) {
-        final id = widget.albumId ?? widget.songId;
-        if (id != null) {
-          bytes = await _audioQuery.queryArtwork(
-            id,
-            widget.albumId != null ? ArtworkType.ALBUM : ArtworkType.AUDIO,
-            format: ArtworkFormat.JPEG,
-            size: querySize,
-            quality: 100,
-          );
         }
       }
 

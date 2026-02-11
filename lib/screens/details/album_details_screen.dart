@@ -72,6 +72,7 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
                 songId: currentSong.id,
                 songPath: currentSong.url,
                 fit: BoxFit.cover,
+                size: 300, // Optimization for blur
               ),
             ),
 
@@ -79,8 +80,8 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
             Positioned.fill(
               child: BackdropFilter(
                 filter: ImageFilter.blur(
-                  sigmaX: ref.watch(lowPerformanceModeProvider) ? 20 : 80,
-                  sigmaY: ref.watch(lowPerformanceModeProvider) ? 20 : 80,
+                  sigmaX: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
+                  sigmaY: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
                 ),
                 child: Container(color: Colors.transparent),
               ),

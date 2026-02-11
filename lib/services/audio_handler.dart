@@ -94,6 +94,8 @@ class AudioPlayerHandler extends BaseAudioHandler with SeekHandler {
   Future<void> play() async {
     try {
       debugPrint('AudioHandler: play() called');
+      // Update state immediately for UI responsiveness
+      updatePlaybackState(playing: true);
       onPlayPressed?.call();
     } catch (e) {
       debugPrint('Error in play: $e');
@@ -104,6 +106,8 @@ class AudioPlayerHandler extends BaseAudioHandler with SeekHandler {
   Future<void> pause() async {
     try {
       debugPrint('AudioHandler: pause() called');
+      // Update state immediately for UI responsiveness
+      updatePlaybackState(playing: false);
       onPausePressed?.call();
     } catch (e) {
       debugPrint('Error in pause: $e');
