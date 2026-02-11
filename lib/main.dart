@@ -14,6 +14,7 @@ import 'widgets/app_artwork.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/stats_provider.dart';
+import 'providers/performance_provider.dart';
 
 final GlobalKey<NavigatorState> innerNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -181,7 +182,10 @@ class RootLayout extends ConsumerWidget {
         if (currentSong != null)
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+              filter: ImageFilter.blur(
+                sigmaX: ref.watch(lowPerformanceModeProvider) ? 20 : 80,
+                sigmaY: ref.watch(lowPerformanceModeProvider) ? 20 : 80,
+              ),
               child: Container(color: Colors.transparent),
             ),
           ),

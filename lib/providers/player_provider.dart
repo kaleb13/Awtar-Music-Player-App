@@ -9,6 +9,7 @@ import 'dart:convert';
 import '../models/song.dart';
 import 'stats_provider.dart';
 import '../services/audio_handler.dart';
+import '../services/artwork_cache_service.dart';
 
 class MusicPlayerState {
   final Song? currentSong;
@@ -264,6 +265,20 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
 
     // Fetch real lyrics
     _fetchLyrics(song);
+
+    // Warm up next few songs in queue
+    _warmUpQueue();
+  }
+
+  void _warmUpQueue() {
+    if (state.queue.isEmpty) return;
+    final startIndex = (state.currentIndex + 1) % state.queue.length;
+    // Warm up next 5 songs
+    for (int i = 0; i < 5; i++) {
+      final index = (startIndex + i) % state.queue.length;
+      final song = state.queue[index];
+      ArtworkCacheService.warmUp(song.url, song.id);
+    }
   }
 
   Future<void> _fetchLyrics(Song song) async {

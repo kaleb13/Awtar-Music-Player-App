@@ -29,9 +29,12 @@ class LibraryState {
   final List<Playlist> playlists;
   final List<String> folders;
   final Map<String, List<String>> storageMap;
-  final Set<String> excludedFolders; // Folders that are excluded from library
-  final Set<String> hiddenArtists; // Artists hidden from list
-  final Set<String> hiddenAlbums; // Albums hidden from list
+  final Set<String> excludedFolders;
+  final Set<String> hiddenArtists;
+  final Set<String> hiddenAlbums;
+  final Map<String, int> representativeArtistSongs;
+  final Map<String, int> representativeAlbumSongs;
+  final int lastScanTimestamp;
   final Song? bannerSong;
   final bool isLoading;
   final LibraryPermissionStatus permissionStatus;
@@ -50,6 +53,9 @@ class LibraryState {
     this.excludedFolders = const {},
     this.hiddenArtists = const {},
     this.hiddenAlbums = const {},
+    this.representativeArtistSongs = const {},
+    this.representativeAlbumSongs = const {},
+    this.lastScanTimestamp = 0,
     this.bannerSong,
     this.isLoading = false,
     this.permissionStatus = LibraryPermissionStatus.initial,
@@ -69,6 +75,9 @@ class LibraryState {
     Set<String>? excludedFolders,
     Set<String>? hiddenArtists,
     Set<String>? hiddenAlbums,
+    Map<String, int>? representativeArtistSongs,
+    Map<String, int>? representativeAlbumSongs,
+    int? lastScanTimestamp,
     Song? bannerSong,
     bool? isLoading,
     LibraryPermissionStatus? permissionStatus,
@@ -87,6 +96,11 @@ class LibraryState {
       excludedFolders: excludedFolders ?? this.excludedFolders,
       hiddenArtists: hiddenArtists ?? this.hiddenArtists,
       hiddenAlbums: hiddenAlbums ?? this.hiddenAlbums,
+      representativeArtistSongs:
+          representativeArtistSongs ?? this.representativeArtistSongs,
+      representativeAlbumSongs:
+          representativeAlbumSongs ?? this.representativeAlbumSongs,
+      lastScanTimestamp: lastScanTimestamp ?? this.lastScanTimestamp,
       bannerSong: bannerSong ?? this.bannerSong,
       isLoading: isLoading ?? this.isLoading,
       permissionStatus: permissionStatus ?? this.permissionStatus,
@@ -118,7 +132,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   Future<void> _loadFromCache() async {
     try {
       final prefs = _ref.read(sharedPreferencesProvider);
-      final cacheData = prefs.getString('library_cache_v3'); // Updated version
+      final cacheData = prefs.getString('library_cache_v3');
       if (cacheData != null) {
         final Map<String, dynamic> decoded = jsonDecode(cacheData);
 
@@ -144,12 +158,21 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         final Set<String> hiddenAlbums = Set<String>.from(
           decoded['hiddenAlbums'] ?? [],
         );
+
         final Map<String, List<String>> storageMap = {};
         if (decoded['storageMap'] != null) {
           (decoded['storageMap'] as Map).forEach((k, v) {
             storageMap[k.toString()] = List<String>.from(v);
           });
         }
+
+        final Map<String, int> repArtists = Map<String, int>.from(
+          decoded['repArtists'] ?? {},
+        );
+        final Map<String, int> repAlbums = Map<String, int>.from(
+          decoded['repAlbums'] ?? {},
+        );
+        final int lastScan = decoded['lastScan'] ?? 0;
 
         state = state.copyWith(
           songs: songs,
@@ -161,17 +184,13 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           excludedFolders: excludedFolders,
           hiddenArtists: hiddenArtists,
           hiddenAlbums: hiddenAlbums,
+          representativeArtistSongs: repArtists,
+          representativeAlbumSongs: repAlbums,
+          lastScanTimestamp: lastScan,
         );
 
         if (songs.isNotEmpty) {
           _updateBannerSong(songs);
-        }
-      } else {
-        // Migration from v2 if exists
-        final oldData = prefs.getString('library_cache_v2');
-        if (oldData != null) {
-          // We could migrate, but simple scan is fine too.
-          // For now just scan if v3 is not found.
         }
       }
     } catch (e) {
@@ -192,6 +211,9 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         'excludedFolders': state.excludedFolders.toList(),
         'hiddenArtists': state.hiddenArtists.toList(),
         'hiddenAlbums': state.hiddenAlbums.toList(),
+        'repArtists': state.representativeArtistSongs,
+        'repAlbums': state.representativeAlbumSongs,
+        'lastScan': state.lastScanTimestamp,
       });
       await prefs.setString('library_cache_v3', cacheData);
     } catch (e) {
@@ -306,24 +328,47 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     await openAppSettings();
   }
 
-  Future<void> scanLibrary() async {
+  Future<void> scanLibrary({bool force = false}) async {
     if (state.songs.isEmpty) {
       state = state.copyWith(isLoading: true, errorMessage: null);
     }
 
     try {
-      final results = await Future.wait([
-        _audioQuery.querySongs(
-          sortType: null,
-          orderType: OrderType.ASC_OR_SMALLER,
-          uriType: UriType.EXTERNAL,
-          ignoreCase: true,
-        ),
-        _audioQuery.queryArtists(),
-        _audioQuery.queryAlbums(),
-      ]);
+      // 1. Fast check: query only song count or ids to see if we need a full scan
+      final songModels = await _audioQuery.querySongs(
+        sortType: null,
+        orderType: OrderType.ASC_OR_SMALLER,
+        uriType: UriType.EXTERNAL,
+        ignoreCase: true,
+      );
 
-      final songModels = results[0] as List<SongModel>;
+      // Compute a lightweight signature to detect changes reliably
+      final int currentCount = songModels.length;
+      int currentIdSum = 0;
+      int currentDurationSum = 0;
+      for (var s in songModels) {
+        currentIdSum += s.id;
+        currentDurationSum += (s.duration ?? 0);
+      }
+
+      // Compare with current state signature
+      int stateIdSum = 0;
+      int stateDurationSum = 0;
+      for (var s in state.songs) {
+        stateIdSum += s.id;
+        stateDurationSum += s.duration;
+      }
+
+      // If signature matches and it's not a forced scan, and we have data, skip the heavy scan
+      if (!force &&
+          state.songs.isNotEmpty &&
+          currentCount == state.songs.length &&
+          currentIdSum == stateIdSum &&
+          currentDurationSum == stateDurationSum) {
+        debugPrint("Library scan skipped: item signature identical.");
+        state = state.copyWith(isLoading: false);
+        return;
+      }
 
       final songs = songModels.map((s) {
         String? artworkUri;
@@ -343,12 +388,20 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         );
       }).toList();
 
-      // artists and albums will be rebuilt from filtered songs later
-
       final Set<String> folderSet = {};
       final Map<String, Set<String>> storageParentFolders = {};
 
+      // Precompute representative songs during this pass
+      final Map<String, int> repArtists = {};
+      final Map<String, int> repAlbums = {};
+
       for (final s in songs) {
+        // Representative items (first one we find)
+        repArtists.putIfAbsent(s.artist, () => s.id);
+        if (s.album != null) {
+          repAlbums.putIfAbsent("${s.album}_${s.artist}", () => s.id);
+        }
+
         final path = s.url;
         final index = path.lastIndexOf('/');
         if (index != -1) {
@@ -360,7 +413,6 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           if (path.startsWith("/storage/emulated/0")) {
             storageRoot = "/storage/emulated/0";
           } else {
-            // Check for /storage/XXXX-XXXX
             final parts = path.split('/');
             if (parts.length >= 3 && parts[1] == 'storage') {
               storageRoot = "/storage/${parts[2]}";
@@ -374,15 +426,10 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
                 .where((p) => p.isNotEmpty)
                 .toList();
             if (relParts.length > 1) {
-              // It's in a subfolder. The first part is the "Parent Folder" the user wants.
               final parentName = relParts.first;
               storageParentFolders
                   .putIfAbsent(storageRoot, () => {})
                   .add("$storageRoot/$parentName");
-            } else {
-              // Direct file in root? Or just one level.
-              // If it's just /storage/emulated/0/Song.mp3, keep it in root?
-              // User said: "only the parent folders will be displayed"
             }
           }
         }
@@ -405,14 +452,11 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         return s;
       }).toList();
 
-      // IMPORTANT: Respect folder exclusions during scan
       final filteredSongs = _filterSongsByFolders(
         updatedSongs,
         state.excludedFolders,
       );
 
-      // Rebuild artists and albums from the filtered song list
-      // instead of using raw results which ignore folder exclusions.
       final artists = _rebuildArtists(filteredSongs);
       final albums = _rebuildAlbums(filteredSongs);
 
@@ -422,10 +466,12 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         albums: albums,
         folders: folderSet.toList(),
         storageMap: storageMap,
+        representativeArtistSongs: repArtists,
+        representativeAlbumSongs: repAlbums,
+        lastScanTimestamp: DateTime.now().millisecondsSinceEpoch,
         isLoading: false,
       );
 
-      // Trigger banner update with filtered songs
       if (filteredSongs.isNotEmpty) {
         _updateBannerSong(filteredSongs);
       }
@@ -635,7 +681,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           .toSet()
           .length;
       return Artist(
-        id: entry.value.first.id, // Use first song's ID as artist ID
+        id: state.representativeArtistSongs[entry.key] ?? entry.value.first.id,
         artist: entry.key,
         numberOfTracks: entry.value.length,
         numberOfAlbums: artistAlbums,
@@ -656,7 +702,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     return albumSongs.entries.map((entry) {
       final songs = entry.value;
       return Album(
-        id: songs.first.id, // Use first song's ID as album ID
+        id: state.representativeAlbumSongs[entry.key] ?? songs.first.id,
         album: songs.first.album!,
         artist: songs.first.artist,
         numberOfSongs: songs.length,

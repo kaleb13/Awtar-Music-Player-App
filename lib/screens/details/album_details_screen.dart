@@ -7,6 +7,7 @@ import '../../providers/library_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../widgets/app_artwork.dart';
 import '../../services/palette_service.dart';
+import '../../providers/performance_provider.dart';
 
 class AlbumDetailsScreen extends ConsumerStatefulWidget {
   final String title;
@@ -77,7 +78,10 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
           if (currentSong != null)
             Positioned.fill(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                filter: ImageFilter.blur(
+                  sigmaX: ref.watch(lowPerformanceModeProvider) ? 20 : 80,
+                  sigmaY: ref.watch(lowPerformanceModeProvider) ? 20 : 80,
+                ),
                 child: Container(color: Colors.transparent),
               ),
             ),

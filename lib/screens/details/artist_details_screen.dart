@@ -11,6 +11,7 @@ import '../../models/song.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../providers/stats_provider.dart';
+import '../../providers/performance_provider.dart';
 
 class ArtistDetailsScreen extends ConsumerStatefulWidget {
   final String name;
@@ -112,7 +113,10 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
           if (currentSong != null)
             Positioned.fill(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                filter: ImageFilter.blur(
+                  sigmaX: ref.watch(lowPerformanceModeProvider) ? 20 : 80,
+                  sigmaY: ref.watch(lowPerformanceModeProvider) ? 20 : 80,
+                ),
                 child: Container(color: Colors.transparent),
               ),
             ),
@@ -316,10 +320,9 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                         itemCount: artistAlbums.length,
                         itemBuilder: (context, index) {
                           final album = artistAlbums[index];
-                          final albumSong = artistSongs.firstWhere(
-                            (s) => s.album == album.album,
-                            orElse: () => artistSongs.first,
-                          );
+                          final albumKey = '${album.album}_${album.artist}';
+                          final albumSongId =
+                              libraryState.representativeAlbumSongs[albumKey];
                           return GestureDetector(
                             onTap: () {
                               Navigator.push(
@@ -350,7 +353,7 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(22),
                                       child: AppArtwork(
-                                        songId: albumSong.id,
+                                        songId: albumSongId,
                                         size: 80,
                                       ),
                                     ),

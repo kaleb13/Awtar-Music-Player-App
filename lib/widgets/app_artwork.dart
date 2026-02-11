@@ -3,6 +3,7 @@ import 'package:on_audio_query/on_audio_query.dart';
 import 'package:audiotags/audiotags.dart';
 import 'dart:typed_data';
 import 'dart:io';
+import '../services/artwork_cache_service.dart';
 
 /// Widget to display album artwork from local device using on_audio_query
 class AppArtwork extends StatefulWidget {
@@ -76,6 +77,16 @@ class _AppArtworkState extends State<AppArtwork> {
 
   Future<Uint8List?> _fetchArtwork(String key, int? querySize) async {
     try {
+      // 0. Check Persistent Disk Cache first
+      final diskCached = await ArtworkCacheService.get(
+        widget.songPath,
+        widget.songId ?? widget.albumId,
+      );
+      if (diskCached != null) {
+        _cache[key] = diskCached;
+        return diskCached;
+      }
+
       Uint8List? bytes;
 
       // 1. Try fetching directly from file if path available (and not content URI)
@@ -106,6 +117,12 @@ class _AppArtworkState extends State<AppArtwork> {
 
       if (bytes != null && bytes.isNotEmpty) {
         _cache[key] = bytes;
+        // Save to Persistent Disk Cache
+        await ArtworkCacheService.save(
+          widget.songPath,
+          widget.songId ?? widget.albumId,
+          bytes,
+        );
         return bytes;
       }
     } catch (e) {

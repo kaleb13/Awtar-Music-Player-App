@@ -10,6 +10,7 @@ import '../providers/stats_provider.dart';
 import '../providers/player_provider.dart';
 import '../models/song.dart';
 import '../widgets/app_artwork.dart';
+import '../services/artwork_cache_service.dart';
 
 import 'tabs/folders_tab.dart';
 import 'tabs/artists_tab.dart';
@@ -157,6 +158,36 @@ class HomeOverviewContent extends ConsumerWidget {
         ),
       );
     }
+
+    // Background warming for home screen items
+    ref.listen(libraryProvider, (prev, next) {
+      if (prev?.isLoading == true &&
+          next.isLoading == false &&
+          next.songs.isNotEmpty) {
+        // Warm up some top artists and albums
+        for (final artist in next.artists.take(5)) {
+          final songId = next.representativeArtistSongs[artist.artist];
+          if (songId != null) {
+            final song = next.songs.firstWhere(
+              (s) => s.id == songId,
+              orElse: () => next.songs.first,
+            );
+            ArtworkCacheService.warmUp(song.url, song.id);
+          }
+        }
+        for (final album in next.albums.take(5)) {
+          final key = '${album.album}_${album.artist}';
+          final songId = next.representativeAlbumSongs[key];
+          if (songId != null) {
+            final song = next.songs.firstWhere(
+              (s) => s.id == songId,
+              orElse: () => next.songs.first,
+            );
+            ArtworkCacheService.warmUp(song.url, song.id);
+          }
+        }
+      }
+    });
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),

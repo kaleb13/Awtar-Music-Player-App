@@ -10,7 +10,6 @@ import '../providers/player_provider.dart';
 import '../providers/library_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../widgets/app_artwork.dart';
-import '../models/song.dart';
 import '../widgets/playlist_dialogs.dart';
 import 'details/album_details_screen.dart';
 import 'details/artist_details_screen.dart';
@@ -120,30 +119,19 @@ class DiscoverScreen extends ConsumerWidget {
                 final album = results.albums[index];
                 final library = ref.watch(libraryProvider);
 
-                // Get a song from this album for artwork
-                final albumSong = library.songs.firstWhere(
-                  (s) => s.album == album.album,
-                  orElse: () => library.songs.isNotEmpty
-                      ? library.songs.first
-                      : Song(
-                          id: 0,
-                          title: '',
-                          artist: '',
-                          duration: 0,
-                          url: '',
-                          lyrics: [],
-                        ),
-                );
+                // Get a representative song ID for this album
+                final albumKey = '${album.album}_${album.artist}';
+                final albumSongId = library.representativeAlbumSongs[albumKey];
 
                 return AppAlbumCard(
                   title: album.album,
                   artist: album.artist,
                   imageUrl: "",
-                  songId: albumSong.id,
+                  songId: albumSongId,
                   artwork: AspectRatio(
                     aspectRatio: 1.0,
                     child: AppArtwork(
-                      songId: albumSong.id,
+                      songId: albumSongId,
                       borderRadius: 12,
                       size: 120,
                     ),
@@ -182,20 +170,13 @@ class DiscoverScreen extends ConsumerWidget {
                 final artist = results.artists[index];
                 final library = ref.watch(libraryProvider);
 
-                // Get a song from this artist for artwork
-                final artistSong = library.songs.firstWhere(
-                  (s) => s.artist == artist.artist,
-                  orElse: () => library.songs.isNotEmpty
-                      ? library.songs.first
-                      : Song(
-                          id: 0,
-                          title: '',
-                          artist: '',
-                          duration: 0,
-                          url: '',
-                          lyrics: [],
-                        ),
-                );
+                // Get a representative song ID for this artist
+                final artistSongId =
+                    library.representativeArtistSongs[artist.artist];
+                final fallbackSongId = library.songs.isNotEmpty
+                    ? library.songs.first.id
+                    : 0;
+                final finalSongId = artistSongId ?? fallbackSongId;
 
                 return Column(
                   children: [
@@ -228,7 +209,7 @@ class DiscoverScreen extends ConsumerWidget {
                         ),
                         child: ClipOval(
                           child: AppArtwork(
-                            songId: artistSong.id,
+                            songId: finalSongId,
                             size: 80,
                             borderRadius: 0,
                           ),

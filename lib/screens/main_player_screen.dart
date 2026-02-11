@@ -15,6 +15,9 @@ import 'package:awtar_music_player/widgets/playlist_dialogs.dart';
 import 'package:awtar_music_player/models/song.dart';
 import 'player_screen.dart';
 
+import 'package:awtar_music_player/providers/performance_provider.dart';
+import 'dart:async';
+
 class MainMusicPlayer extends ConsumerStatefulWidget {
   const MainMusicPlayer({super.key});
 
@@ -27,6 +30,12 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
   late AnimationController _controller;
   late AnimationController _breathingController;
   Color? _dominantColor;
+
+  // Subscriptions to keep them out of build
+  ProviderSubscription? _playingSub;
+  ProviderSubscription? _songSub;
+  ProviderSubscription? _screenSub;
+  ProviderSubscription? _navSub;
 
   @override
   void initState() {
@@ -65,9 +74,58 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     });
 
     _updatePalette();
+    _setupListeners();
+  }
+
+  void _setupListeners() {
+    // Register listeners once
+    _playingSub = ref.listenManual<bool>(
+      playerProvider.select((s) => s.isPlaying),
+      (prev, isPlaying) {
+        if (isPlaying) {
+          _breathingController.repeat(reverse: true);
+        } else {
+          _breathingController.stop();
+        }
+      },
+    );
+
+    _songSub = ref.listenManual(playerProvider, (prev, next) {
+      if (prev?.currentSong?.albumArt != next.currentSong?.albumArt) {
+        _updatePalette();
+      }
+    });
+
+    _screenSub = ref.listenManual(screenProvider, (prev, next) {
+      const fastDuration = Duration(milliseconds: 350);
+      const fastCurve = Curves.easeOutCubic;
+
+      if (next == AppScreen.home && _controller.value > 0.5) {
+        _controller.animateTo(0.0, duration: fastDuration, curve: fastCurve);
+      } else if (next == AppScreen.player) {
+        if (_controller.value < 0.5 || _controller.value > 1.5) {
+          _controller.animateTo(1.0, duration: fastDuration, curve: fastCurve);
+        }
+      } else if (next == AppScreen.lyrics && _controller.value < 1.5) {
+        _controller.animateTo(2.0, duration: fastDuration, curve: fastCurve);
+      }
+    });
+
+    _navSub = ref.listenManual<bool>(bottomNavVisibleProvider, (prev, next) {
+      if (prev == true && next == false) {
+        if (_controller.value > 0.0 && _controller.value < 1.0) {
+          _controller.animateTo(
+            0.0,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      }
+    });
   }
 
   Future<void> _updatePalette() async {
+    // ... existing _updatePalette content (will be preserved by replace_file_content if I'm careful or I just include it)
     final playerState = ref.read(playerProvider);
     final library = ref.read(libraryProvider);
 
@@ -103,17 +161,23 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
 
   @override
   void dispose() {
+    _playingSub?.close();
+    _songSub?.close();
+    _screenSub?.close();
+    _navSub?.close();
     _controller.dispose();
     _breathingController.dispose();
     super.dispose();
   }
 
   void _onVerticalDragUpdate(DragUpdateDetails details) {
+    // ... existing drag logic
     double delta = details.delta.dy / MediaQuery.of(context).size.height;
     _controller.value = (_controller.value - delta).clamp(0.0, 2.0);
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
+    // ... existing drag logic
     final double velocity = details.primaryVelocity ?? 0;
     final double value = _controller.value;
     final currentScreen = ref.read(screenProvider);
@@ -190,53 +254,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     final screenHeight = MediaQuery.of(context).size.height;
     final currentMainTab = ref.watch(mainTabProvider);
 
-    // Observe isPlaying for reactive updates
-    ref.listen<bool>(playerProvider.select((s) => s.isPlaying), (
-      prev,
-      isPlaying,
-    ) {
-      if (isPlaying) {
-        _breathingController.repeat(reverse: true);
-      } else {
-        _breathingController.stop();
-      }
-    });
-
-    // Observe song changes to update palette
-    ref.listen(playerProvider, (prev, next) {
-      if (prev?.currentSong?.albumArt != next.currentSong?.albumArt) {
-        _updatePalette();
-      }
-    });
-
-    // Observe screen changes for programmatic docking
-    ref.listen(screenProvider, (prev, next) {
-      const fastDuration = Duration(milliseconds: 350);
-      const fastCurve = Curves.easeOutCubic;
-
-      if (next == AppScreen.home && _controller.value > 0.5) {
-        _controller.animateTo(0.0, duration: fastDuration, curve: fastCurve);
-      } else if (next == AppScreen.player) {
-        if (_controller.value < 0.5 || _controller.value > 1.5) {
-          _controller.animateTo(1.0, duration: fastDuration, curve: fastCurve);
-        }
-      } else if (next == AppScreen.lyrics && _controller.value < 1.5) {
-        _controller.animateTo(2.0, duration: fastDuration, curve: fastCurve);
-      }
-    });
-
-    // Auto-dock player when navigating to detail screens (where nav is hidden)
-    ref.listen<bool>(bottomNavVisibleProvider, (prev, next) {
-      if (prev == true && next == false) {
-        if (_controller.value > 0.0 && _controller.value < 1.0) {
-          _controller.animateTo(
-            0.0,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOutCubic,
-          );
-        }
-      }
-    });
+    // Performance optimization: Adaptive blur
+    final isLowPerformance = ref.watch(lowPerformanceModeProvider);
 
     return ListenableBuilder(
       listenable: _controller,
@@ -506,6 +525,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                           val,
                                           song.albumArt ??
                                               "https://placeholder.com",
+                                          isLowPerformance: isLowPerformance,
                                           songId: song.id,
                                           songPath: song.url,
                                         ),
@@ -741,6 +761,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     BuildContext context,
     double val,
     String url, {
+    required bool isLowPerformance,
     int? songId,
     String? songPath,
   }) {
@@ -763,7 +784,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
       top = Tween<double>(begin: 0, end: 70).transform(val);
       left = Tween<double>(begin: 0, end: 0).transform(val);
       radius = Tween<double>(begin: 0, end: AppRadius.large).transform(val);
-      blur = Tween<double>(begin: 20, end: 0).transform(val);
+      final maxBlur = isLowPerformance ? 8.0 : 20.0;
+      blur = Tween<double>(begin: maxBlur, end: 0).transform(val);
     } else {
       double t = val - 1.0;
       width = Tween<double>(begin: screenWidth - 48, end: 50).transform(t);

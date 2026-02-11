@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../providers/library_provider.dart';
 import '../widgets/app_widgets.dart';
+import '../providers/performance_provider.dart';
 import 'hidden_assets_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -60,6 +61,44 @@ class SettingsScreen extends ConsumerWidget {
             Expanded(
               child: ListView(
                 children: [
+                  _buildSettingsSection(
+                    title: "Performance",
+                    children: [
+                      SwitchListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        secondary: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.speed, color: Colors.white),
+                        ),
+                        title: const Text(
+                          "Low Performance Mode",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          "Reduce visual effects for better performance",
+                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                        value: ref.watch(lowPerformanceModeProvider),
+                        activeColor: AppColors.accentYellow,
+                        onChanged: (value) {
+                          ref
+                              .read(lowPerformanceModeProvider.notifier)
+                              .toggle();
+                        },
+                      ),
+                    ],
+                  ),
                   _buildSettingsSection(
                     title: "Library",
                     children: [
