@@ -5,6 +5,9 @@ import '../providers/library_provider.dart';
 import '../widgets/app_widgets.dart';
 import '../providers/performance_provider.dart';
 import 'hidden_assets_screen.dart';
+import 'folder_management_screen.dart';
+import 'reload_metadata_screen.dart';
+import 'rescan_library_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -12,8 +15,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final libraryState = ref.watch(libraryProvider);
-    final isReloading = libraryState.isReloadingMetadata;
-    final progress = libraryState.metadataLoadProgress;
 
     return Scaffold(
       backgroundColor: AppColors.mainDark,
@@ -123,55 +124,23 @@ class SettingsScreen extends ConsumerWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        subtitle: libraryState.isLoading
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 8),
-                                  LinearProgressIndicator(
-                                    value: libraryState.scanProgress,
-                                    backgroundColor: Colors.white10,
-                                    valueColor:
-                                        const AlwaysStoppedAnimation<Color>(
-                                          AppColors.primaryGreen,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "${(libraryState.scanProgress * 100).toInt()}%",
-                                    style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : const Text(
-                                "Search for new audio files",
-                                style: TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 14,
-                                ),
-                              ),
-                        trailing: libraryState.isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primaryGreen,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.arrow_forward_ios,
-                                size: 16,
-                                color: Colors.white54,
-                              ),
-                        onTap: libraryState.isLoading
-                            ? null
-                            : () => ref
-                                  .read(libraryProvider.notifier)
-                                  .scanLibrary(force: true),
+                        subtitle: const Text(
+                          "Search for new audio files",
+                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.white54,
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RescanLibraryScreen(),
+                            ),
+                          );
+                        },
                       ),
                       ListTile(
                         contentPadding: const EdgeInsets.symmetric(
@@ -194,57 +163,67 @@ class SettingsScreen extends ConsumerWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        subtitle: isReloading
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 8),
-                                  LinearProgressIndicator(
-                                    value: progress,
-                                    backgroundColor: Colors.white10,
-                                    valueColor:
-                                        const AlwaysStoppedAnimation<Color>(
-                                          AppColors.accentYellow,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "${(progress * 100).toInt()}%",
-                                    style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : const Text(
-                                "Refresh all songs and lyrics",
-                                style: TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 14,
-                                ),
-                              ),
-                        onTap: isReloading
-                            ? null
-                            : () {
-                                ref
-                                    .read(libraryProvider.notifier)
-                                    .reloadMetadata();
-                              },
-                        trailing: isReloading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.accentYellow,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.arrow_forward_ios,
-                                size: 16,
-                                color: Colors.white54,
-                              ),
+                        subtitle: const Text(
+                          "Refresh all songs and lyrics",
+                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const ReloadMetadataScreen(),
+                            ),
+                          );
+                        },
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.white54,
+                        ),
+                      ),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.folder_shared,
+                            color: Colors.white,
+                          ),
+                        ),
+                        title: const Text(
+                          "Manage Folders",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          "Choose which folders to show or hide",
+                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.white54,
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const FolderManagementScreen(),
+                            ),
+                          );
+                        },
                       ),
                       ListTile(
                         contentPadding: const EdgeInsets.symmetric(

@@ -23,31 +23,28 @@ class DiscoverScreen extends ConsumerWidget {
     final query = ref.watch(searchQueryProvider);
     final results = ref.watch(searchResultsProvider);
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(color: Colors.transparent),
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(left: 24, right: 24, top: 20),
-                child: AppTopBar(),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                child: AppSearchBar(autoFocus: true),
-              ),
-              Expanded(
-                child: query.isEmpty
-                    ? _buildSearchPlaceholder()
-                    : results.isEmpty
-                    ? _buildNoResults()
-                    : _buildSearchResults(results, ref),
-              ),
-            ],
-          ),
+    return Container(
+      decoration: const BoxDecoration(color: Colors.transparent),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(left: 8, right: 8, top: 20),
+              child: AppTopBar(),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: AppSearchBar(autoFocus: true),
+            ),
+            Expanded(
+              child: query.isEmpty
+                  ? _buildSearchPlaceholder()
+                  : results.isEmpty
+                  ? _buildNoResults()
+                  : _buildSearchResults(results, ref),
+            ),
+          ],
         ),
       ),
     );
@@ -261,46 +258,43 @@ class CollectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Container(
-          decoration: const BoxDecoration(color: Colors.transparent),
-          child: SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(left: 24, right: 24, top: 20),
-                  child: AppTopBar(),
+      child: Container(
+        decoration: const BoxDecoration(color: Colors.transparent),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(left: 8, right: 8, top: 20),
+                child: AppTopBar(),
+              ),
+              const SizedBox(height: 10),
+              const TabBar(
+                dividerColor: Colors.transparent,
+                indicatorColor: AppColors.accentYellow,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.grey,
+                labelStyle: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
-                const SizedBox(height: 10),
-                const TabBar(
-                  dividerColor: Colors.transparent,
-                  indicatorColor: AppColors.accentYellow,
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.grey,
-                  labelStyle: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                  unselectedLabelStyle: TextStyle(
-                    fontWeight: FontWeight.normal,
-                    fontSize: 16,
-                  ),
-                  tabs: [
-                    Tab(text: "Favorites"),
-                    Tab(text: "Playlist"),
-                  ],
+                unselectedLabelStyle: TextStyle(
+                  fontWeight: FontWeight.normal,
+                  fontSize: 16,
                 ),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: TabBarView(
-                    physics: const ClampingScrollPhysics(),
-                    children: [const _FavoritesTab(), const _PlaylistsTab()],
-                  ),
+                tabs: [
+                  Tab(text: "Favorites"),
+                  Tab(text: "Playlist"),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: TabBarView(
+                  physics: const ClampingScrollPhysics(),
+                  children: [const _FavoritesTab(), const _PlaylistsTab()],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

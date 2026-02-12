@@ -2,24 +2,15 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_theme.dart';
-import '../../providers/storage_provider.dart';
 import '../../providers/library_provider.dart';
-import 'storage_folders_screen.dart';
+import '../details/folder_details_screen.dart';
 
 class FoldersTab extends ConsumerWidget {
   const FoldersTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final storageState = ref.watch(storageProvider);
     final libraryState = ref.watch(libraryProvider);
-
-    ref.listen<LibraryState>(libraryProvider, (previous, next) {
-      if (previous?.permissionStatus != LibraryPermissionStatus.granted &&
-          next.permissionStatus == LibraryPermissionStatus.granted) {
-        ref.read(storageProvider.notifier).refresh();
-      }
-    });
 
     if (libraryState.permissionStatus != LibraryPermissionStatus.granted) {
       return Center(
@@ -60,79 +51,113 @@ class FoldersTab extends ConsumerWidget {
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 10),
-          Text("Storage", style: AppTextStyles.titleLarge),
-          const SizedBox(height: 6),
-          Text("Select a source to browse", style: AppTextStyles.bodySmall),
-          const SizedBox(height: 24),
+    final folders = libraryState.folders;
 
-          if (storageState.isLoading)
-            const Center(
-              child: CircularProgressIndicator(color: AppColors.accentYellow),
-            )
-          else ...[
-            ...storageState.storages.map((storage) {
-              Color accentColor;
-              IconData icon;
-              String storageRoot = "";
+    if (folders.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.folder_off_rounded,
+              size: 64,
+              color: Colors.white10,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "No music folders found",
+              style: AppTextStyles.bodyMain.copyWith(color: Colors.white38),
+            ),
+          ],
+        ),
+      );
+    }
 
-              if (storage.name.contains("Internal")) {
-                accentColor = const Color(0xFF5186d2);
-                icon = Icons.smartphone;
-                storageRoot = "/storage/emulated/0";
-              } else if (storage.name.contains("SD")) {
-                accentColor = const Color(0xFF50be5b);
-                icon = Icons.sd_storage;
-                // Find SD root from storageMap keys if not emulated
-                storageRoot = libraryState.storageMap.keys.firstWhere(
-                  (k) => !k.contains("emulated"),
-                  orElse: () => "",
-                );
-              } else {
-                accentColor = Colors.grey;
-                icon = Icons.usb;
-              }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 150),
+      itemCount: folders.length,
+      itemBuilder: (context, index) {
+        final folderPath = folders[index];
+        final folderName = folderPath.split('/').last;
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: GestureDetector(
-                  onTap: storage.isAvailable
-                      ? () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => StorageFoldersScreen(
-                                storageName: storage.name,
-                                storageRoot: storageRoot,
-                              ),
-                            ),
-                          );
-                        }
-                      : null,
-                  child: AppStorageCard(
-                    name: storage.name,
-                    icon: icon,
-                    used: "${storage.usedSize.toStringAsFixed(1)} GB",
-                    total: "${storage.totalSize.toStringAsFixed(1)} GB",
-                    percent: storage.percent,
-                    accentColor: storage.isAvailable
-                        ? accentColor
-                        : Colors.grey,
-                    isEnabled: storage.isAvailable,
+        // Count songs in this folder only
+        final songCount = libraryState.songs.where((s) {
+          final sPath = s.url;
+          final lastSlash = sPath.lastIndexOf('/');
+          if (lastSlash == -1) return false;
+          return sPath.substring(0, lastSlash) == folderPath;
+        }).length;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            leading: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.accentYellow.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.folder_rounded,
+                color: AppColors.accentYellow,
+                size: 24,
+              ),
+            ),
+            title: Text(
+              folderName,
+              style: AppTextStyles.bodyMain.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  folderPath,
+                  style: TextStyle(color: Colors.white24, fontSize: 10),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "$songCount Tracks",
+                  style: TextStyle(
+                    color: AppColors.primaryGreen.withOpacity(0.7),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            trailing: const Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white12,
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FolderDetailsScreen(
+                    folderPath: folderPath,
+                    folderName: folderName,
                   ),
                 ),
               );
-            }),
-          ],
-
-          const SizedBox(height: 120), // Bottom padding
-        ],
-      ),
+            },
+          ),
+        );
+      },
     );
   }
 }

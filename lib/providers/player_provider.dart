@@ -1,14 +1,12 @@
 import 'package:audiotags/audiotags.dart';
-import 'package:audioplayers/audioplayers.dart' as ap;
+import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:audio_service/audio_service.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/song.dart';
 import 'stats_provider.dart';
-import '../services/audio_handler.dart';
 import '../services/artwork_cache_service.dart';
 import '../services/lyrics_service.dart';
 
@@ -21,6 +19,7 @@ class MusicPlayerState {
   final Duration duration;
   final bool isShuffling;
   final RepeatMode repeatMode;
+  final String? errorMessage;
 
   MusicPlayerState({
     this.currentSong,
@@ -31,6 +30,7 @@ class MusicPlayerState {
     this.duration = Duration.zero,
     this.isShuffling = false,
     this.repeatMode = RepeatMode.off,
+    this.errorMessage,
   });
 
   MusicPlayerState copyWith({
@@ -42,6 +42,7 @@ class MusicPlayerState {
     Duration? duration,
     bool? isShuffling,
     RepeatMode? repeatMode,
+    String? errorMessage,
   }) {
     return MusicPlayerState(
       currentSong: currentSong ?? this.currentSong,
@@ -52,6 +53,7 @@ class MusicPlayerState {
       duration: duration ?? this.duration,
       isShuffling: isShuffling ?? this.isShuffling,
       repeatMode: repeatMode ?? this.repeatMode,
+      errorMessage: errorMessage,
     );
   }
 }
@@ -59,53 +61,172 @@ class MusicPlayerState {
 enum RepeatMode { off, all, one }
 
 class PlayerNotifier extends StateNotifier<MusicPlayerState> {
-  final ap.AudioPlayer _audioPlayer = ap.AudioPlayer();
+  late final AudioPlayer _audioPlayer;
   final Ref _ref;
   DateTime? _lastTrackingPoint;
-  AudioPlayerHandler? _audioHandler;
-  bool _isInitializingHandler = false;
+  late ConcatenatingAudioSource _playlist;
 
   PlayerNotifier(this._ref, {bool skipInit = false})
     : super(MusicPlayerState()) {
     if (skipInit) return;
 
-    _loadLastPlayedSong();
-    _initAudioHandler();
+    _audioPlayer = AudioPlayer();
+    _playlist = ConcatenatingAudioSource(children: []);
 
-    _audioPlayer.onPositionChanged.listen((pos) {
+    // Set up the player with our playlist structure for later use
+    // Initial setup might be empty until we play something
+    // We defer setting source until play() or load()
+    // However, just_audio recommends setting source early if possible, but empty source is fine.
+
+    _loadLastPlayedSong();
+    _listenToStreams();
+  }
+
+  void _listenToStreams() {
+    _audioPlayer.positionStream.listen((pos) {
+      // Don't log position too often, it's noisy
       state = state.copyWith(position: pos);
       _checkTracking(pos);
-
-      // Update notification position
-      _audioHandler?.updatePlaybackState(
-        playing: state.isPlaying,
-        position: pos,
-      );
     });
 
-    _audioPlayer.onDurationChanged.listen((dur) {
-      state = state.copyWith(duration: dur);
-    });
-
-    _audioPlayer.onPlayerStateChanged.listen((s) {
-      final isPlaying = s == ap.PlayerState.playing;
-      state = state.copyWith(isPlaying: isPlaying);
-
-      // Update notification state
-      _audioHandler?.updatePlaybackState(
-        playing: isPlaying,
-        position: state.position,
-      );
-    });
-
-    _audioPlayer.onPlayerComplete.listen((event) {
-      if (state.repeatMode == RepeatMode.one) {
-        _audioPlayer.seek(Duration.zero);
-        _audioPlayer.resume();
-      } else {
-        next();
+    _audioPlayer.durationStream.listen((dur) {
+      if (dur != null) {
+        state = state.copyWith(duration: dur);
       }
     });
+
+    _audioPlayer.playerStateStream.listen((s) {
+      debugPrint(
+        '🎧 PlayerState Changed: playing=${s.playing}, processingState=${s.processingState}',
+      );
+      final isPlaying = s.playing;
+      state = state.copyWith(isPlaying: isPlaying);
+
+      if (s.processingState == ProcessingState.completed) {
+        debugPrint('🏁 processingState == completed');
+      }
+    });
+
+    _audioPlayer.currentIndexStream.listen((index) {
+      debugPrint('🔢 Current index changed to: $index');
+      if (index != null && index < state.queue.length) {
+        final song = state.queue[index];
+        if (state.currentSong?.id != song.id) {
+          state = state.copyWith(currentSong: song, currentIndex: index);
+          _saveLastPlayedSong(song);
+          _ref
+              .read(statsProvider.notifier)
+              .recordPlay(song.id, song.artist, song.album ?? "Unknown");
+          _fetchLyrics(song);
+          _warmUpQueue();
+        }
+      }
+    });
+
+    // Listen for detailed errors and events
+    _audioPlayer.playbackEventStream.listen(
+      (event) {
+        debugPrint(
+          '🔊 Playback Event: processingState=${event.processingState}, updatePosition=${event.updatePosition}',
+        );
+      },
+      onError: (Object e, StackTrace st) {
+        debugPrint('❌ Playback Event Stream Error: $e');
+        state = state.copyWith(errorMessage: e.toString());
+      },
+    );
+  }
+
+  // Helper method to create AudioSource with MediaItem metadata
+  // This is the implementation of the user's request
+  AudioSource _createAudioSource(Song song) {
+    debugPrint('💿 _createAudioSource: "${song.title}"');
+    debugPrint('   📍 URI: ${song.url}');
+    Uri? artUri;
+    if (song.albumArt != null && song.albumArt!.isNotEmpty) {
+      try {
+        // Handle local file vs network URL for artwork
+        if (song.albumArt!.startsWith('/')) {
+          artUri = Uri.file(song.albumArt!);
+        } else {
+          artUri = Uri.parse(song.albumArt!);
+        }
+      } catch (e) {
+        debugPrint('   ⚠️ Error parsing albumArt URI: $e');
+      }
+    }
+
+    // Determine if audio URL is local or network
+    final audioUri = (song.url.startsWith('/') || song.url.contains(':\\'))
+        ? Uri.file(song.url)
+        : Uri.parse(song.url);
+
+    debugPrint('   🔗 Audio URI: $audioUri');
+
+    return AudioSource.uri(
+      audioUri,
+      tag: MediaItem(
+        id: song.id.toString(),
+        album: song.album ?? "Unknown Album",
+        title: song.title,
+        artist: song.artist,
+        artUri: artUri,
+        duration: Duration(seconds: song.duration),
+      ),
+    );
+  }
+
+  Future<void> play(Song song, {List<Song>? queue, int? index}) async {
+    debugPrint('▶️ Play called for: "${song.title}"');
+    try {
+      // Clear previous error
+      if (state.errorMessage != null) {
+        state = state.copyWith(errorMessage: null);
+      }
+
+      final newQueue = queue ?? [song];
+      final targetIndex =
+          index ?? newQueue.indexOf(song).clamp(0, newQueue.length - 1);
+
+      // If the queue has changed, rebuild the playlist
+      if (state.queue != newQueue) {
+        debugPrint('   📋 Rebuilding playlist with ${newQueue.length} songs');
+
+        // Update state first to reflect queue changes UI side
+        state = state.copyWith(queue: newQueue);
+
+        // Build new audio sources
+        final sources = newQueue.map((s) => _createAudioSource(s)).toList();
+
+        // Create a new playlist
+        _playlist = ConcatenatingAudioSource(children: sources);
+
+        // Set the new source to the player
+        debugPrint('   ⏳ Setting audio source...');
+        await _audioPlayer.setAudioSource(
+          _playlist,
+          initialIndex: targetIndex,
+          initialPosition: Duration.zero,
+        );
+
+        // Update state index
+        state = state.copyWith(currentIndex: targetIndex);
+      } else {
+        // Queue hasn't changed, just seek to the song
+        if (_audioPlayer.currentIndex != targetIndex) {
+          debugPrint('   ⏩ Seeking to index $targetIndex');
+          await _audioPlayer.seek(Duration.zero, index: targetIndex);
+        }
+      }
+
+      debugPrint('   🚀 Calling _audioPlayer.play()');
+      await _audioPlayer.play();
+      debugPrint('   ✅ Playback command sent');
+    } catch (e, stack) {
+      debugPrint('❌ Playback failed: $e');
+      debugPrint('   Stack: $stack');
+      state = state.copyWith(errorMessage: "Playback failed: $e");
+    }
   }
 
   Future<void> _loadLastPlayedSong() async {
@@ -116,11 +237,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       if (lastSongJson != null) {
         final songMap = jsonDecode(lastSongJson) as Map<String, dynamic>;
         final lastSong = Song.fromMap(songMap);
-
-        // Set the last played song without playing it
         state = state.copyWith(currentSong: lastSong);
-
-        debugPrint('✅ Loaded last played song: ${lastSong.title}');
       }
     } catch (e) {
       debugPrint('Error loading last played song: $e');
@@ -132,66 +249,8 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       final prefs = await SharedPreferences.getInstance();
       final songJson = jsonEncode(song.toMap());
       await prefs.setString('last_played_song', songJson);
-      debugPrint('💾 Saved last played song: ${song.title}');
     } catch (e) {
       debugPrint('Error saving last played song: $e');
-    }
-  }
-
-  Future<void> _initAudioHandler() async {
-    if (_isInitializingHandler || _audioHandler != null) return;
-    _isInitializingHandler = true;
-
-    try {
-      debugPrint('🎵 Starting audio handler initialization...');
-
-      // Request notification permission on Android 13+ (API 33+)
-      // This is required for media notifications to appear
-      final notificationPermission = await Permission.notification.request();
-      debugPrint('Notification permission status: $notificationPermission');
-
-      if (!notificationPermission.isGranted) {
-        debugPrint(
-          '⚠️ Notification permission not granted. Media notifications may not appear.',
-        );
-      }
-
-      _audioHandler = await AudioService.init(
-        builder: () => AudioPlayerHandler(),
-        config: AudioServiceConfig(
-          androidNotificationChannelId: 'com.awtart.music.playback.v1',
-          androidNotificationChannelName: 'Music Playback',
-          androidNotificationOngoing: true,
-          androidShowNotificationBadge: true,
-          androidNotificationIcon: 'mipmap/ic_launcher',
-          androidStopForegroundOnPause: false,
-          notificationColor: const Color(
-            0xFF1DB954,
-          ), // Spotify green or similar
-        ),
-      );
-
-      // Connect handler callbacks to player actions
-      _audioHandler?.onPlayPressed = () async {
-        if (state.currentSong != null) {
-          await _audioPlayer.resume();
-        }
-      };
-
-      _audioHandler?.onPausePressed = () async {
-        await pause();
-      };
-
-      _audioHandler?.onNext = () => next();
-      _audioHandler?.onPrevious = () => previous();
-      _audioHandler?.onSeekPressed = (position) => seek(position);
-
-      debugPrint('✅ Audio handler initialized successfully');
-    } catch (e) {
-      debugPrint('❌ Error initializing audio handler: $e');
-      _audioHandler = null;
-    } finally {
-      _isInitializingHandler = false;
     }
   }
 
@@ -212,71 +271,9 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     }
   }
 
-  Future<void> play(Song song, {List<Song>? queue, int? index}) async {
-    // Ensure audio handler is initialized before proceeding
-    if (_audioHandler == null) {
-      await _initAudioHandler();
-    }
-
-    final newQueue = queue ?? [song];
-    // If no index provided, find the song in the queue (or use 0 for single-song queue)
-    final newIndex =
-        index ?? newQueue.indexOf(song).clamp(0, newQueue.length - 1);
-
-    state = state.copyWith(
-      currentSong: song,
-      queue: newQueue,
-      currentIndex: newIndex,
-    );
-
-    // Save this song as the last played song
-    await _saveLastPlayedSong(song);
-
-    _ref
-        .read(statsProvider.notifier)
-        .recordPlay(song.id, song.artist, song.album ?? "Unknown");
-
-    // 1. Prepare and update notification with current song info BEFORE starting playback
-    debugPrint('Preparing notification: ${song.title} by ${song.artist}');
-
-    Uri? artUri;
-    if (song.albumArt != null && song.albumArt!.isNotEmpty) {
-      try {
-        artUri = Uri.parse(song.albumArt!);
-      } catch (e) {
-        debugPrint('Error parsing albumArt URI: $e');
-      }
-    }
-
-    // Set the media item first
-    await _audioHandler?.setMediaItem(
-      id: song.id.toString(),
-      title: song.title,
-      artist: song.artist,
-      album: song.album,
-      artUri: artUri,
-      duration: Duration(seconds: song.duration),
-    );
-
-    // Update playback state to playing IMMEDIATELY to avoid "idle" glitch
-    _audioHandler?.updatePlaybackState(playing: true, position: Duration.zero);
-
-    // 2. Start actual audio playback
-    await _audioPlayer.play(ap.DeviceFileSource(song.url));
-
-    debugPrint('Playback started and notification updated successfully');
-
-    // Fetch real lyrics
-    _fetchLyrics(song);
-
-    // Warm up next few songs in queue
-    _warmUpQueue();
-  }
-
   void _warmUpQueue() {
     if (state.queue.isEmpty) return;
     final startIndex = (state.currentIndex + 1) % state.queue.length;
-    // Warm up next 5 songs
     for (int i = 0; i < 5; i++) {
       final index = (startIndex + i) % state.queue.length;
       final song = state.queue[index];
@@ -286,7 +283,6 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
 
   Future<void> _fetchLyrics(Song song) async {
     try {
-      // 1. Try discovery service (LRC files + local cache)
       final List<LyricLine> newLyrics = await LyricsService.getLyricsForSong(
         song,
       );
@@ -298,12 +294,10 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
         return;
       }
 
-      // 2. Fallback to embedded tag if discovery failed
       final tag = await AudioTags.read(song.url);
       final String? lyricsText = tag?.lyrics;
 
       if (lyricsText != null && lyricsText.isNotEmpty) {
-        // Try to parse as LRC if it contains timestamps
         if (lyricsText.contains('[') && lyricsText.contains(']')) {
           final lrcLyrics = LyricsService.parseLrc(lyricsText);
           if (lrcLyrics.isNotEmpty) {
@@ -316,7 +310,6 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
           }
         }
 
-        // Naive fallback
         final lines = lyricsText.split('\n');
         final fallbackLyrics = lines
             .map((line) => LyricLine(time: Duration.zero, text: line.trim()))
@@ -342,10 +335,10 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     if (state.isPlaying) {
       await pause();
     } else {
-      if (song != null) {
+      if (song != null && state.currentSong?.id != song.id) {
         await play(song);
-      } else if (state.currentSong != null) {
-        await _audioPlayer.resume();
+      } else {
+        await _audioPlayer.play();
       }
     }
   }
@@ -355,44 +348,33 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
   }
 
   void next() {
-    if (state.queue.isEmpty) return;
-    int nextIndex = state.currentIndex + 1;
-    if (nextIndex >= state.queue.length) {
-      if (state.repeatMode == RepeatMode.all) {
-        nextIndex = 0;
-      } else {
-        return;
+    if (_audioPlayer.hasNext) {
+      _audioPlayer.seekToNext();
+    } else {
+      // Loop if needed? ConcatenatingAudioSource handles loop if loop mode is set on player
+      if (state.repeatMode == RepeatMode.all && state.queue.isNotEmpty) {
+        _audioPlayer.seek(Duration.zero, index: 0);
       }
     }
-    play(state.queue[nextIndex], index: nextIndex);
   }
 
   void previous() {
-    if (state.queue.isEmpty) return;
-    int prevIndex = state.currentIndex - 1;
-    if (prevIndex < 0) {
-      if (state.repeatMode == RepeatMode.all) {
-        prevIndex = state.queue.length - 1;
-      } else {
-        return;
+    if (_audioPlayer.hasPrevious) {
+      _audioPlayer.seekToPrevious();
+    } else {
+      if (state.repeatMode == RepeatMode.all && state.queue.isNotEmpty) {
+        _audioPlayer.seek(Duration.zero, index: state.queue.length - 1);
       }
     }
-    play(state.queue[prevIndex], index: prevIndex);
   }
 
   void toggleShuffle() {
     final newValue = !state.isShuffling;
-    List<Song> newQueue = List.from(state.queue);
-    if (newValue) {
-      newQueue.shuffle();
-    } else {
-      // Restore original order if we cared, but for now just shuffle
-    }
-    state = state.copyWith(isShuffling: newValue, queue: newQueue);
+    _audioPlayer.setShuffleModeEnabled(newValue);
+    state = state.copyWith(isShuffling: newValue);
   }
 
   Future<void> playPlaylist(List<Song> playlist, int index) async {
-    if (playlist.isEmpty) return;
     await play(playlist[index], queue: playlist, index: index);
   }
 
@@ -402,8 +384,6 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
         currentSong: state.currentSong!.copyWith(isFavorite: isFavorite),
       );
     }
-
-    // Also update in the current queue to keep it consistent
     if (state.queue.any((s) => s.id == songId)) {
       state = state.copyWith(
         queue: state.queue.map((s) {
@@ -420,25 +400,47 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     final nextMode = RepeatMode
         .values[(state.repeatMode.index + 1) % RepeatMode.values.length];
     state = state.copyWith(repeatMode: nextMode);
+
+    switch (nextMode) {
+      case RepeatMode.off:
+        _audioPlayer.setLoopMode(LoopMode.off);
+        break;
+      case RepeatMode.all:
+        _audioPlayer.setLoopMode(LoopMode.all);
+        break;
+      case RepeatMode.one:
+        _audioPlayer.setLoopMode(LoopMode.one);
+        break;
+    }
   }
 
-  void addToQueue(List<Song> songs) {
-    if (songs.isEmpty) return;
-    // Remove duplicates if needed? standard players allow duplicates.
+  Future<void> addToQueue(List<Song> songs) async {
     final newQueue = List<Song>.from(state.queue)..addAll(songs);
     state = state.copyWith(queue: newQueue);
+    await _playlist.addAll(songs.map((s) => _createAudioSource(s)).toList());
   }
 
-  void addNext(List<Song> songs) {
+  Future<void> addNext(List<Song> songs) async {
     if (songs.isEmpty) return;
     if (state.queue.isEmpty) {
-      playPlaylist(songs, 0);
+      await playPlaylist(songs, 0);
       return;
     }
     final newQueue = List<Song>.from(state.queue);
-    // Insert after current index
-    newQueue.insertAll(state.currentIndex + 1, songs);
+    final insertIndex = state.currentIndex + 1;
+    newQueue.insertAll(insertIndex, songs);
     state = state.copyWith(queue: newQueue);
+
+    await _playlist.insertAll(
+      insertIndex,
+      songs.map((s) => _createAudioSource(s)).toList(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 }
 

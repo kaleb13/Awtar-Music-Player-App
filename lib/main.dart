@@ -6,24 +6,38 @@ import 'package:awtar_music_player/providers/navigation_provider.dart';
 import 'package:awtar_music_player/providers/library_provider.dart';
 import 'package:awtar_music_player/providers/player_provider.dart';
 import 'package:awtar_music_player/theme/app_theme.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'screens/main_sections.dart';
 import 'screens/home_screen.dart';
 import 'screens/main_player_screen.dart';
 import 'screens/permission_onboarding_screen.dart';
 import 'widgets/app_artwork.dart';
+import 'widgets/app_drawer.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/stats_provider.dart';
 import 'providers/performance_provider.dart';
 
-final GlobalKey<NavigatorState> innerNavigatorKey = GlobalKey<NavigatorState>();
+// Keys moved to navigation_provider.dart
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError();
 });
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await JustAudioBackground.init(
+      androidNotificationChannelId:
+          'com.example.awtart_music_player.channel.audio',
+      androidNotificationChannelName: 'Music Playback',
+      androidNotificationOngoing: true,
+    );
+  } catch (e) {
+    debugPrint("❌ Critical Error: JustAudioBackground.init failed: $e");
+  }
+
   final prefs = await SharedPreferences.getInstance();
 
   runApp(
@@ -54,10 +68,12 @@ class MyApp extends ConsumerWidget {
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
-        splashColor: Colors.white.withOpacity(0.05),
-        highlightColor: Colors.transparent,
+        splashFactory: InkRipple.splashFactory,
+        splashColor: Colors.white.withOpacity(0.08),
+        highlightColor: Colors.white.withOpacity(0.04),
         tabBarTheme: TabBarThemeData(
           indicatorColor: AppColors.accentYellow,
+          splashFactory: InkRipple.splashFactory,
           overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
             if (states.contains(WidgetState.pressed)) {
               return Colors.white.withOpacity(0.05);
@@ -101,21 +117,27 @@ class AppShell extends ConsumerWidget {
           SystemNavigator.pop();
         }
       },
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Navigator(
-              key: innerNavigatorKey,
-              onGenerateRoute: (settings) {
-                return MaterialPageRoute(
-                  builder: (context) => const RootLayout(),
-                  settings: settings,
-                );
-              },
+      child: Scaffold(
+        key: rootScaffoldKey,
+        backgroundColor: Colors.transparent,
+        drawer: const AppDrawer(),
+        drawerEnableOpenDragGesture: false,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Navigator(
+                key: innerNavigatorKey,
+                onGenerateRoute: (settings) {
+                  return MaterialPageRoute(
+                    builder: (context) => const RootLayout(),
+                    settings: settings,
+                  );
+                },
+              ),
             ),
-          ),
-          const Positioned.fill(child: MainMusicPlayer()),
-        ],
+            const Positioned.fill(child: MainMusicPlayer()),
+          ],
+        ),
       ),
     );
   }
@@ -175,43 +197,49 @@ class RootLayout extends ConsumerWidget {
         // 1. Dynamic Blurred Background
         if (currentSong != null)
           Positioned.fill(
-            child: AppArtwork(
-              songId: currentSong.id,
-              fit: BoxFit.cover,
-              size: 300, // Background optimization: downsample for blur
+            child: IgnorePointer(
+              child: AppArtwork(
+                songId: currentSong.id,
+                fit: BoxFit.cover,
+                size: 300, // Background optimization: downsample for blur
+              ),
             ),
           ),
 
         // 2. Blur Filter
         if (currentSong != null)
           Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
-                sigmaY: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
+            child: IgnorePointer(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
+                  sigmaY: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
+                ),
+                child: Container(color: Colors.transparent),
               ),
-              child: Container(color: Colors.transparent),
             ),
           ),
 
         // 3. Current background color with 25% opacity (Overground)
         Positioned.fill(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.mainDarkLight.withOpacity(0.9),
-                  AppColors.mainDark.withOpacity(0.9),
-                ],
+          child: IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.mainDarkLight.withOpacity(0.9),
+                    AppColors.mainDark.withOpacity(0.9),
+                  ],
+                ),
               ),
             ),
           ),
         ),
 
-        // 4. Main App Scaffold (must be transparent to see the background)
-        Scaffold(backgroundColor: Colors.transparent, body: content),
+        // 4. Main App content
+        Material(color: Colors.transparent, child: content),
       ],
     );
   }

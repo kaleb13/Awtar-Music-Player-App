@@ -21,77 +21,116 @@ import 'details/artist_details_screen.dart';
 import 'details/album_details_screen.dart';
 import '../widgets/color_aware_album_card.dart'; // Add import
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return DefaultTabController(
-      length: 4,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Container(
-          decoration: const BoxDecoration(color: Colors.transparent),
-          child: SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(
-                    left: 12,
-                    right: 12,
-                    top: 20,
-                  ), // Reduced from 24
-                  child: AppTopBar(),
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        final HomeTab newTab;
+        switch (_tabController.index) {
+          case 0:
+            newTab = HomeTab.home;
+            break;
+          case 1:
+            newTab = HomeTab.folders;
+            break;
+          case 2:
+            newTab = HomeTab.artists;
+            break;
+          case 3:
+            newTab = HomeTab.albums;
+            break;
+          default:
+            newTab = HomeTab.home;
+        }
+        ref.read(homeTabProvider.notifier).state = newTab;
+      }
+    });
+
+    // Sync initial state if needed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentTab = ref.read(homeTabProvider);
+      _tabController.index = currentTab.index;
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(color: Colors.transparent),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(left: 8, right: 8, top: 20),
+              child: AppTopBar(),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: AppSearchBar(),
+            ),
+            const SizedBox(height: 12),
+            TabBar(
+              controller: _tabController,
+              dividerColor: Colors.transparent,
+              indicatorColor: AppColors.accentYellow,
+              indicator: const UnderlineTabIndicator(
+                borderSide: BorderSide(
+                  width: 2.0,
+                  color: AppColors.accentYellow,
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: AppSearchBar(),
-                ),
-                const SizedBox(height: 12),
-                const TabBar(
-                  dividerColor: Colors.transparent,
-                  indicatorColor: AppColors.accentYellow,
-                  indicator: UnderlineTabIndicator(
-                    borderSide: BorderSide(
-                      width: 2.0,
-                      color: AppColors.accentYellow,
-                    ),
-                    insets: EdgeInsets.only(top: 40), // Push indicator down
-                  ),
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.grey,
-                  labelPadding: EdgeInsets.symmetric(horizontal: 4),
-                  labelStyle: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                  unselectedLabelStyle: TextStyle(
-                    fontWeight: FontWeight.normal,
-                    fontSize: 13,
-                  ),
-                  tabs: [
-                    Tab(text: "LIBRARY"), // Changed content
-                    Tab(text: "FOLDERS"),
-                    Tab(text: "ARTISTS"),
-                    Tab(text: "ALBUMS"),
-                  ],
-                ),
-                const SizedBox(height: 0),
-                const Expanded(
-                  child: TabBarView(
-                    physics: ClampingScrollPhysics(),
-                    children: [
-                      HomeOverviewContent(),
-                      FoldersTab(),
-                      ArtistsTab(),
-                      AlbumsTab(),
-                    ],
-                  ),
-                ),
+                insets: EdgeInsets.only(top: 40),
+              ),
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.grey,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.normal,
+                fontSize: 13,
+              ),
+              tabs: const [
+                Tab(text: "LIBRARY"),
+                Tab(text: "FOLDERS"),
+                Tab(text: "ARTISTS"),
+                Tab(text: "ALBUMS"),
               ],
             ),
-          ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                physics: const ClampingScrollPhysics(),
+                children: const [
+                  HomeOverviewContent(),
+                  FoldersTab(),
+                  ArtistsTab(),
+                  AlbumsTab(),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

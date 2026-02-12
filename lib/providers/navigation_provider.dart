@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+final GlobalKey<NavigatorState> innerNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<ScaffoldState> rootScaffoldKey = GlobalKey<ScaffoldState>();
+
 final scrollProgressProvider = StateProvider<double>((ref) => 0.0);
 
 final pageControllerProvider = Provider<PageController>((ref) {

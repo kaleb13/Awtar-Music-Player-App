@@ -29,6 +29,7 @@ class LibraryState {
   final List<Album> albums;
   final List<Playlist> playlists;
   final List<String> folders;
+  final List<String> discoveredFolders;
   final Map<String, List<String>> storageMap;
   final Set<String> excludedFolders;
   final Set<String> hiddenArtists;
@@ -38,6 +39,8 @@ class LibraryState {
   final int lastScanTimestamp;
   final Song? bannerSong;
   final bool isLoading;
+  final bool isRefiningLibrary;
+  final double refineProgress;
   final LibraryPermissionStatus permissionStatus;
   final String? errorMessage;
   final String? completionMessage;
@@ -51,6 +54,7 @@ class LibraryState {
     this.albums = const [],
     this.playlists = const [],
     this.folders = const [],
+    this.discoveredFolders = const [],
     this.storageMap = const {},
     this.excludedFolders = const {},
     this.hiddenArtists = const {},
@@ -60,6 +64,8 @@ class LibraryState {
     this.lastScanTimestamp = 0,
     this.bannerSong,
     this.isLoading = false,
+    this.isRefiningLibrary = false,
+    this.refineProgress = 0.0,
     this.permissionStatus = LibraryPermissionStatus.initial,
     this.errorMessage,
     this.completionMessage,
@@ -74,6 +80,9 @@ class LibraryState {
     List<Album>? albums,
     List<Playlist>? playlists,
     List<String>? folders,
+    List<String>? discoveredFolders,
+    bool? isRefiningLibrary,
+    double? refineProgress,
     Map<String, List<String>>? storageMap,
     Set<String>? excludedFolders,
     Set<String>? hiddenArtists,
@@ -96,6 +105,9 @@ class LibraryState {
       albums: albums ?? this.albums,
       playlists: playlists ?? this.playlists,
       folders: folders ?? this.folders,
+      discoveredFolders: discoveredFolders ?? this.discoveredFolders,
+      isRefiningLibrary: isRefiningLibrary ?? this.isRefiningLibrary,
+      refineProgress: refineProgress ?? this.refineProgress,
       storageMap: storageMap ?? this.storageMap,
       excludedFolders: excludedFolders ?? this.excludedFolders,
       hiddenArtists: hiddenArtists ?? this.hiddenArtists,
@@ -160,6 +172,9 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         excludedFolders = Set<String>.from(decoded['excludedFolders'] ?? []);
         hiddenArtists = Set<String>.from(decoded['hiddenArtists'] ?? []);
         hiddenAlbums = Set<String>.from(decoded['hiddenAlbums'] ?? []);
+        final discoveredFolders = List<String>.from(
+          decoded['discoveredFolders'] ?? [],
+        );
 
         if (decoded['storageMap'] != null) {
           (decoded['storageMap'] as Map).forEach((k, v) {
@@ -169,6 +184,8 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         repArtists = Map<String, int>.from(decoded['repArtists'] ?? {});
         repAlbums = Map<String, int>.from(decoded['repAlbums'] ?? {});
         lastScan = decoded['lastScan'] ?? 0;
+
+        state = state.copyWith(discoveredFolders: discoveredFolders);
       }
 
       // Rebuild Artist objects with the loaded images
@@ -245,6 +262,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         'excludedFolders': state.excludedFolders.toList(),
         'hiddenArtists': state.hiddenArtists.toList(),
         'hiddenAlbums': state.hiddenAlbums.toList(),
+        'discoveredFolders': state.discoveredFolders,
         'storageMap': state.storageMap,
         'repArtists': state.representativeArtistSongs,
         'repAlbums': state.representativeAlbumSongs,
@@ -437,54 +455,6 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
 
       state = state.copyWith(scanProgress: 0.85);
 
-      final Set<String> folderSet = {};
-      final Map<String, Set<String>> storageParentFolders = {};
-
-      final Map<String, int> repArtists = {};
-      final Map<String, int> repAlbums = {};
-
-      for (final s in songs) {
-        repArtists.putIfAbsent(s.artist, () => s.id);
-        if (s.album != null) {
-          repAlbums.putIfAbsent("${s.album}_${s.artist}", () => s.id);
-        }
-
-        final path = s.url;
-        final index = path.lastIndexOf('/');
-        if (index != -1) {
-          final dirPath = path.substring(0, index);
-          folderSet.add(dirPath);
-
-          String storageRoot = "";
-          if (path.startsWith("/storage/emulated/0")) {
-            storageRoot = "/storage/emulated/0";
-          } else {
-            final parts = path.split('/');
-            if (parts.length >= 3 && parts[1] == 'storage') {
-              storageRoot = "/storage/${parts[2]}";
-            }
-          }
-
-          if (storageRoot.isNotEmpty) {
-            final relativePath = path.substring(storageRoot.length);
-            final relParts = relativePath
-                .split('/')
-                .where((p) => p.isNotEmpty)
-                .toList();
-            if (relParts.length > 1) {
-              final parentName = relParts.first;
-              storageParentFolders
-                  .putIfAbsent(storageRoot, () => {})
-                  .add("$storageRoot/$parentName");
-            }
-          }
-        }
-      }
-
-      final storageMap = storageParentFolders.map(
-        (key, value) => MapEntry(key, value.toList()),
-      );
-
       // Get favorites from DB to preserve them
       final dbSongs = await DatabaseService.getAllSongs();
       final favoritedIds = dbSongs
@@ -497,6 +467,52 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         return s;
       }).toList();
 
+      final Map<String, Set<String>> storageParentFolders = {};
+      final Set<String> filteredFolderSet = {};
+      final Set<String> allDiscoveredFolders = {};
+
+      final Map<String, int> repArtists = {};
+      final Map<String, int> repAlbums = {};
+
+      for (final s in updatedSongs) {
+        final path = s.url;
+        final index = path.lastIndexOf('/');
+        if (index != -1) {
+          final dirPath = path.substring(0, index);
+          allDiscoveredFolders.add(dirPath);
+
+          repArtists.putIfAbsent(s.artist, () => s.id);
+          if (s.album != null) {
+            repAlbums.putIfAbsent("${s.album}_${s.artist}", () => s.id);
+          }
+
+          // Determine storage root for this folder
+          String storageRoot = "";
+          if (dirPath.startsWith("/storage/emulated/0")) {
+            storageRoot = "/storage/emulated/0";
+          } else {
+            final parts = dirPath.split('/');
+            if (parts.length >= 3 && parts[1] == 'storage') {
+              storageRoot = "/storage/${parts[2]}";
+            }
+          }
+
+          if (storageRoot.isNotEmpty) {
+            final relativePath = dirPath.substring(storageRoot.length);
+            final relParts = relativePath
+                .split('/')
+                .where((p) => p.isNotEmpty)
+                .toList();
+            if (relParts.isNotEmpty) {
+              final topLevelFolderName = relParts.first;
+              storageParentFolders
+                  .putIfAbsent(storageRoot, () => {})
+                  .add("$storageRoot/$topLevelFolderName");
+            }
+          }
+        }
+      }
+
       final filteredSongs = _filterSongsByFolders(
         updatedSongs,
         state.excludedFolders,
@@ -504,11 +520,24 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       final artists = _rebuildArtists(filteredSongs);
       final albums = _rebuildAlbums(filteredSongs);
 
+      for (final s in filteredSongs) {
+        final path = s.url;
+        final index = path.lastIndexOf('/');
+        if (index != -1) {
+          filteredFolderSet.add(path.substring(0, index));
+        }
+      }
+
+      final storageMap = storageParentFolders.map(
+        (key, value) => MapEntry(key, value.toList()),
+      );
+
       state = state.copyWith(
         songs: filteredSongs,
         artists: artists,
         albums: albums,
-        folders: folderSet.toList(),
+        folders: filteredFolderSet.toList(),
+        discoveredFolders: allDiscoveredFolders.toList(),
         storageMap: storageMap,
         representativeArtistSongs: repArtists,
         representativeAlbumSongs: repAlbums,
@@ -667,30 +696,44 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   }
 
   // Folder Exclusion Management
-  void toggleFolderExclusion(String folderPath) {
+  Future<void> toggleFolderExclusion(String folderPath) async {
+    state = state.copyWith(
+      isRefiningLibrary: true,
+      refineProgress: 0.0,
+      completionMessage: null,
+    );
+
     final excludedFolders = Set<String>.from(state.excludedFolders);
 
     if (excludedFolders.contains(folderPath)) {
-      // Include the folder (remove from excluded)
       excludedFolders.remove(folderPath);
     } else {
-      // Exclude the folder (add to excluded)
       excludedFolders.add(folderPath);
     }
 
-    // Filter songs, artists, and albums based on excluded folders
-    final filteredSongs = _filterSongsByFolders(state.songs, excludedFolders);
-    final filteredArtists = _rebuildArtists(filteredSongs);
-    final filteredAlbums = _rebuildAlbums(filteredSongs);
-
     state = state.copyWith(
       excludedFolders: excludedFolders,
-      songs: filteredSongs,
-      artists: filteredArtists,
-      albums: filteredAlbums,
+      refineProgress: 0.2,
+    );
+    await Future.delayed(const Duration(milliseconds: 300)); // Visual feedback
+
+    // We need 'all' songs to refilter.
+    // Instead of keeping a master list, we rescan (which is fast due to signature)
+    // but we'll force it to apply the new filters.
+    await scanLibrary(force: true);
+
+    state = state.copyWith(
+      refineProgress: 1.0,
+      isRefiningLibrary: false,
+      completionMessage: excludedFolders.contains(folderPath)
+          ? "Folder excluded successfully"
+          : "Folder included successfully",
     );
 
-    _saveToCache();
+    // Auto-clear message after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) state = state.copyWith(completionMessage: null);
+    });
   }
 
   List<Song> _filterSongsByFolders(
@@ -759,7 +802,12 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   }
 
   bool isFolderExcluded(String folderPath) {
-    return state.excludedFolders.contains(folderPath);
+    for (final excluded in state.excludedFolders) {
+      if (folderPath == excluded || folderPath.startsWith("$excluded/")) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void _updateBannerSong(List<Song> songs) {

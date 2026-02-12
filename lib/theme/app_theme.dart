@@ -3,12 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   // Primary Palette
-  static const Color primaryGreen = Color(0xFF50be5b);
+  static const Color primaryGreen = Color(0xFF00664e);
   static const Color accentYellow = Color(0xFF5186d2);
 
   // Backgrounds & Surfaces
   static const Color mainDark = Color(0xFF141619);
-  static const Color mainDarkLight = Color(0xFF2a2a34);
+  static const Color mainDarkLight = Color(0xFF101218);
   static const Color background = mainDark;
 
   static const LinearGradient mainGradient = LinearGradient(

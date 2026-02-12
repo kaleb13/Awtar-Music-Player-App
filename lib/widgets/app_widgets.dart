@@ -12,6 +12,11 @@ import '../providers/player_provider.dart';
 import '../services/palette_service.dart';
 import 'app_artwork.dart';
 import '../screens/settings_screen.dart';
+import '../screens/folder_management_screen.dart';
+import '../screens/reload_metadata_screen.dart';
+import '../screens/hidden_assets_screen.dart';
+import '../screens/rescan_library_screen.dart';
+import 'playlist_dialogs.dart';
 
 class AppPlayButton extends StatelessWidget {
   final bool isPlaying;
@@ -75,7 +80,7 @@ class AppIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget child = Icon(icon, color: color ?? Colors.black, size: size);
+    Widget child = Icon(icon, color: color ?? Colors.white, size: size);
 
     if (isCircle) {
       return GestureDetector(
@@ -331,78 +336,38 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
                 Positioned(
                   top: 4,
                   right: -4,
-                  child: widget.menuBuilder != null && widget.showMenu
-                      ? PopupMenuButton<String>(
-                          itemBuilder: widget.menuBuilder!,
+                  child: widget.showMenu
+                      ? _MenuButton(
+                          menuBuilder: widget.menuBuilder,
                           onSelected: widget.onMenuSelected,
-                          offset: const Offset(0, 30),
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          color: AppColors.surfaceDark,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0D0D0F),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.more_horiz,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                          ),
                         )
-                      : GestureDetector(
-                          onTap: widget.showMenu ? widget.onMenuTap : null,
-                          child: Container(
-                            padding: widget.showMenu
-                                ? const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 4,
-                                  )
-                                : const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0D0D0F),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
+                      : (widget.badgeText != null
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
                                 ),
-                              ],
-                            ),
-                            child: widget.showMenu
-                                ? const Icon(
-                                    Icons.more_horiz,
-                                    color: Colors.white,
-                                    size: 14,
-                                  )
-                                : Text(
-                                    widget.badgeText!,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.normal,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0D0D0F),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
                                     ),
+                                  ],
+                                ),
+                                child: Text(
+                                  widget.badgeText!,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.normal,
                                   ),
-                          ),
-                        ),
+                                ),
+                              )
+                            : const SizedBox.shrink()),
                 ),
             ],
           ),
@@ -478,6 +443,114 @@ class AppPopularArtistCard extends StatelessWidget {
       artwork: artwork,
       songId: songId,
       songPath: songPath,
+    );
+  }
+}
+
+class _MenuButton extends ConsumerStatefulWidget {
+  final PopupMenuItemBuilder<String>? menuBuilder;
+  final void Function(String)? onSelected;
+
+  const _MenuButton({this.menuBuilder, this.onSelected});
+
+  @override
+  ConsumerState<_MenuButton> createState() => _MenuButtonState();
+}
+
+class _MenuButtonState extends ConsumerState<_MenuButton> {
+  bool _isOpen = false;
+
+  void _showMenu() async {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay =
+        Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+
+    final Offset position = button.localToGlobal(
+      Offset.zero,
+      ancestor: overlay,
+    );
+    final Size size = button.size;
+
+    // Define the Boundaries
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isNavVisible = ref.read(bottomNavVisibleProvider);
+
+    // The indicator (mini-player) top is our "Floor"
+    final safeAreaBottom = isNavVisible
+        ? screenHeight - 150
+        : screenHeight - 75;
+
+    // The navbar bottom is our "Ceiling"
+    final safeAreaTop = MediaQuery.of(context).padding.top + 80;
+
+    setState(() => _isOpen = true);
+
+    // Dynamic nudge: If we are near the bottom, we anchor higher to help the flip
+    double anchorTop = position.dy + size.height;
+    if (anchorTop > safeAreaBottom - 100) {
+      anchorTop = position.dy - 5; // Nudge up to encourage UP flip
+    }
+
+    final String? selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        anchorTop.clamp(safeAreaTop, safeAreaBottom),
+        position.dx + size.width,
+        screenHeight - safeAreaBottom, // Tell Flutter the 'Floor' is here
+      ),
+      items: widget.menuBuilder?.call(context) ?? [],
+      color: AppColors.surfaceDark,
+      useRootNavigator: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+      ),
+    );
+
+    if (mounted) {
+      setState(() => _isOpen = false);
+      if (selected != null) {
+        widget.onSelected?.call(selected);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: _showMenu,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          color: _isOpen
+              ? AppColors.primaryGreen.withOpacity(0.3)
+              : const Color(0xFF0D0D0F).withOpacity(0.8),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isOpen
+                ? AppColors.primaryGreen.withOpacity(0.5)
+                : Colors.white.withOpacity(0.1),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _isOpen
+                  ? AppColors.primaryGreen.withOpacity(0.2)
+                  : Colors.black.withOpacity(0.2),
+              blurRadius: _isOpen ? 8 : 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(
+          Icons.more_horiz,
+          color: _isOpen ? AppColors.primaryGreen : Colors.white,
+          size: 14,
+        ),
+      ),
     );
   }
 }
@@ -771,11 +844,27 @@ class _AppMiniPlayerState extends State<AppMiniPlayer> {
   }
 }
 
-class AppTopBar extends StatelessWidget {
+class AppTopBar extends ConsumerWidget {
   const AppTopBar({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentTab = ref.watch(mainTabProvider);
+    String title = "";
+    switch (currentTab) {
+      case MainTab.home:
+        title = "Home";
+        break;
+      case MainTab.discover:
+        title = "Discover";
+        break;
+      case MainTab.collection:
+        title = "Collection";
+        break;
+    }
+
+    final homeTab = ref.watch(homeTabProvider);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -783,54 +872,152 @@ class AppTopBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              SvgPicture.asset(
-                AppAssets.logo,
-                height: 28,
-                width: 35,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.error_outline,
-                  color: Colors.red,
-                  size: 28,
-                ),
+              IconButton(
+                onPressed: () {
+                  rootScaffoldKey.currentState?.openDrawer();
+                },
+                icon: const Icon(Icons.menu, color: Colors.white, size: 28),
+                tooltip: "Menu",
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
-              const SizedBox(width: 12), // Adjusted gap
+              const SizedBox(width: 4),
               Text(
-                "Awtar",
+                title,
                 style: AppTextStyles.titleMedium.copyWith(
-                  letterSpacing: 1,
                   color: Colors.white,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
             color: AppColors.surfaceDark,
+            elevation: 8,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
             onSelected: (value) {
-              if (value == 'settings') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsScreen(),
+              final rootNav = Navigator.of(context, rootNavigator: true);
+
+              switch (value) {
+                case 'settings':
+                  rootNav.push(
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                  break;
+                case 'folder_management':
+                  rootNav.push(
+                    MaterialPageRoute(
+                      builder: (context) => const FolderManagementScreen(),
+                    ),
+                  );
+                  break;
+                case 'reload_metadata':
+                  rootNav.push(
+                    MaterialPageRoute(
+                      builder: (context) => const ReloadMetadataScreen(),
+                    ),
+                  );
+                  break;
+                case 'hidden_artists':
+                  rootNav.push(
+                    MaterialPageRoute(
+                      builder: (context) => const HiddenAssetsScreen(),
+                    ),
+                  );
+                  break;
+                case 'rescan_library':
+                  rootNav.push(
+                    MaterialPageRoute(
+                      builder: (context) => const RescanLibraryScreen(),
+                    ),
+                  );
+                  break;
+                case 'new_playlist':
+                  PlaylistDialogs.showCreatePlaylist(context, ref);
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) {
+              final List<PopupMenuEntry<String>> items = [];
+
+              // Add tab-specific items
+              if (currentTab == MainTab.home) {
+                if (homeTab == HomeTab.folders) {
+                  items.add(
+                    const PopupMenuItem(
+                      value: 'folder_management',
+                      child: _MenuEntry(
+                        icon: Icons.folder_shared_outlined,
+                        label: 'Folder Management',
+                      ),
+                    ),
+                  );
+                } else if (homeTab == HomeTab.artists) {
+                  items.add(
+                    const PopupMenuItem(
+                      value: 'reload_metadata',
+                      child: _MenuEntry(
+                        icon: Icons.refresh_rounded,
+                        label: 'Reload Metadata',
+                      ),
+                    ),
+                  );
+                  items.add(
+                    const PopupMenuItem(
+                      value: 'hidden_artists',
+                      child: _MenuEntry(
+                        icon: Icons.visibility_off_outlined,
+                        label: 'Hidden Artists',
+                      ),
+                    ),
+                  );
+                }
+              } else if (currentTab == MainTab.discover) {
+                items.add(
+                  const PopupMenuItem(
+                    value: 'rescan_library',
+                    child: _MenuEntry(
+                      icon: Icons.radar_rounded,
+                      label: 'Scanner',
+                    ),
+                  ),
+                );
+              } else if (currentTab == MainTab.collection) {
+                items.add(
+                  const PopupMenuItem(
+                    value: 'new_playlist',
+                    child: _MenuEntry(
+                      icon: Icons.add_circle_outline_rounded,
+                      label: 'New Playlist',
+                    ),
                   ),
                 );
               }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
-                value: 'settings',
-                child: Row(
-                  children: [
-                    Icon(Icons.settings, color: Colors.white, size: 20),
-                    SizedBox(width: 12),
-                    Text('Settings', style: TextStyle(color: Colors.white)),
-                  ],
+
+              // Always add settings at the bottom (if there are other items, add a divider)
+              if (items.isNotEmpty) {
+                items.add(const PopupMenuDivider(height: 1));
+              }
+
+              items.add(
+                const PopupMenuItem(
+                  value: 'settings',
+                  child: _MenuEntry(
+                    icon: Icons.settings_outlined,
+                    label: 'Settings',
+                  ),
                 ),
-              ),
-            ],
+              );
+
+              return items;
+            },
           ),
         ],
       ),
@@ -1044,5 +1231,31 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
         _dominantColor = color;
       });
     }
+  }
+}
+
+class _MenuEntry extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _MenuEntry({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.white70, size: 20),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
   }
 }
