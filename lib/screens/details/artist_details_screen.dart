@@ -88,12 +88,19 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
               ),
             ),
 
-          if (currentSong != null)
+          if (currentSong != null &&
+              ref.watch(performanceModeProvider) != PerformanceMode.ultraLow)
             Positioned.fill(
               child: BackdropFilter(
                 filter: ImageFilter.blur(
-                  sigmaX: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
-                  sigmaY: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
+                  sigmaX:
+                      ref.watch(performanceModeProvider) == PerformanceMode.low
+                      ? 15
+                      : 30,
+                  sigmaY:
+                      ref.watch(performanceModeProvider) == PerformanceMode.low
+                      ? 15
+                      : 30,
                 ),
                 child: Container(color: Colors.transparent),
               ),

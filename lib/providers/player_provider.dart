@@ -88,9 +88,15 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     // Only update position if it has changed significantly (e.g. 200ms) or use a separate stream
     // for progress to avoid excessive StateNotifier notifications.
     // For now, let's keep it but ensure it's not blocking.
+    // Throttle MusicPlayerState position updates to once per 1000ms
+    Duration lastThrottledPos = Duration.zero;
     _audioPlayer.positionStream.listen((pos) {
       if (mounted) {
-        state = state.copyWith(position: pos);
+        // Only update global state occasionally to avoid broad rebuilds
+        if ((pos - lastThrottledPos).inMilliseconds.abs() >= 1000) {
+          lastThrottledPos = pos;
+          state = state.copyWith(position: pos);
+        }
         _checkTracking(pos);
       }
     });
@@ -483,6 +489,10 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     );
   }
 
+  Stream<Duration> get positionStream => _audioPlayer.positionStream;
+  Stream<Duration?> get durationStream => _audioPlayer.durationStream;
+  Stream<PlayerState> get playerStateStream => _audioPlayer.playerStateStream;
+
   @override
   void dispose() {
     _audioPlayer.dispose();
@@ -494,4 +504,16 @@ final playerProvider = StateNotifierProvider<PlayerNotifier, MusicPlayerState>((
   ref,
 ) {
   return PlayerNotifier(ref);
+});
+
+final playerPositionStreamProvider = StreamProvider<Duration>((ref) {
+  return ref.watch(playerProvider.notifier).positionStream;
+});
+
+final playerDurationStreamProvider = StreamProvider<Duration?>((ref) {
+  return ref.watch(playerProvider.notifier).durationStream;
+});
+
+final playerStateStreamProvider = StreamProvider<PlayerState>((ref) {
+  return ref.watch(playerProvider.notifier).playerStateStream;
 });

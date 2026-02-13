@@ -57,7 +57,9 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     _controller.value = initialScreen == AppScreen.home ? 0.0 : 1.0;
 
     // Initial breathing state
-    if (ref.read(playerProvider).isPlaying) {
+    final performanceMode = ref.read(performanceModeProvider);
+    if (ref.read(playerProvider).isPlaying &&
+        performanceMode != PerformanceMode.ultraLow) {
       _breathingController.repeat(reverse: true);
     }
 
@@ -82,13 +84,22 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     _playingSub = ref.listenManual<bool>(
       playerProvider.select((s) => s.isPlaying),
       (prev, isPlaying) {
-        if (isPlaying) {
+        final performanceMode = ref.read(performanceModeProvider);
+        if (isPlaying && performanceMode != PerformanceMode.ultraLow) {
           _breathingController.repeat(reverse: true);
         } else {
           _breathingController.stop();
         }
       },
     );
+
+    ref.listenManual(performanceModeProvider, (prev, mode) {
+      if (mode == PerformanceMode.ultraLow) {
+        _breathingController.stop();
+      } else if (ref.read(playerProvider).isPlaying) {
+        _breathingController.repeat(reverse: true);
+      }
+    });
 
     _songSub = ref.listenManual(
       playerProvider.select((s) => s.currentSong?.id),
@@ -258,7 +269,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     final currentMainTab = ref.watch(mainTabProvider);
 
     // Performance optimization: Adaptive blur
-    final isLowPerformance = ref.watch(lowPerformanceModeProvider);
+    final performanceMode = ref.watch(performanceModeProvider);
 
     return ListenableBuilder(
       listenable: _controller,
@@ -493,91 +504,47 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                     ),
                                   )
                                 : BorderRadius.circular(currentRadius),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(
-                                sigmaX: val < 0.5 ? 10 : 20,
-                                sigmaY: val < 0.5 ? 10 : 20,
-                              ),
-                              child: Container(
-                                color: val < 0.1
-                                    ? Colors.black.withOpacity(0.3)
-                                    : currentColor.withOpacity(0.95),
-                                child: SafeArea(
-                                  bottom: false,
-                                  top: false,
-                                  child: Padding(
-                                    padding: EdgeInsets.only(
-                                      top: Tween<double>(
-                                        begin: 0,
-                                        end: MediaQuery.of(context).padding.top,
-                                      ).transform(val.clamp(0.0, 1.0)),
-                                      left: Tween<double>(
-                                        begin: 0,
-                                        end: 24,
-                                      ).transform(val.clamp(0.0, 1.0)),
-                                      right: Tween<double>(
-                                        begin: 0,
-                                        end: 24,
-                                      ).transform(val.clamp(0.0, 1.0)),
+                            child:
+                                (performanceMode == PerformanceMode.ultraLow &&
+                                    val < 0.1)
+                                ? Container(
+                                    color: val < 0.1
+                                        ? Colors.black.withOpacity(0.3)
+                                        : currentColor.withOpacity(0.95),
+                                    child: _buildMainContent(
+                                      context,
+                                      val,
+                                      song,
+                                      performanceMode,
+                                      ref,
                                     ),
-                                    child: Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        _buildMorphingAlbumArt(
-                                          context,
-                                          val,
-                                          song.albumArt ??
-                                              "https://placeholder.com",
-                                          isLowPerformance: isLowPerformance,
-                                          songId: song.id,
-                                          songPath: song.url,
-                                        ),
-                                        if (val < 0.5)
-                                          Positioned.fill(
-                                            child: Opacity(
-                                              opacity: (1 - val * 2).clamp(
-                                                0.0,
-                                                1.0,
-                                              ),
-                                              child: _buildMiniPlayerUI(
-                                                song,
-                                                ref,
-                                              ),
-                                            ),
-                                          ),
-                                        if (val > 0.2 && val < 1.3)
-                                          Positioned.fill(
-                                            child: Opacity(
-                                              opacity: val <= 1.0
-                                                  ? (val * 2 - 0.4).clamp(
-                                                      0.0,
-                                                      1.0,
-                                                    )
-                                                  : (1.0 - (val - 1.0) * 3)
-                                                        .clamp(0.0, 1.0),
-                                              child: const RepaintBoundary(
-                                                child: PlayerScreenContent(),
-                                              ),
-                                            ),
-                                          ),
-                                        if (val > 1.2)
-                                          Positioned.fill(
-                                            child: Opacity(
-                                              opacity: ((val - 1.5) * 2).clamp(
-                                                0.0,
-                                                1.0,
-                                              ),
-                                              child: const RepaintBoundary(
-                                                child: LyricsHeaderContent(),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
+                                  )
+                                : BackdropFilter(
+                                    filter: ImageFilter.blur(
+                                      sigmaX:
+                                          performanceMode ==
+                                              PerformanceMode.ultraLow
+                                          ? 0
+                                          : (val < 0.5 ? 10 : 20),
+                                      sigmaY:
+                                          performanceMode ==
+                                              PerformanceMode.ultraLow
+                                          ? 0
+                                          : (val < 0.5 ? 10 : 20),
+                                    ),
+                                    child: Container(
+                                      color: val < 0.1
+                                          ? Colors.black.withOpacity(0.3)
+                                          : currentColor.withOpacity(0.95),
+                                      child: _buildMainContent(
+                                        context,
+                                        val,
+                                        song,
+                                        performanceMode,
+                                        ref,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                            ),
                           ),
                         ),
                       ),
@@ -626,7 +593,69 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     );
   }
 
-  Widget _buildMiniPlayerUI(dynamic song, WidgetRef ref) {
+  Widget _buildMainContent(
+    BuildContext context,
+    double val,
+    Song song,
+    PerformanceMode performanceMode,
+    WidgetRef ref,
+  ) {
+    return SafeArea(
+      bottom: false,
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.only(
+          top: Tween<double>(
+            begin: 0,
+            end: MediaQuery.of(context).padding.top,
+          ).transform(val.clamp(0.0, 1.0)),
+          left: Tween<double>(begin: 0, end: 24).transform(val.clamp(0.0, 1.0)),
+          right: Tween<double>(
+            begin: 0,
+            end: 24,
+          ).transform(val.clamp(0.0, 1.0)),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _buildMorphingAlbumArt(
+              context,
+              val,
+              song.albumArt ?? "https://placeholder.com",
+              performanceMode: performanceMode,
+              songId: song.id,
+              songPath: song.url,
+            ),
+            if (val < 0.5)
+              Positioned.fill(
+                child: Opacity(
+                  opacity: (1 - val * 2).clamp(0.0, 1.0),
+                  child: _buildMiniPlayerUI(song, ref),
+                ),
+              ),
+            if (val > 0.2 && val < 1.3)
+              Positioned.fill(
+                child: Opacity(
+                  opacity: val <= 1.0
+                      ? (val * 2 - 0.4).clamp(0.0, 1.0)
+                      : (1.0 - (val - 1.0) * 3).clamp(0.0, 1.0),
+                  child: const RepaintBoundary(child: PlayerScreenContent()),
+                ),
+              ),
+            if (val > 1.2)
+              Positioned.fill(
+                child: Opacity(
+                  opacity: ((val - 1.5) * 2).clamp(0.0, 1.0),
+                  child: const RepaintBoundary(child: LyricsHeaderContent()),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniPlayerUI(Song song, WidgetRef ref) {
     final isPlaying = ref.watch(playerProvider.select((s) => s.isPlaying));
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -764,7 +793,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     BuildContext context,
     double val,
     String url, {
-    required bool isLowPerformance,
+    required PerformanceMode performanceMode,
     int? songId,
     String? songPath,
   }) {
@@ -787,7 +816,9 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
       top = Tween<double>(begin: 0, end: 70).transform(val);
       left = Tween<double>(begin: 0, end: 0).transform(val);
       radius = Tween<double>(begin: 0, end: AppRadius.large).transform(val);
-      final maxBlur = isLowPerformance ? 8.0 : 20.0;
+      double maxBlur = 20.0;
+      if (performanceMode == PerformanceMode.low) maxBlur = 8.0;
+      if (performanceMode == PerformanceMode.ultraLow) maxBlur = 0.0;
       blur = Tween<double>(begin: maxBlur, end: 0).transform(val);
     } else {
       double t = val - 1.0;

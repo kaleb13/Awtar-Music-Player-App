@@ -66,38 +66,34 @@ class SettingsScreen extends ConsumerWidget {
                   _buildSettingsSection(
                     title: "Performance",
                     children: [
-                      SwitchListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 8,
-                        ),
-                        secondary: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                      Column(
+                        children: [
+                          _buildPerformanceOption(
+                            context,
+                            ref,
+                            title: "Normal",
+                            subtitle: "Full visual effects and animations",
+                            mode: PerformanceMode.normal,
+                            icon: Icons.speed,
                           ),
-                          child: const Icon(Icons.speed, color: Colors.white),
-                        ),
-                        title: const Text(
-                          "Low Performance Mode",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                          _buildPerformanceOption(
+                            context,
+                            ref,
+                            title: "Low Performance",
+                            subtitle: "Reduced blur and complex animations",
+                            mode: PerformanceMode.low,
+                            icon: Icons.shutter_speed,
                           ),
-                        ),
-                        subtitle: const Text(
-                          "Reduce visual effects for better performance",
-                          style: TextStyle(color: Colors.white54, fontSize: 14),
-                        ),
-                        value: ref.watch(lowPerformanceModeProvider),
-                        activeThumbColor: AppColors.accentYellow,
-                        onChanged: (value) {
-                          ref
-                              .read(lowPerformanceModeProvider.notifier)
-                              .toggle();
-                        },
+                          _buildPerformanceOption(
+                            context,
+                            ref,
+                            title: "Ultra Low",
+                            subtitle:
+                                "No blur, static gradients, maximum speed",
+                            mode: PerformanceMode.ultraLow,
+                            icon: Icons.bolt,
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -324,6 +320,61 @@ class SettingsScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPerformanceOption(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required String subtitle,
+    required PerformanceMode mode,
+    required IconData icon,
+  }) {
+    final currentMode = ref.watch(performanceModeProvider);
+    final isSelected = currentMode == mode;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      onTap: () => ref.read(performanceModeProvider.notifier).setMode(mode),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.accentYellow.withOpacity(0.1)
+              : Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          color: isSelected ? AppColors.accentYellow : Colors.white,
+          size: 20,
+        ),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isSelected ? AppColors.accentYellow : Colors.white,
+          fontSize: 15,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          color: isSelected
+              ? AppColors.accentYellow.withOpacity(0.7)
+              : Colors.white54,
+          fontSize: 12,
+        ),
+      ),
+      trailing: isSelected
+          ? const Icon(
+              Icons.check_circle,
+              color: AppColors.accentYellow,
+              size: 20,
+            )
+          : null,
     );
   }
 

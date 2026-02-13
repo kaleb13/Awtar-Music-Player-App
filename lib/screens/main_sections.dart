@@ -115,11 +115,13 @@ class DiscoverScreen extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(width: 16),
               itemBuilder: (context, index) {
                 final album = results.albums[index];
-                final library = ref.watch(libraryProvider);
+                final repAlbums = ref.watch(
+                  libraryProvider.select((s) => s.representativeAlbumSongs),
+                );
 
                 // Get a representative song ID for this album
                 final albumKey = '${album.album}_${album.artist}';
-                final albumSongId = library.representativeAlbumSongs[albumKey];
+                final albumSongId = repAlbums[albumKey];
 
                 return AppAlbumCard(
                   title: album.album,
@@ -175,14 +177,16 @@ class DiscoverScreen extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(width: 16),
               itemBuilder: (context, index) {
                 final artist = results.artists[index];
-                final library = ref.watch(libraryProvider);
-
-                // Get a representative song ID for this artist
-                final artistSongId =
-                    library.representativeArtistSongs[artist.artist];
-                final fallbackSongId = library.songs.isNotEmpty
-                    ? library.songs.first.id
-                    : 0;
+                final artistSongId = ref.watch(
+                  libraryProvider.select(
+                    (s) => s.representativeArtistSongs[artist.artist],
+                  ),
+                );
+                final fallbackSongId = ref.watch(
+                  libraryProvider.select(
+                    (s) => s.songs.isNotEmpty ? s.songs.first.id : 0,
+                  ),
+                );
                 final finalSongId = artistSongId ?? fallbackSongId;
 
                 return Column(

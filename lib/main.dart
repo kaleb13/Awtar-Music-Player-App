@@ -192,10 +192,12 @@ class RootLayout extends ConsumerWidget {
         content = const HomeScreen();
     }
 
+    final performanceMode = ref.watch(performanceModeProvider);
+
     return Stack(
       children: [
         // 1. Dynamic Blurred Background
-        if (currentSong != null)
+        if (currentSong != null && performanceMode != PerformanceMode.ultraLow)
           Positioned.fill(
             child: IgnorePointer(
               child: AppArtwork(
@@ -206,14 +208,14 @@ class RootLayout extends ConsumerWidget {
             ),
           ),
 
-        // 2. Blur Filter
-        if (currentSong != null)
+        // 2. Blur Filter (Disabled in Ultra Low mode)
+        if (currentSong != null && performanceMode != PerformanceMode.ultraLow)
           Positioned.fill(
             child: IgnorePointer(
               child: BackdropFilter(
                 filter: ImageFilter.blur(
-                  sigmaX: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
-                  sigmaY: ref.watch(lowPerformanceModeProvider) ? 15 : 30,
+                  sigmaX: performanceMode == PerformanceMode.low ? 15 : 30,
+                  sigmaY: performanceMode == PerformanceMode.low ? 15 : 30,
                 ),
                 child: Container(color: Colors.transparent),
               ),

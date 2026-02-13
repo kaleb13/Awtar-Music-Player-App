@@ -14,21 +14,34 @@ class ArtistsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final libraryState = ref.watch(libraryProvider);
-    // Filter hidden artists
-    // Filter hidden artists and apply new filters
-    final artists = libraryState.artists.where((a) {
-      if (libraryState.hiddenArtists.contains(a.artist)) return false;
-      if (libraryState.hideSmallArtists && a.numberOfTracks < 3) return false;
-      if (libraryState.hideUnknownArtist &&
-          (a.artist.toLowerCase() == "<unknown>" ||
-              a.artist.toLowerCase() == "unknown")) {
-        return false;
-      }
-      return true;
-    }).toList();
+    final artists = ref.watch(
+      libraryProvider.select(
+        (s) => s.artists.where((a) {
+          if (s.hiddenArtists.contains(a.artist)) return false;
+          if (s.hideSmallArtists && a.numberOfTracks < 3) return false;
+          if (s.hideUnknownArtist &&
+              (a.artist.toLowerCase() == "<unknown>" ||
+                  a.artist.toLowerCase() == "unknown")) {
+            return false;
+          }
+          return true;
+        }).toList(),
+      ),
+    );
 
-    if (libraryState.permissionStatus != LibraryPermissionStatus.granted) {
+    final permissionStatus = ref.watch(
+      libraryProvider.select((s) => s.permissionStatus),
+    );
+    final isLoading = ref.watch(libraryProvider.select((s) => s.isLoading));
+    final representativeArtistSongs = ref.watch(
+      libraryProvider.select((s) => s.representativeArtistSongs),
+    );
+    final artistColors = ref.watch(
+      libraryProvider.select((s) => s.artistColors),
+    );
+    final songs = ref.watch(libraryProvider.select((s) => s.songs));
+
+    if (permissionStatus != LibraryPermissionStatus.granted) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -67,7 +80,7 @@ class ArtistsTab extends ConsumerWidget {
       );
     }
 
-    if (artists.isEmpty && !libraryState.isLoading) {
+    if (artists.isEmpty && !isLoading) {
       return const Center(
         child: Text(
           "No artists found on your device",
@@ -87,10 +100,11 @@ class ArtistsTab extends ConsumerWidget {
       itemCount: artists.length,
       itemBuilder: (context, index) {
         final artist = artists[index];
-        final artistSong = libraryState.songs.firstWhere(
-          (s) => s.artist == artist.artist,
-          orElse: () => libraryState.songs.isNotEmpty
-              ? libraryState.songs.first
+        final representativeSongId = representativeArtistSongs[artist.artist];
+        final artistSong = songs.firstWhere(
+          (s) => s.id == representativeSongId,
+          orElse: () => songs.isNotEmpty
+              ? songs.first
               : Song(
                   id: 0,
                   title: "",
@@ -107,7 +121,7 @@ class ArtistsTab extends ConsumerWidget {
           songId: artistSong.id,
           flexible: true,
           isPortrait: true,
-          borderColor: libraryState.artistColors[artist.artist],
+          borderColor: artistColors[artist.artist],
           artwork: artist.imagePath != null
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(24),

@@ -80,13 +80,8 @@ class FoldersTab extends ConsumerWidget {
         final folderPath = folders[index];
         final folderName = folderPath.split('/').last;
 
-        // Count songs in this folder only
-        final songCount = libraryState.songs.where((s) {
-          final sPath = s.url;
-          final lastSlash = sPath.lastIndexOf('/');
-          if (lastSlash == -1) return false;
-          return sPath.substring(0, lastSlash) == folderPath;
-        }).length;
+        // Efficient O(1) lookup
+        final songCount = libraryState.folderSongCounts[folderPath] ?? 0;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 12),

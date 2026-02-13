@@ -39,6 +39,7 @@ class LibraryState {
   final Set<String> excludedFolders;
   final Set<String> hiddenArtists;
   final Set<String> hiddenAlbums;
+  final Map<String, int> folderSongCounts;
   final Map<String, int> representativeArtistSongs;
   final Map<String, int> representativeAlbumSongs;
   final Map<String, Color> artistColors;
@@ -71,6 +72,7 @@ class LibraryState {
     this.excludedFolders = const {},
     this.hiddenArtists = const {},
     this.hiddenAlbums = const {},
+    this.folderSongCounts = const {},
     this.representativeArtistSongs = const {},
     this.representativeAlbumSongs = const {},
     this.artistColors = const {},
@@ -106,6 +108,7 @@ class LibraryState {
     Set<String>? excludedFolders,
     Set<String>? hiddenArtists,
     Set<String>? hiddenAlbums,
+    Map<String, int>? folderSongCounts,
     Map<String, int>? representativeArtistSongs,
     Map<String, int>? representativeAlbumSongs,
     Map<String, Color>? artistColors,
@@ -138,6 +141,7 @@ class LibraryState {
       excludedFolders: excludedFolders ?? this.excludedFolders,
       hiddenArtists: hiddenArtists ?? this.hiddenArtists,
       hiddenAlbums: hiddenAlbums ?? this.hiddenAlbums,
+      folderSongCounts: folderSongCounts ?? this.folderSongCounts,
       representativeArtistSongs:
           representativeArtistSongs ?? this.representativeArtistSongs,
       representativeAlbumSongs:
@@ -725,6 +729,17 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         (key, value) => MapEntry(key, value.toList()),
       );
 
+      // Precompute folder song counts
+      final Map<String, int> folderCounts = {};
+      for (final s in filteredSongs) {
+        final path = s.url;
+        final index = path.lastIndexOf('/');
+        if (index != -1) {
+          final dirPath = path.substring(0, index);
+          folderCounts[dirPath] = (folderCounts[dirPath] ?? 0) + 1;
+        }
+      }
+
       state = state.copyWith(
         songs: filteredSongs,
         artists: artists,
@@ -732,6 +747,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         folders: filteredFolderSet.toList(),
         discoveredFolders: allDiscoveredFolders.toList(),
         storageMap: storageMap,
+        folderSongCounts: folderCounts,
         representativeArtistSongs: repArtists,
         representativeAlbumSongs: repAlbums,
         lastScanTimestamp: DateTime.now().millisecondsSinceEpoch,

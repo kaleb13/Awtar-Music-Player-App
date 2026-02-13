@@ -129,12 +129,12 @@ class PlayerScreenContent extends ConsumerWidget {
           const SizedBox(height: 20), // Reduced from 30
           Consumer(
             builder: (context, ref, child) {
-              final position = ref.watch(
-                playerProvider.select((s) => s.position),
-              );
-              final duration = ref.watch(
-                playerProvider.select((s) => s.duration),
-              );
+              final position =
+                  ref.watch(playerPositionStreamProvider).value ??
+                  Duration.zero;
+              final duration =
+                  ref.watch(playerDurationStreamProvider).value ??
+                  Duration.zero;
               return Column(
                 children: [
                   AppProgressBar(
@@ -358,7 +358,8 @@ class _LyricLineItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final position = ref.watch(playerProvider.select((s) => s.position));
+    final position =
+        ref.watch(playerPositionStreamProvider).value ?? Duration.zero;
     final lyric = lyrics[index];
 
     final isCurrent =

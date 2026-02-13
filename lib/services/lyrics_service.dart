@@ -53,7 +53,14 @@ class LyricsService {
       }
     }
 
-    // 2. Try to find .lrc file in the same directory (relatively fast)
+    // 2. Check Database (on demand)
+    final dbLyrics = await DatabaseService.getLyricsForSong(song.id);
+    if (dbLyrics.isNotEmpty) {
+      _cache[song.id] = dbLyrics;
+      return dbLyrics;
+    }
+
+    // 3. Try to find .lrc file in the same directory (relatively fast)
     try {
       final songFile = File(song.url);
       final parentDir = songFile.parent;

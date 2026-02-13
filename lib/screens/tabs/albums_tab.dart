@@ -15,19 +15,26 @@ class AlbumsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final libraryState = ref.watch(libraryProvider);
     final isSelectionMode = ref.watch(isAlbumSelectionModeProvider);
     final selectedIds = ref.watch(selectedAlbumIdsProvider);
 
-    // Filter hidden albums and small albums if enabled
-    final albums = libraryState.albums.where((a) {
-      final key = "${a.album}_${a.artist}";
-      if (libraryState.hiddenAlbums.contains(key)) return false;
-      if (libraryState.hideSmallAlbums && a.numberOfSongs < 3) return false;
-      return true;
-    }).toList();
+    final albums = ref.watch(
+      libraryProvider.select(
+        (s) => s.albums.where((a) {
+          final key = "${a.album}_${a.artist}";
+          if (s.hiddenAlbums.contains(key)) return false;
+          if (s.hideSmallAlbums && a.numberOfSongs < 3) return false;
+          return true;
+        }).toList(),
+      ),
+    );
 
-    if (libraryState.permissionStatus != LibraryPermissionStatus.granted) {
+    final permissionStatus = ref.watch(
+      libraryProvider.select((s) => s.permissionStatus),
+    );
+    final isLoading = ref.watch(libraryProvider.select((s) => s.isLoading));
+
+    if (permissionStatus != LibraryPermissionStatus.granted) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -66,7 +73,7 @@ class AlbumsTab extends ConsumerWidget {
       );
     }
 
-    if (albums.isEmpty && !libraryState.isLoading) {
+    if (albums.isEmpty && !isLoading) {
       return const Center(
         child: Text(
           "No albums found on your device",
@@ -74,6 +81,11 @@ class AlbumsTab extends ConsumerWidget {
         ),
       );
     }
+
+    final representativeAlbumSongs = ref.watch(
+      libraryProvider.select((s) => s.representativeAlbumSongs),
+    );
+    final songs = ref.watch(libraryProvider.select((s) => s.songs));
 
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 180),
@@ -89,10 +101,11 @@ class AlbumsTab extends ConsumerWidget {
         final albumKey = "${album.album}_${album.artist}";
         final isSelected = selectedIds.contains(albumKey);
 
-        final albumSong = libraryState.songs.firstWhere(
-          (s) => s.album == album.album,
-          orElse: () => libraryState.songs.isNotEmpty
-              ? libraryState.songs.first
+        final representativeSongId = representativeAlbumSongs[albumKey];
+        final albumSong = songs.firstWhere(
+          (s) => s.id == representativeSongId,
+          orElse: () => songs.isNotEmpty
+              ? songs.first
               : Song(
                   id: 0,
                   title: "",

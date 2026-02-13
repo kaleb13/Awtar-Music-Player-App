@@ -115,22 +115,6 @@ class DatabaseService {
     final List<Song> songs = [];
 
     for (final m in maps) {
-      final List<Map<String, dynamic>> lMaps = await db.query(
-        'lyrics',
-        where: 'songId = ?',
-        whereArgs: [m['id']],
-        orderBy: 'timeMs ASC',
-      );
-
-      final lyrics = lMaps
-          .map(
-            (l) => LyricLine(
-              time: Duration(milliseconds: l['timeMs']),
-              text: l['text'],
-            ),
-          )
-          .toList();
-
       songs.add(
         Song(
           id: m['id'],
@@ -142,7 +126,7 @@ class DatabaseService {
           duration: m['duration'] ?? 0,
           albumArt: m['albumArt'],
           isFavorite: m['isFavorite'] == 1,
-          lyrics: lyrics,
+          lyrics: const [], // Load on demand
           trackNumber: m['trackNumber'],
           genre: m['genre'],
           year: m['year'],
@@ -150,6 +134,25 @@ class DatabaseService {
       );
     }
     return songs;
+  }
+
+  static Future<List<LyricLine>> getLyricsForSong(int songId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> lMaps = await db.query(
+      'lyrics',
+      where: 'songId = ?',
+      whereArgs: [songId],
+      orderBy: 'timeMs ASC',
+    );
+
+    return lMaps
+        .map(
+          (l) => LyricLine(
+            time: Duration(milliseconds: l['timeMs']),
+            text: l['text'],
+          ),
+        )
+        .toList();
   }
 
   static Future<void> saveLyrics(int songId, List<LyricLine> lyrics) async {
