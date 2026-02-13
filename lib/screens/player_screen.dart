@@ -32,6 +32,7 @@ class PlayerScreenContent extends ConsumerWidget {
             children: [
               AppIconButton(
                 icon: Icons.arrow_back,
+                color: AppColors.textLight,
                 onTap: () =>
                     ref.read(screenProvider.notifier).state = AppScreen.home,
               ),
@@ -42,7 +43,10 @@ class PlayerScreenContent extends ConsumerWidget {
                   fontSize: 16,
                 ),
               ),
-              const AppIconButton(icon: Icons.more_horiz),
+              const AppIconButton(
+                icon: Icons.more_horiz,
+                color: AppColors.textLight,
+              ),
             ],
           ),
           SizedBox(
@@ -174,6 +178,7 @@ class PlayerScreenContent extends ConsumerWidget {
               ),
               AppIconButton(
                 icon: Icons.skip_previous,
+                color: AppColors.textLight,
                 size: 40, // Significantly increased from 32
                 onTap: () => ref.read(playerProvider.notifier).previous(),
               ),
@@ -185,6 +190,7 @@ class PlayerScreenContent extends ConsumerWidget {
               ),
               AppIconButton(
                 icon: Icons.skip_next,
+                color: AppColors.textLight,
                 size: 40, // Significantly increased from 32
                 onTap: () => ref.read(playerProvider.notifier).next(),
               ),

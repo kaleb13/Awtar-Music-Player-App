@@ -148,11 +148,17 @@ class _AppArtworkState extends State<AppArtwork> {
       child: FutureBuilder<Uint8List?>(
         future: _artworkFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done &&
-              snapshot.data != null &&
-              snapshot.data!.isNotEmpty) {
+          final bytes = snapshot.data;
+          final isDone = snapshot.connectionState == ConnectionState.done;
+
+          // Optimization: If we have new bytes, use them.
+          // If we are still loading, try to show the previous cache if available
+          // (which is handled by GaplessPlayback if we were using the same Image widget)
+          // But since we use different keys/futures, we should try to be smart.
+
+          if (bytes != null && bytes.isNotEmpty) {
             // Calculate optimal cache size for decoding
-            final int? cacheSize = widget.size == double.infinity
+            final int cacheSize = widget.size == double.infinity
                 ? (MediaQuery.of(context).size.width *
                           MediaQuery.of(context).devicePixelRatio)
                       .toInt()
@@ -160,14 +166,25 @@ class _AppArtworkState extends State<AppArtwork> {
                       .toInt();
 
             return Image.memory(
-              snapshot.data!,
+              bytes,
               width: widget.size == double.infinity ? null : widget.size,
               height: widget.size == double.infinity ? null : widget.size,
               fit: widget.fit,
               filterQuality: FilterQuality.low, // Optimization for animations
               gaplessPlayback: true, // Prevent flickering when updating
               cacheWidth: cacheSize,
-              // Don't set cacheHeight to preserve aspect ratio if needed, or set both
+            );
+          }
+
+          // If we are loading and don't have data yet, we might want to transparently
+          // show nothing OR keep the old one if we were doing a cross-fade.
+          // For now, only show placeholder if we truly have nothing or it's been a while.
+          if (!isDone) {
+            // Return an empty container or a very subtle placeholder to avoid "flash"
+            return Container(
+              width: widget.size == double.infinity ? 100 : widget.size,
+              height: widget.size == double.infinity ? 100 : widget.size,
+              color: Colors.black12,
             );
           }
 

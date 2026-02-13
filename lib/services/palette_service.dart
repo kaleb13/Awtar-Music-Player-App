@@ -9,7 +9,8 @@ import 'dart:io';
 
 class PaletteService {
   static final Map<String, Color> _cache = {};
-  static final List<String> _pending = [];
+  static final Map<String, Future<Color>> _tasks =
+      {}; // Task queue for pending requests
   static final OnAudioQuery _audioQuery = OnAudioQuery();
 
   static Future<Color> getColor(
@@ -31,14 +32,31 @@ class PaletteService {
       return _cache[cacheKey]!;
     }
 
-    if (_pending.contains(cacheKey)) {
-      return AppColors.accentYellow;
+    // If a task for this key is already in progress, wait for it
+    if (_tasks.containsKey(cacheKey)) {
+      return await _tasks[cacheKey]!;
     }
 
-    _pending.add(cacheKey);
+    // Start a new task
+    final task = _processPalette(cacheKey, imageUrl, songId, songPath);
+    _tasks[cacheKey] = task;
 
     try {
+      return await task;
+    } finally {
+      _tasks.remove(cacheKey);
+    }
+  }
+
+  static Future<Color> _processPalette(
+    String cacheKey,
+    String imageUrl,
+    int? songId,
+    String? songName,
+  ) async {
+    try {
       Uint8List? bytes;
+      String? songPath = songName;
 
       // 1. Try on_audio_query (System Media Store)
       if (songId != null) {
@@ -72,6 +90,8 @@ class PaletteService {
         provider = MemoryImage(bytes);
       } else if (imageUrl.startsWith('http')) {
         provider = NetworkImage(imageUrl);
+      } else if (imageUrl.isNotEmpty && File(imageUrl).existsSync()) {
+        provider = FileImage(File(imageUrl));
       } else {
         return _finalize(cacheKey, AppColors.accentYellow);
       }
@@ -79,12 +99,13 @@ class PaletteService {
       final PaletteGenerator generator =
           await PaletteGenerator.fromImageProvider(
             provider,
-            size: const Size(40, 40),
-            maximumColorCount: 3,
+            size: const Size(64, 64),
+            maximumColorCount: 5,
           );
 
       final color =
           generator.vibrantColor?.color ??
+          generator.lightVibrantColor?.color ??
           generator.dominantColor?.color ??
           AppColors.accentYellow;
 
@@ -96,7 +117,6 @@ class PaletteService {
 
   static Color _finalize(String key, Color color) {
     _cache[key] = color;
-    _pending.remove(key);
     return color;
   }
 }

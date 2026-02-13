@@ -3,6 +3,10 @@ import '../models/song.dart';
 import 'database_service.dart';
 
 class LyricsService {
+  static final Map<int, List<LyricLine>> _cache = {};
+
+  static void clearCache() => _cache.clear();
+
   static List<LyricLine> parseLrc(String content) {
     if (content.isEmpty) return [];
 
@@ -36,37 +40,43 @@ class LyricsService {
   }
 
   static Future<List<LyricLine>> getLyricsForSong(Song song) async {
-    // 1. Check if we already have lyrics in the song object (from DB)
+    // 0. Memory Cache check (fastest)
+    if (_cache.containsKey(song.id)) {
+      return _cache[song.id]!;
+    }
+
+    // 1. Check if we already have lyrics in the song object (passed from DB)
     if (song.lyrics.isNotEmpty) {
-      // If there's only one line at 0ms, it might just be the track title or something
-      // But if it's multiple lines with timestamps, it's already good.
       if (song.lyrics.length > 1 || song.lyrics.first.time != Duration.zero) {
+        _cache[song.id] = song.lyrics;
         return song.lyrics;
       }
     }
 
-    // 2. Try to find .lrc file in the same directory
+    // 2. Try to find .lrc file in the same directory (relatively fast)
     try {
       final songFile = File(song.url);
       final parentDir = songFile.parent;
-      final fileNameWithoutExt = songFile.path.split('/').last.split('.').first;
+      final fileName = songFile.path
+          .split(Platform.isWindows ? '\\' : '/')
+          .last;
+      final fileNameWithoutExt = fileName.split('.').first;
       final lrcFile = File('${parentDir.path}/$fileNameWithoutExt.lrc');
 
       if (await lrcFile.exists()) {
         final content = await lrcFile.readAsString();
         final lrcLyrics = parseLrc(content);
         if (lrcLyrics.isNotEmpty) {
-          // Save to DB for next time
-          await DatabaseService.saveLyrics(song.id, lrcLyrics);
+          // Save to DB and Cache for next time
+          _cache[song.id] = lrcLyrics;
+          // Fire and forget DB save
+          DatabaseService.saveLyrics(song.id, lrcLyrics);
           return lrcLyrics;
         }
       }
     } catch (e) {
-      print("Error looking for .lrc file: $e");
+      // Silently fail for performance
     }
-
-    // 3. Falling back to embedded lyrics is already handled during library scan / metadata reload
-    // but we can add a specific check here if needed.
 
     return song.lyrics;
   }

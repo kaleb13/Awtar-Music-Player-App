@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/artist.dart';
 import '../models/album.dart';
@@ -19,7 +20,8 @@ import 'tabs/albums_tab.dart';
 import 'details/artist_details_screen.dart';
 
 import 'details/album_details_screen.dart';
-import '../widgets/color_aware_album_card.dart'; // Add import
+import '../widgets/color_aware_album_card.dart';
+import '../services/media_menu_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -270,7 +272,7 @@ class HomeOverviewContent extends ConsumerWidget {
             child: AppSectionHeader(title: "Most Played"),
           ),
           const SizedBox(height: 20),
-          _buildMostPlayedSection(ref, libraryState, stats),
+          _buildMostPlayedSection(context, ref, libraryState, stats),
           const SizedBox(height: 40),
 
           // 4th Section: Recently Played
@@ -279,7 +281,7 @@ class HomeOverviewContent extends ConsumerWidget {
             child: AppSectionHeader(title: "Recently Played"),
           ),
           const SizedBox(height: 20),
-          _buildRecentSection(ref, libraryState, stats),
+          _buildRecentSection(context, ref, libraryState, stats),
           const SizedBox(height: 40),
 
           // 5th Section: Summary
@@ -363,14 +365,23 @@ class HomeOverviewContent extends ConsumerWidget {
                 imageUrl: "",
                 songId: artistSong.id,
                 songPath: artistSong.url,
+                borderColor: libraryState.artistColors[name],
                 artwork: AspectRatio(
                   aspectRatio: 1.0,
-                  child: AppArtwork(
-                    songId: artistSong.id,
-                    songPath: artistSong.url,
-                    size: 100,
-                    borderRadius: 50,
-                  ),
+                  child: artist.imagePath != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(50),
+                          child: Image.file(
+                            File(artist.imagePath!),
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : AppArtwork(
+                          songId: artistSong.id,
+                          songPath: artistSong.url,
+                          size: 100,
+                          borderRadius: 50,
+                        ),
                 ),
                 playTime: durationStr,
                 subtitle: "${artist.numberOfTracks} Tracks",
@@ -386,6 +397,15 @@ class HomeOverviewContent extends ConsumerWidget {
                     ref.read(bottomNavVisibleProvider.notifier).state = true;
                   });
                 },
+                onLongPress: () => AppCenteredModal.show(
+                  context,
+                  title: name,
+                  items: MediaMenuService.buildArtistActions(
+                    context: context,
+                    ref: ref,
+                    artist: artist,
+                  ),
+                ),
               ),
             ),
           );
@@ -485,10 +505,20 @@ class HomeOverviewContent extends ConsumerWidget {
           ref.read(bottomNavVisibleProvider.notifier).state = true;
         });
       },
+      onLongPress: () => AppCenteredModal.show(
+        context,
+        title: album.album,
+        items: MediaMenuService.buildAlbumActions(
+          context: context,
+          ref: ref,
+          album: album,
+        ),
+      ),
     );
   }
 
   Widget _buildMostPlayedSection(
+    BuildContext context,
     WidgetRef ref,
     LibraryState libraryState,
     PlayStats stats,
@@ -524,10 +554,11 @@ class HomeOverviewContent extends ConsumerWidget {
     final limitedQueue = fullQueue.take(30).toList();
     final displaySongs = limitedQueue.take(3).toList();
 
-    return _buildSongRow(ref, displaySongs, limitedQueue);
+    return _buildSongRow(context, ref, displaySongs, limitedQueue);
   }
 
   Widget _buildRecentSection(
+    BuildContext context,
     WidgetRef ref,
     LibraryState libraryState,
     PlayStats stats,
@@ -558,7 +589,7 @@ class HomeOverviewContent extends ConsumerWidget {
     final limitedQueue = fullQueue.take(30).toList();
     final displaySongs = limitedQueue.take(3).toList();
 
-    return _buildSongRow(ref, displaySongs, limitedQueue);
+    return _buildSongRow(context, ref, displaySongs, limitedQueue);
   }
 
   Widget _buildSummarySection(PlayStats stats) {
@@ -603,6 +634,7 @@ class HomeOverviewContent extends ConsumerWidget {
   }
 
   Widget _buildSongRow(
+    BuildContext context,
     WidgetRef ref,
     List<Song> displaySongs,
     List<Song> fullQueue,
@@ -639,6 +671,15 @@ class HomeOverviewContent extends ConsumerWidget {
                   ),
                 ),
                 flexible: true,
+                onLongPress: () => AppCenteredModal.show(
+                  context,
+                  title: song.title,
+                  items: MediaMenuService.buildSongActions(
+                    context: context,
+                    ref: ref,
+                    song: song,
+                  ),
+                ),
               ),
             ),
           );

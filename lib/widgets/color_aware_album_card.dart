@@ -18,6 +18,8 @@ class ColorAwareAlbumCard extends StatelessWidget {
   final PopupMenuItemBuilder<String>? menuBuilder;
   final void Function(String)? onMenuSelected;
 
+  final VoidCallback? onLongPress;
+
   const ColorAwareAlbumCard({
     super.key,
     required this.title,
@@ -30,6 +32,7 @@ class ColorAwareAlbumCard extends StatelessWidget {
     this.showThreeDotsMenu = false,
     this.onTap,
     this.onMenuTap,
+    this.onLongPress,
     this.artwork,
     this.songId,
     this.songPath,
@@ -51,6 +54,7 @@ class ColorAwareAlbumCard extends StatelessWidget {
       showMenu: showThreeDotsMenu,
       onTap: onTap,
       onMenuTap: onMenuTap,
+      onLongPress: onLongPress,
       artwork: artwork,
       songId: songId,
       songPath: songPath,

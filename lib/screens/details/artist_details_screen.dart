@@ -5,13 +5,13 @@ import '../../theme/app_theme.dart';
 import '../../providers/library_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../widgets/app_artwork.dart';
-import 'package:awtar_music_player/services/palette_service.dart';
 import 'album_details_screen.dart';
 import '../../models/song.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../providers/stats_provider.dart';
 import '../../providers/performance_provider.dart';
+import '../../widgets/app_widgets.dart';
 
 class ArtistDetailsScreen extends ConsumerStatefulWidget {
   final String name;
@@ -29,31 +29,6 @@ class ArtistDetailsScreen extends ConsumerStatefulWidget {
 }
 
 class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
-  Color _dominantColor = const Color(0xFF4A90E2);
-
-  @override
-  void initState() {
-    super.initState();
-    _updatePalette();
-  }
-
-  Future<void> _updatePalette() async {
-    final libraryState = ref.read(libraryProvider);
-    final artistSongs = libraryState.songs
-        .where((s) => s.artist == widget.name)
-        .toList();
-
-    if (artistSongs.isNotEmpty) {
-      final color = await PaletteService.generateAccentColor(
-        artistSongs.first.albumArt ?? "",
-        songId: artistSongs.first.id,
-      );
-      if (mounted) {
-        setState(() => _dominantColor = color);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final libraryState = ref.watch(libraryProvider);
@@ -85,6 +60,9 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
 
     final displayTopTracks = topTracks.take(5).toList();
 
+    final dominantColor =
+        libraryState.artistColors[widget.name] ?? const Color(0xFF4A90E2);
+
     Future<void> pickArtistImage() async {
       final picker = ImagePicker();
       final image = await picker.pickImage(source: ImageSource.gallery);
@@ -92,7 +70,6 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
         await ref
             .read(libraryProvider.notifier)
             .updateArtistImage(widget.name, image.path);
-        _updatePalette();
       }
     }
 
@@ -164,6 +141,8 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                     children: [
                       // Large Squircle Image
                       GestureDetector(
+                        onTap:
+                            pickArtistImage, // Single tap to change if desired, or keep long-press
                         onLongPress: () {
                           showModalBottomSheet(
                             context: context,
@@ -224,12 +203,12 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(80),
                             border: Border.all(
-                              color: _dominantColor.withOpacity(0.8),
+                              color: dominantColor.withOpacity(0.8),
                               width: 3,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: _dominantColor.withOpacity(0.2),
+                                color: dominantColor.withOpacity(0.2),
                                 blurRadius: 20,
                                 spreadRadius: 5,
                               ),
@@ -246,9 +225,16 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                                       ? AppArtwork(
                                           songId: artistSongs.first.id,
                                           songPath: artistSongs.first.url,
-                                          size: double.infinity,
+                                          size: 400,
                                         )
-                                      : Container(color: Colors.grey[900])),
+                                      : Container(
+                                          color: Colors.grey[900],
+                                          child: const Icon(
+                                            Icons.person_add_alt_1,
+                                            color: Colors.white24,
+                                            size: 60,
+                                          ),
+                                        )),
                           ),
                         ),
                       ),
@@ -283,9 +269,9 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _dominantColor,
+                          backgroundColor: dominantColor,
                           foregroundColor:
-                              _dominantColor.computeLuminance() > 0.5
+                              dominantColor.computeLuminance() > 0.5
                               ? Colors.black
                               : Colors.white,
                           padding: const EdgeInsets.symmetric(
@@ -347,7 +333,11 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(24),
                                       border: Border.all(
-                                        color: _dominantColor.withOpacity(0.5),
+                                        color:
+                                            (libraryState
+                                                        .albumColors[albumKey] ??
+                                                    dominantColor)
+                                                .withOpacity(0.5),
                                         width: 2,
                                       ),
                                     ),
@@ -498,49 +488,11 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                 SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final song = artistSongs[index];
-                    return Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.02),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                        ),
-                        leading: Text(
-                          (index + 1).toString().padLeft(2, '0'),
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.3),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        title: Text(
-                          song.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 14,
-                          ),
-                        ),
-                        subtitle: Text(
-                          song.album ?? "Single",
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.4),
-                            fontSize: 11,
-                          ),
-                        ),
-                        trailing: Icon(
-                          Icons.more_vert,
-                          color: Colors.white.withOpacity(0.3),
-                        ),
-                        onTap: () => ref
-                            .read(playerProvider.notifier)
-                            .playPlaylist(artistSongs, index),
-                      ),
+                    return AppSongTile(
+                      song: song,
+                      index: index,
+                      playlist: artistSongs,
+                      showArtwork: false, // Keep it clean in artist view
                     );
                   }, childCount: artistSongs.length),
                 ),

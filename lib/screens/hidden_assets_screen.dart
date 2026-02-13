@@ -72,7 +72,7 @@ class _VisibilityList extends ConsumerWidget {
           final isHidden = libraryState.hiddenArtists.contains(artist.artist);
 
           return SwitchListTile(
-            activeColor: AppColors.accentYellow,
+            activeThumbColor: AppColors.accentYellow,
             title: Text(
               artist.artist,
               style: const TextStyle(color: Colors.white),
@@ -106,7 +106,7 @@ class _VisibilityList extends ConsumerWidget {
           final isHidden = libraryState.hiddenAlbums.contains(key);
 
           return SwitchListTile(
-            activeColor: AppColors.accentYellow,
+            activeThumbColor: AppColors.accentYellow,
             title: Text(
               album.album,
               style: const TextStyle(color: Colors.white),

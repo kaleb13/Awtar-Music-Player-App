@@ -10,7 +10,10 @@ import '../providers/navigation_provider.dart';
 import '../providers/library_provider.dart';
 import '../providers/player_provider.dart';
 import '../services/palette_service.dart';
+import '../services/media_menu_service.dart';
 import 'app_artwork.dart';
+import '../providers/album_selection_provider.dart';
+
 import '../screens/settings_screen.dart';
 import '../screens/folder_management_screen.dart';
 import '../screens/reload_metadata_screen.dart';
@@ -192,6 +195,7 @@ class AppPremiumCard extends StatefulWidget {
   final VoidCallback? onLongPress;
   final PopupMenuItemBuilder<String>? menuBuilder;
   final void Function(String)? onMenuSelected;
+  final Color? borderColor;
 
   const AppPremiumCard({
     super.key,
@@ -212,6 +216,7 @@ class AppPremiumCard extends StatefulWidget {
     this.onLongPress,
     this.menuBuilder,
     this.onMenuSelected,
+    this.borderColor,
   });
 
   @override
@@ -251,7 +256,8 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = _dominantColor ?? AppColors.accentYellow;
+    final borderColor =
+        widget.borderColor ?? _dominantColor ?? AppColors.accentYellow;
     final double borderRadiusInner = widget.isCircular
         ? (widget.flexible ? 1000 : widget.size)
         : 24;
@@ -415,9 +421,11 @@ class AppPopularArtistCard extends StatelessWidget {
   final String imageUrl;
   final String playTime;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final Widget? artwork;
   final int? songId;
   final String? songPath;
+  final Color? borderColor;
 
   const AppPopularArtistCard({
     super.key,
@@ -426,9 +434,11 @@ class AppPopularArtistCard extends StatelessWidget {
     required this.imageUrl,
     required this.playTime,
     required this.onTap,
+    this.onLongPress,
     this.artwork,
     this.songId,
     this.songPath,
+    this.borderColor,
   });
 
   @override
@@ -439,10 +449,12 @@ class AppPopularArtistCard extends StatelessWidget {
       imageUrl: imageUrl,
       badgeText: playTime,
       onTap: onTap,
+      onLongPress: onLongPress,
       isCircular: true,
       artwork: artwork,
       songId: songId,
       songPath: songPath,
+      borderColor: borderColor,
     );
   }
 }
@@ -567,6 +579,8 @@ class AppAlbumCard extends StatelessWidget {
   final int? songId;
   final String? songPath;
 
+  final VoidCallback? onLongPress;
+
   const AppAlbumCard({
     super.key,
     required this.title,
@@ -576,6 +590,7 @@ class AppAlbumCard extends StatelessWidget {
     this.isMini = false,
     this.flexible = false,
     this.onTap,
+    this.onLongPress,
     this.artwork,
     this.songId,
     this.songPath,
@@ -590,6 +605,7 @@ class AppAlbumCard extends StatelessWidget {
       size: size,
       flexible: flexible,
       onTap: onTap,
+      onLongPress: onLongPress,
       artwork: artwork,
       songId: songId,
       songPath: songPath,
@@ -850,21 +866,360 @@ class AppTopBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentTab = ref.watch(mainTabProvider);
-    String title = "";
-    switch (currentTab) {
-      case MainTab.home:
-        title = "Home";
-        break;
-      case MainTab.discover:
-        title = "Discover";
-        break;
-      case MainTab.collection:
-        title = "Collection";
-        break;
+    final homeTab = ref.watch(homeTabProvider);
+    final libraryState = ref.watch(libraryProvider);
+
+    // Dynamic Title Logic
+    String title = "Home";
+    if (currentTab == MainTab.discover) title = "Discover";
+    if (currentTab == MainTab.collection) title = "Collection";
+
+    // --- ALBUMS TAB LOGIC ---
+    if (currentTab == MainTab.home && homeTab == HomeTab.albums) {
+      final isSelectionMode = ref.watch(isAlbumSelectionModeProvider);
+      final selectedIds = ref.watch(selectedAlbumIdsProvider);
+
+      if (isSelectionMode) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      ref.read(isAlbumSelectionModeProvider.notifier).state =
+                          false;
+                      ref.read(selectedAlbumIdsProvider.notifier).state = {};
+                    },
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "${selectedIds.length} Selected",
+                    style: AppTextStyles.titleMedium,
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.play_arrow),
+                    tooltip: "Play Selected",
+                    onPressed: () {
+                      if (selectedIds.isNotEmpty) {
+                        final selectedAlbums = libraryState.albums
+                            .where(
+                              (a) => selectedIds.contains(
+                                "${a.album}_${a.artist}",
+                              ),
+                            )
+                            .toList();
+                        final songs = <Song>[];
+                        for (final album in selectedAlbums) {
+                          songs.addAll(
+                            libraryState.songs.where(
+                              (s) =>
+                                  s.album == album.album &&
+                                  s.artist == album.artist,
+                            ),
+                          );
+                        }
+                        if (songs.isNotEmpty) {
+                          ref
+                              .read(playerProvider.notifier)
+                              .playPlaylist(songs, 0);
+                          ref
+                                  .read(isAlbumSelectionModeProvider.notifier)
+                                  .state =
+                              false;
+                          ref.read(selectedAlbumIdsProvider.notifier).state =
+                              {};
+                        }
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.playlist_play),
+                    tooltip: "Play Next",
+                    onPressed: () {
+                      if (selectedIds.isNotEmpty) {
+                        final selectedAlbums = libraryState.albums
+                            .where(
+                              (a) => selectedIds.contains(
+                                "${a.album}_${a.artist}",
+                              ),
+                            )
+                            .toList();
+                        final songs = <Song>[];
+                        for (final album in selectedAlbums) {
+                          songs.addAll(
+                            libraryState.songs.where(
+                              (s) =>
+                                  s.album == album.album &&
+                                  s.artist == album.artist,
+                            ),
+                          );
+                        }
+                        if (songs.isNotEmpty) {
+                          ref.read(playerProvider.notifier).addNext(songs);
+                          ref
+                                  .read(isAlbumSelectionModeProvider.notifier)
+                                  .state =
+                              false;
+                          ref.read(selectedAlbumIdsProvider.notifier).state =
+                              {};
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }
+
+      // Normal mode for Albums Tab
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () {
+                    rootScaffoldKey.currentState?.openDrawer();
+                  },
+                  icon: const Icon(Icons.menu, color: Colors.white, size: 28),
+                  tooltip: "Menu",
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  "Albums",
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.white),
+                  color: AppColors.surfaceDark,
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  onSelected: (value) {
+                    if (value == 'select_mode') {
+                      ref.read(isAlbumSelectionModeProvider.notifier).state =
+                          true;
+                    } else if (value == 'shuffle_all') {
+                      final visibleAlbums = libraryState.albums
+                          .where(
+                            (a) => !libraryState.hiddenAlbums.contains(
+                              "${a.album}_${a.artist}",
+                            ),
+                          )
+                          .where(
+                            (a) =>
+                                !libraryState.hideSmallAlbums ||
+                                a.numberOfSongs >= 3,
+                          )
+                          .toList();
+
+                      final allSongs = <Song>[];
+                      for (final album in visibleAlbums) {
+                        allSongs.addAll(
+                          libraryState.songs.where(
+                            (s) =>
+                                s.album == album.album &&
+                                s.artist == album.artist,
+                          ),
+                        );
+                      }
+                      if (allSongs.isNotEmpty) {
+                        allSongs.shuffle();
+                        ref
+                            .read(playerProvider.notifier)
+                            .playPlaylist(allSongs, 0);
+                      }
+                    }
+                  },
+                  itemBuilder: (context) {
+                    return [
+                      const PopupMenuItem(
+                        value: 'shuffle_all',
+                        child: AppMenuEntry(label: 'Shuffle All'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'select_mode',
+                        child: AppMenuEntry(label: 'Multi-select'),
+                      ),
+                      PopupMenuItem(
+                        enabled: false,
+                        child: StatefulBuilder(
+                          builder: (context, setState) {
+                            return CheckboxListTile(
+                              title: const Text(
+                                "Hide Small Albums",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              subtitle: const Text(
+                                "Less than 3 songs",
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              value: libraryState.hideSmallAlbums,
+                              activeColor: AppColors.primaryGreen,
+                              contentPadding: EdgeInsets.zero,
+                              onChanged: (val) {
+                                ref
+                                    .read(libraryProvider.notifier)
+                                    .toggleHideSmallAlbums(val ?? false);
+                                setState(() {});
+                                Navigator.pop(context);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ];
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
     }
 
-    final homeTab = ref.watch(homeTabProvider);
+    // --- ARTISTS TAB LOGIC ---
+    if (currentTab == MainTab.home && homeTab == HomeTab.artists) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () {
+                    rootScaffoldKey.currentState?.openDrawer();
+                  },
+                  icon: const Icon(Icons.menu, color: Colors.white, size: 28),
+                  tooltip: "Menu",
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  "Artists",
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              color: AppColors.surfaceDark,
+              onSelected: (val) {
+                if (val == 'reload') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ReloadMetadataScreen(),
+                    ),
+                  );
+                } else if (val == 'hidden') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const HiddenAssetsScreen(),
+                    ),
+                  );
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'reload',
+                  child: AppMenuEntry(label: "Reload Metadata"),
+                ),
+                const PopupMenuItem(
+                  value: 'hidden',
+                  child: AppMenuEntry(label: "Hidden Artists"),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  enabled: false,
+                  child: StatefulBuilder(
+                    builder: (context, setState) {
+                      return CheckboxListTile(
+                        title: const Text(
+                          "Hide Small Artists",
+                          style: TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                        subtitle: const Text(
+                          "Less than 3 songs",
+                          style: TextStyle(color: Colors.white54, fontSize: 11),
+                        ),
+                        value: libraryState.hideSmallArtists,
+                        activeColor: AppColors.primaryGreen,
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (val) {
+                          ref
+                              .read(libraryProvider.notifier)
+                              .toggleHideSmallArtists(val ?? false);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+                ),
+                PopupMenuItem(
+                  enabled: false,
+                  child: StatefulBuilder(
+                    builder: (context, setState) {
+                      return CheckboxListTile(
+                        title: const Text(
+                          "Hide 'Unknown' Artist",
+                          style: TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                        value: libraryState.hideUnknownArtist,
+                        activeColor: AppColors.primaryGreen,
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (val) {
+                          ref
+                              .read(libraryProvider.notifier)
+                              .toggleHideUnknownArtist(val ?? false);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
 
+    // --- DEFAULT LOGIC (Home, Folders, Discover, Collection) ---
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -953,29 +1308,7 @@ class AppTopBar extends ConsumerWidget {
                   items.add(
                     const PopupMenuItem(
                       value: 'folder_management',
-                      child: _MenuEntry(
-                        icon: Icons.folder_shared_outlined,
-                        label: 'Folder Management',
-                      ),
-                    ),
-                  );
-                } else if (homeTab == HomeTab.artists) {
-                  items.add(
-                    const PopupMenuItem(
-                      value: 'reload_metadata',
-                      child: _MenuEntry(
-                        icon: Icons.refresh_rounded,
-                        label: 'Reload Metadata',
-                      ),
-                    ),
-                  );
-                  items.add(
-                    const PopupMenuItem(
-                      value: 'hidden_artists',
-                      child: _MenuEntry(
-                        icon: Icons.visibility_off_outlined,
-                        label: 'Hidden Artists',
-                      ),
+                      child: AppMenuEntry(label: 'Folder Management'),
                     ),
                   );
                 }
@@ -983,20 +1316,14 @@ class AppTopBar extends ConsumerWidget {
                 items.add(
                   const PopupMenuItem(
                     value: 'rescan_library',
-                    child: _MenuEntry(
-                      icon: Icons.radar_rounded,
-                      label: 'Scanner',
-                    ),
+                    child: AppMenuEntry(label: 'Scanner'),
                   ),
                 );
               } else if (currentTab == MainTab.collection) {
                 items.add(
                   const PopupMenuItem(
                     value: 'new_playlist',
-                    child: _MenuEntry(
-                      icon: Icons.add_circle_outline_rounded,
-                      label: 'New Playlist',
-                    ),
+                    child: AppMenuEntry(label: 'New Playlist'),
                   ),
                 );
               }
@@ -1009,10 +1336,7 @@ class AppTopBar extends ConsumerWidget {
               items.add(
                 const PopupMenuItem(
                   value: 'settings',
-                  child: _MenuEntry(
-                    icon: Icons.settings_outlined,
-                    label: 'Settings',
-                  ),
+                  child: AppMenuEntry(label: 'Settings'),
                 ),
               );
 
@@ -1234,19 +1558,136 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
   }
 }
 
-class _MenuEntry extends StatelessWidget {
-  final IconData icon;
+class AppCenteredModal extends StatelessWidget {
+  final String title;
+  final List<Widget> items;
+
+  const AppCenteredModal({super.key, required this.title, required this.items});
+
+  static Future<T?> show<T>(
+    BuildContext context, {
+    required String title,
+    required List<Widget> items,
+  }) {
+    return showDialog<T>(
+      context: context,
+      useRootNavigator: true,
+      barrierColor: Colors.black54,
+      builder: (context) => AppCenteredModal(title: title, items: items),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 40),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceDark,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 30,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 20),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Divider(color: Colors.white.withOpacity(0.1), height: 1),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  children: items,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AppModalItem extends StatelessWidget {
+  final IconData? icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+
+  const AppModalItem({
+    super.key,
+    this.icon,
+    required this.label,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context);
+        onTap();
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        child: Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: color ?? Colors.white70, size: 22),
+              const SizedBox(width: 16),
+            ],
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: color ?? Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AppMenuEntry extends StatelessWidget {
+  final IconData? icon;
   final String label;
 
-  const _MenuEntry({required this.icon, required this.label});
+  const AppMenuEntry({super.key, this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: Colors.white70, size: 20),
-        const SizedBox(width: 12),
+        if (icon != null) ...[
+          Icon(icon, color: Colors.white70, size: 20),
+          const SizedBox(width: 12),
+        ],
         Text(
           label,
           style: const TextStyle(
@@ -1256,6 +1697,91 @@ class _MenuEntry extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class AppSongTile extends ConsumerWidget {
+  final Song song;
+  final int? index;
+  final List<Song> playlist;
+  final bool showArtwork;
+
+  const AppSongTile({
+    super.key,
+    required this.song,
+    this.index,
+    required this.playlist,
+    this.showArtwork = true,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        leading: showArtwork
+            ? Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: AppArtwork(songId: song.id, songPath: song.url),
+                ),
+              )
+            : (index != null
+                  ? Text(
+                      (index! + 1).toString().padLeft(2, '0'),
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.3),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null),
+        title: Text(
+          song.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+        subtitle: Text(
+          "${song.artist} • ${song.album ?? 'Single'}",
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
+        ),
+        trailing: _MenuButton(
+          menuBuilder: (context) => MediaMenuService.buildSongMenuItems(
+            context: context,
+            ref: ref,
+            song: song,
+          ),
+        ),
+        onTap: () => ref
+            .read(playerProvider.notifier)
+            .playPlaylist(playlist, index ?? 0),
+        onLongPress: () => AppCenteredModal.show(
+          context,
+          title: song.title,
+          items: MediaMenuService.buildSongActions(
+            context: context,
+            ref: ref,
+            song: song,
+          ),
+        ),
+      ),
     );
   }
 }

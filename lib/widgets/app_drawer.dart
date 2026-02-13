@@ -39,14 +39,14 @@ class AppDrawer extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "AwtarPlayer",
+                              "AwtarPlayer+",
                               style: AppTextStyles.titleMedium.copyWith(
                                 color: Colors.white,
                                 height: 1.2,
                               ),
                             ),
                             Text(
-                              "Premium Music Experience",
+                              "Premium Experience",
                               style: AppTextStyles.bodySmall.copyWith(
                                 color: AppColors.textGrey,
                                 fontSize: 10,

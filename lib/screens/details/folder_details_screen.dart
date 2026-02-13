@@ -6,6 +6,7 @@ import '../../providers/player_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_artwork.dart';
 import '../../models/song.dart';
+import '../../widgets/app_widgets.dart';
 
 class FolderDetailsScreen extends ConsumerWidget {
   final String folderPath;
@@ -172,7 +173,15 @@ class FolderDetailsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 12),
                         ...immediateSongs.map(
-                          (song) => _buildSongItem(ref, song),
+                          (song) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: AppSongTile(
+                              song: song,
+                              playlist: immediateSongs,
+                              index: immediateSongs.indexOf(song),
+                              showArtwork: true,
+                            ),
+                          ),
                         ),
                       ],
                       if (sortedSubfolders.isEmpty && immediateSongs.isEmpty)
@@ -267,30 +276,6 @@ class FolderDetailsScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSongItem(WidgetRef ref, Song song) {
-    return ListTile(
-      onTap: () => ref.read(playerProvider.notifier).play(song),
-      contentPadding: const EdgeInsets.only(bottom: 16),
-      leading: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: AppArtwork(songId: song.id, songPath: song.url, size: 50),
-      ),
-      title: Text(
-        song.title,
-        style: AppTextStyles.bodyMain.copyWith(fontWeight: FontWeight.w600),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        song.artist,
-        style: AppTextStyles.bodySmall.copyWith(color: Colors.white38),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: const Icon(Icons.more_vert, color: Colors.white24, size: 20),
     );
   }
 }

@@ -229,8 +229,8 @@ class RootLayout extends ConsumerWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.mainDarkLight.withOpacity(0.9),
-                    AppColors.mainDark.withOpacity(0.9),
+                    AppColors.mainDarkLight.withOpacity(0.85),
+                    AppColors.mainDark.withOpacity(0.85),
                   ],
                 ),
               ),

@@ -8,6 +8,7 @@ import 'hidden_assets_screen.dart';
 import 'folder_management_screen.dart';
 import 'reload_metadata_screen.dart';
 import 'rescan_library_screen.dart';
+import 'configuration_settings_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -91,7 +92,7 @@ class SettingsScreen extends ConsumerWidget {
                           style: TextStyle(color: Colors.white54, fontSize: 14),
                         ),
                         value: ref.watch(lowPerformanceModeProvider),
-                        activeColor: AppColors.accentYellow,
+                        activeThumbColor: AppColors.accentYellow,
                         onChanged: (value) {
                           ref
                               .read(lowPerformanceModeProvider.notifier)
@@ -263,6 +264,54 @@ class SettingsScreen extends ConsumerWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) => const HiddenAssetsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  _buildSettingsSection(
+                    title: "System Preference",
+                    children: [
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.settings_suggest,
+                            color: Colors.white,
+                          ),
+                        ),
+                        title: const Text(
+                          "Configuration",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          "Set album and song naming rules",
+                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.white54,
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const ConfigurationSettingsScreen(),
                             ),
                           );
                         },

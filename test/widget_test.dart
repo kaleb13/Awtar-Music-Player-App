@@ -100,7 +100,7 @@ void main() {
 
 // Simulator for testing that sets permission to granted
 class TestLibraryNotifier extends LibraryNotifier {
-  TestLibraryNotifier(Ref ref) : super(ref, skipInit: true) {
+  TestLibraryNotifier(super.ref) : super(skipInit: true) {
     state = state.copyWith(
       isLoading: false,
       permissionStatus: LibraryPermissionStatus.granted,

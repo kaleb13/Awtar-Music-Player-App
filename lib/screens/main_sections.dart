@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
+import '../services/media_menu_service.dart';
 import '../widgets/app_song_list_tile.dart';
 import '../providers/search_provider.dart';
 import '../providers/player_provider.dart';
@@ -94,11 +95,11 @@ class DiscoverScreen extends ConsumerWidget {
           ...results.songs.map(
             (song) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: AppSongListTile(
+              child: AppSongTile(
                 song: song,
-                onTap: () {
-                  ref.read(playerProvider.notifier).play(song);
-                },
+                playlist: results.songs,
+                index: results.songs.indexOf(song),
+                showArtwork: true,
               ),
             ),
           ),
@@ -149,6 +150,15 @@ class DiscoverScreen extends ConsumerWidget {
                       ref.read(bottomNavVisibleProvider.notifier).state = true;
                     });
                   },
+                  onLongPress: () => AppCenteredModal.show(
+                    context,
+                    title: album.album,
+                    items: MediaMenuService.buildAlbumActions(
+                      context: context,
+                      ref: ref,
+                      album: album,
+                    ),
+                  ),
                 );
               },
             ),
@@ -194,6 +204,15 @@ class DiscoverScreen extends ConsumerWidget {
                               true;
                         });
                       },
+                      onLongPress: () => AppCenteredModal.show(
+                        context,
+                        title: artist.artist,
+                        items: MediaMenuService.buildArtistActions(
+                          context: context,
+                          ref: ref,
+                          artist: artist,
+                        ),
+                      ),
                       child: Container(
                         width: 80,
                         height: 80,

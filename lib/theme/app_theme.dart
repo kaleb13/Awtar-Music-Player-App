@@ -7,8 +7,8 @@ class AppColors {
   static const Color accentYellow = Color(0xFF5186d2);
 
   // Backgrounds & Surfaces
-  static const Color mainDark = Color(0xFF141619);
-  static const Color mainDarkLight = Color(0xFF101218);
+  static const Color mainDark = Color.fromARGB(255, 0, 0, 0);
+  static const Color mainDarkLight = Color.fromARGB(255, 0, 0, 0);
   static const Color background = mainDark;
 
   static const LinearGradient mainGradient = LinearGradient(
@@ -18,7 +18,7 @@ class AppColors {
   );
 
   static const Color surfaceWhite = Colors.white;
-  static const Color surfaceDark = Color(0xFF1c1c24);
+  static const Color surfaceDark = Color.fromARGB(255, 14, 14, 17);
 
   // Text Colors
   static const Color textMain = Colors.white;

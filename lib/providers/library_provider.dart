@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:audiotags/audiotags.dart';
@@ -8,12 +9,12 @@ import '../models/album.dart';
 import '../models/playlist.dart';
 import 'dart:math';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../main.dart';
 import 'player_provider.dart';
 import '../services/database_service.dart';
+import '../services/palette_service.dart';
 
 enum LibraryPermissionStatus {
   initial,
@@ -22,6 +23,10 @@ enum LibraryPermissionStatus {
   denied,
   permanentlyDenied,
 }
+
+enum AlbumNameSource { metadata, folder }
+
+enum TitleSource { metadata, filename }
 
 class LibraryState {
   final List<Song> songs;
@@ -36,6 +41,8 @@ class LibraryState {
   final Set<String> hiddenAlbums;
   final Map<String, int> representativeArtistSongs;
   final Map<String, int> representativeAlbumSongs;
+  final Map<String, Color> artistColors;
+  final Map<String, Color> albumColors;
   final int lastScanTimestamp;
   final Song? bannerSong;
   final bool isLoading;
@@ -47,6 +54,11 @@ class LibraryState {
   final double metadataLoadProgress;
   final bool isReloadingMetadata;
   final double scanProgress; // 0.0 to 1.0
+  final AlbumNameSource albumNameSource;
+  final TitleSource titleSource;
+  final bool hideSmallAlbums;
+  final bool hideSmallArtists;
+  final bool hideUnknownArtist;
 
   LibraryState({
     this.songs = const [],
@@ -61,6 +73,8 @@ class LibraryState {
     this.hiddenAlbums = const {},
     this.representativeArtistSongs = const {},
     this.representativeAlbumSongs = const {},
+    this.artistColors = const {},
+    this.albumColors = const {},
     this.lastScanTimestamp = 0,
     this.bannerSong,
     this.isLoading = false,
@@ -72,6 +86,11 @@ class LibraryState {
     this.metadataLoadProgress = 0.0,
     this.isReloadingMetadata = false,
     this.scanProgress = 0.0,
+    this.albumNameSource = AlbumNameSource.metadata,
+    this.titleSource = TitleSource.metadata,
+    this.hideSmallAlbums = false,
+    this.hideSmallArtists = false,
+    this.hideUnknownArtist = false,
   });
 
   LibraryState copyWith({
@@ -89,6 +108,8 @@ class LibraryState {
     Set<String>? hiddenAlbums,
     Map<String, int>? representativeArtistSongs,
     Map<String, int>? representativeAlbumSongs,
+    Map<String, Color>? artistColors,
+    Map<String, Color>? albumColors,
     int? lastScanTimestamp,
     Song? bannerSong,
     bool? isLoading,
@@ -98,6 +119,11 @@ class LibraryState {
     double? metadataLoadProgress,
     bool? isReloadingMetadata,
     double? scanProgress,
+    AlbumNameSource? albumNameSource,
+    TitleSource? titleSource,
+    bool? hideSmallAlbums,
+    bool? hideSmallArtists,
+    bool? hideUnknownArtist,
   }) {
     return LibraryState(
       songs: songs ?? this.songs,
@@ -116,6 +142,8 @@ class LibraryState {
           representativeArtistSongs ?? this.representativeArtistSongs,
       representativeAlbumSongs:
           representativeAlbumSongs ?? this.representativeAlbumSongs,
+      artistColors: artistColors ?? this.artistColors,
+      albumColors: albumColors ?? this.albumColors,
       lastScanTimestamp: lastScanTimestamp ?? this.lastScanTimestamp,
       bannerSong: bannerSong ?? this.bannerSong,
       isLoading: isLoading ?? this.isLoading,
@@ -125,6 +153,11 @@ class LibraryState {
       metadataLoadProgress: metadataLoadProgress ?? this.metadataLoadProgress,
       isReloadingMetadata: isReloadingMetadata ?? this.isReloadingMetadata,
       scanProgress: scanProgress ?? this.scanProgress,
+      albumNameSource: albumNameSource ?? this.albumNameSource,
+      titleSource: titleSource ?? this.titleSource,
+      hideSmallAlbums: hideSmallAlbums ?? this.hideSmallAlbums,
+      hideSmallArtists: hideSmallArtists ?? this.hideSmallArtists,
+      hideUnknownArtist: hideUnknownArtist ?? this.hideUnknownArtist,
     );
   }
 }
@@ -185,7 +218,25 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         repAlbums = Map<String, int>.from(decoded['repAlbums'] ?? {});
         lastScan = decoded['lastScan'] ?? 0;
 
-        state = state.copyWith(discoveredFolders: discoveredFolders);
+        final albumSource = AlbumNameSource.values.firstWhere(
+          (e) => e.name == (decoded['albumNameSource'] ?? 'metadata'),
+        );
+        final songSource = TitleSource.values.firstWhere(
+          (e) => e.name == (decoded['titleSource'] ?? 'metadata'),
+        );
+
+        final hideSmallAlbums = decoded['hideSmallAlbums'] ?? false;
+        final hideSmallArtists = decoded['hideSmallArtists'] ?? false;
+        final hideUnknownArtist = decoded['hideUnknownArtist'] ?? false;
+
+        state = state.copyWith(
+          discoveredFolders: discoveredFolders,
+          albumNameSource: albumSource,
+          titleSource: songSource,
+          hideSmallAlbums: hideSmallAlbums,
+          hideSmallArtists: hideSmallArtists,
+          hideUnknownArtist: hideUnknownArtist,
+        );
       }
 
       // Rebuild Artist objects with the loaded images
@@ -241,6 +292,10 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         lastScanTimestamp: lastScan,
       );
 
+      // Trigger background color calculation
+      _calculateArtistColors(artists, songs);
+      _calculateAlbumColors(albums, songs);
+
       if (songs.isNotEmpty) {
         _updateBannerSong(songs);
       }
@@ -267,11 +322,59 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         'repArtists': state.representativeArtistSongs,
         'repAlbums': state.representativeAlbumSongs,
         'lastScan': state.lastScanTimestamp,
+        'albumNameSource': state.albumNameSource.name,
+        'titleSource': state.titleSource.name,
+        'hideSmallAlbums': state.hideSmallAlbums,
+        'hideSmallArtists': state.hideSmallArtists,
+        'hideUnknownArtist': state.hideUnknownArtist,
       });
       await prefs.setString('library_metadata_v1', metadata);
     } catch (e) {
       debugPrint("Error saving to DB/Cache: $e");
     }
+  }
+
+  Future<void> updateNamingConfiguration({
+    required AlbumNameSource albumSource,
+    required TitleSource titleSource,
+  }) async {
+    // Only proceed if something actually changed
+    if (state.albumNameSource == albumSource &&
+        state.titleSource == titleSource) {
+      return;
+    }
+
+    state = state.copyWith(
+      isLoading: true,
+      scanProgress: 0.0,
+      albumNameSource: albumSource,
+      titleSource: titleSource,
+    );
+
+    // Give UI a moment to show the loader
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    try {
+      // Re-scan is the safest way to "reset" the naming correctly
+      // as it pulls fresh metadata from the system and applies our folder/filename overrides
+      await scanLibrary(force: true);
+
+      state = state.copyWith(
+        isLoading: false,
+        completionMessage: "Configuration updated successfully!",
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: "Failed to update configuration: $e",
+      );
+    }
+
+    _saveToCache();
+    // Auto-clear message
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) state = state.copyWith(completionMessage: null);
+    });
   }
 
   void toggleArtistVisibility(String artistName) {
@@ -283,6 +386,85 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     }
     state = state.copyWith(hiddenArtists: hidden);
     _saveToCache();
+  }
+
+  void toggleHideSmallAlbums(bool value) {
+    state = state.copyWith(hideSmallAlbums: value);
+    _saveToCache();
+  }
+
+  void toggleHideSmallArtists(bool value) {
+    state = state.copyWith(hideSmallArtists: value);
+    _saveToCache();
+  }
+
+  void toggleHideUnknownArtist(bool value) {
+    state = state.copyWith(hideUnknownArtist: value);
+    _saveToCache();
+  }
+
+  Future<void> deleteSongs(List<Song> songs) async {
+    try {
+      state = state.copyWith(isLoading: true);
+
+      // Separate songs into successful deletions and failures
+      final List<int> deletedIds = [];
+
+      for (final song in songs) {
+        final file = File(song.url);
+        if (await file.exists()) {
+          try {
+            await file.delete();
+            deletedIds.add(song.id);
+          } catch (e) {
+            debugPrint("Failed to delete file: ${song.url}, error: $e");
+          }
+        } else {
+          // File doesn't exist, remove from DB anyway
+          deletedIds.add(song.id);
+        }
+      }
+
+      if (deletedIds.isEmpty) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: "No songs were deleted.",
+        );
+        return;
+      }
+
+      // Update state by removing deleted songs
+      final newSongs = state.songs
+          .where((s) => !deletedIds.contains(s.id))
+          .toList();
+
+      // Re-process albums/artists/folders
+      final newArtists = _extractArtists(newSongs);
+      final newAlbums = _extractAlbums(newSongs);
+      final newFolders = _extractFolders(newSongs);
+
+      state = state.copyWith(
+        songs: newSongs,
+        artists: newArtists,
+        albums: newAlbums,
+        folders: newFolders,
+        isLoading: false,
+        completionMessage: "Deleted ${deletedIds.length} songs.",
+      );
+
+      // Persist changes if necessary (usually handled by re-scan or just cache)
+      _saveToCache();
+
+      // Auto-clear message
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) state = state.copyWith(completionMessage: null);
+      });
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: "Failed to delete songs: $e",
+      );
+    }
   }
 
   void toggleAlbumVisibility(String albumKey) {
@@ -435,12 +617,23 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           artworkUri = 'content://media/external/audio/albumart/${s.albumId}';
         }
 
+        final folderName = s.data.split('/').reversed.elementAt(1);
+        final fileName = s.data.split('/').last.split('.').first;
+
+        final String finalTitle = state.titleSource == TitleSource.metadata
+            ? s.title
+            : fileName;
+        final String? finalAlbum =
+            state.albumNameSource == AlbumNameSource.metadata
+            ? s.album
+            : folderName;
+
         songs.add(
           Song(
             id: s.id,
-            title: s.title,
+            title: finalTitle,
             artist: s.artist ?? "Unknown Artist",
-            album: s.album,
+            album: finalAlbum,
             albumArt: artworkUri,
             url: s.data,
             duration: s.duration ?? 0,
@@ -549,6 +742,10 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       if (filteredSongs.isNotEmpty) {
         _updateBannerSong(filteredSongs);
       }
+
+      // Trigger background color calculation
+      _calculateArtistColors(artists, filteredSongs);
+      _calculateAlbumColors(albums, filteredSongs);
 
       await _saveToCache();
     } catch (e) {
@@ -681,6 +878,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       debugPrint("Error saving artist image: $e");
     }
 
+    // 1. Update image path immediately in state for instant UI feedback
     state = state.copyWith(
       artists: state.artists.map((a) {
         if (a.artist == artistName) {
@@ -690,9 +888,96 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       }).toList(),
     );
 
+    // 2. Calculate new color asynchronously and update state when ready
+    _getArtistColor(artistName, finalPath, null).then((newColor) {
+      if (mounted) {
+        state = state.copyWith(
+          artistColors: {...state.artistColors, artistName: newColor},
+        );
+      }
+    });
+
     // Save to DB
     DatabaseService.saveArtistImage(artistName, finalPath);
     _saveToCache();
+  }
+
+  Future<void> _calculateArtistColors(
+    List<Artist> artists,
+    List<Song> songs,
+  ) async {
+    final Map<String, Color> colors = {...state.artistColors};
+    bool changed = false;
+
+    for (final artist in artists) {
+      if (!colors.containsKey(artist.artist)) {
+        final songId = state.representativeArtistSongs[artist.artist];
+        final song = songs.firstWhere(
+          (s) => s.id == songId,
+          orElse: () => songs.first,
+        );
+
+        final color = await _getArtistColor(
+          artist.artist,
+          artist.imagePath,
+          song,
+        );
+        colors[artist.artist] = color;
+        changed = true;
+      }
+    }
+
+    if (changed && mounted) {
+      state = state.copyWith(artistColors: colors);
+    }
+  }
+
+  Future<void> _calculateAlbumColors(
+    List<Album> albums,
+    List<Song> songs,
+  ) async {
+    final Map<String, Color> colors = {...state.albumColors};
+    bool changed = false;
+
+    for (final album in albums) {
+      final String albumKey = '${album.album}_${album.artist}';
+      if (!colors.containsKey(albumKey)) {
+        final songId = state.representativeAlbumSongs[albumKey];
+        final song = songs.firstWhere(
+          (s) => s.id == songId,
+          orElse: () => songs.first,
+        );
+
+        final color = await PaletteService.getColor(
+          song.albumArt ?? "",
+          songId: song.id,
+          songPath: song.url,
+        );
+        colors[albumKey] = color;
+        changed = true;
+      }
+    }
+
+    if (changed && mounted) {
+      state = state.copyWith(albumColors: colors);
+    }
+  }
+
+  Future<Color> _getArtistColor(
+    String name,
+    String? path,
+    Song? fallbackSong,
+  ) async {
+    if (path != null && path.isNotEmpty) {
+      return await PaletteService.getColor(path);
+    } else if (fallbackSong != null) {
+      return await PaletteService.getColor(
+        fallbackSong.albumArt ?? "",
+        songId: fallbackSong.id,
+        songPath: fallbackSong.url,
+      );
+    }
+    return const Color(0xFF4A90E2); // Fallback blue
   }
 
   // Folder Exclusion Management
@@ -919,6 +1204,243 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       );
       _saveToCache();
     }
+  }
+
+  Future<void> updateSongMetadata(
+    Song song, {
+    String? title,
+    String? artist,
+    String? album,
+    int? trackNumber,
+    String? genre,
+    int? year,
+  }) async {
+    try {
+      // 1. Update File Metadata if it's a local file
+      if (!song.url.startsWith("http") && !song.url.startsWith("content://")) {
+        final currentTag = await AudioTags.read(song.url);
+        final tag = Tag(
+          title: title ?? song.title,
+          trackArtist: artist ?? song.artist,
+          album: album ?? song.album,
+          trackNumber: trackNumber ?? song.trackNumber,
+          genre: genre ?? song.genre,
+          year: year ?? song.year,
+          pictures: currentTag?.pictures ?? [],
+        );
+        await AudioTags.write(song.url, tag);
+      }
+
+      // 2. Update Database & State
+      final updatedSong = song.copyWith(
+        title: title,
+        artist: artist,
+        album: album,
+        trackNumber: trackNumber,
+        genre: genre,
+        year: year,
+      );
+
+      state = state.copyWith(
+        songs: state.songs
+            .map((s) => s.id == song.id ? updatedSong : s)
+            .toList(),
+      );
+
+      // 3. Rebuild structures
+      state = state.copyWith(
+        artists: _rebuildArtists(state.songs),
+        albums: _rebuildAlbums(state.songs),
+      );
+
+      await _saveToCache();
+    } catch (e) {
+      debugPrint("Error updating song metadata: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> updateSongLyrics(Song song, String lyricsText) async {
+    try {
+      final List<LyricLine> lyrics = lyricsText
+          .split('\n')
+          .where((line) => line.trim().isNotEmpty)
+          .map((line) => LyricLine(time: Duration.zero, text: line.trim()))
+          .toList();
+
+      // 1. Update file metadata
+      if (!song.url.startsWith("http") && !song.url.startsWith("content://")) {
+        final currentTag = await AudioTags.read(song.url);
+        final tag = Tag(
+          title: currentTag?.title,
+          trackArtist: currentTag?.trackArtist,
+          album: currentTag?.album,
+          lyrics: lyricsText,
+          pictures: currentTag?.pictures ?? [],
+        );
+        await AudioTags.write(song.url, tag);
+      }
+
+      // 2. Update DB & State
+      final updatedSong = song.copyWith(lyrics: lyrics);
+      state = state.copyWith(
+        songs: state.songs
+            .map((s) => s.id == song.id ? updatedSong : s)
+            .toList(),
+      );
+
+      await DatabaseService.saveLyrics(song.id, lyrics);
+      await _saveToCache();
+    } catch (e) {
+      debugPrint("Error updating lyrics: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> updateAlbumMetadata(
+    String oldAlbumName,
+    String oldArtistName, {
+    String? newTitle,
+    String? newArtist,
+    int? year,
+  }) async {
+    try {
+      final songsInAlbum = state.songs
+          .where((s) => s.album == oldAlbumName && s.artist == oldArtistName)
+          .toList();
+
+      for (var song in songsInAlbum) {
+        await updateSongMetadata(
+          song,
+          album: newTitle,
+          artist: newArtist,
+          year: year,
+        );
+      }
+    } catch (e) {
+      debugPrint("Error updating album metadata: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> updateAlbumCover(
+    String albumName,
+    String artistName,
+    String imagePath,
+  ) async {
+    try {
+      final songsInAlbum = state.songs
+          .where((s) => s.album == albumName && s.artist == artistName)
+          .toList();
+      final bytes = await File(imagePath).readAsBytes();
+
+      for (var song in songsInAlbum) {
+        if (!song.url.startsWith("http") &&
+            !song.url.startsWith("content://")) {
+          final currentTag = await AudioTags.read(song.url);
+          final tag = Tag(
+            title: currentTag?.title,
+            trackArtist: currentTag?.trackArtist,
+            album: currentTag?.album,
+            pictures: [
+              Picture(
+                bytes: bytes,
+                mimeType: MimeType.values.first,
+                pictureType: PictureType.values.first,
+              ),
+            ],
+          );
+          await AudioTags.write(song.url, tag);
+        }
+      }
+
+      // Force a full scan to refresh everything from the files we just modified
+      await scanLibrary(force: true);
+    } catch (e) {
+      debugPrint("Error updating album cover: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> updateArtistMetadata(String oldName, String newName) async {
+    try {
+      final songsByArtist = state.songs
+          .where((s) => s.artist == oldName)
+          .toList();
+
+      for (var song in songsByArtist) {
+        await updateSongMetadata(song, artist: newName);
+      }
+    } catch (e) {
+      debugPrint("Error updating artist metadata: $e");
+      rethrow;
+    }
+  }
+
+  // --- Helpers ---
+
+  List<Artist> _extractArtists(List<Song> songs) {
+    final Map<String, List<Song>> artistSongsGroup = {};
+    for (final song in songs) {
+      artistSongsGroup.putIfAbsent(song.artist, () => []).add(song);
+    }
+
+    return artistSongsGroup.entries.map((entry) {
+      final artistAlbums = entry.value
+          .map((s) => s.album)
+          .where((a) => a != null)
+          .toSet()
+          .length;
+
+      // Attempt to preserve image path if possible or fallback
+      final existingArtist = state.artists.firstWhere(
+        (a) => a.artist == entry.key,
+        orElse: () => Artist(
+          id: entry.value.first.id,
+          artist: entry.key,
+          numberOfTracks: entry.value.length,
+          numberOfAlbums: artistAlbums,
+          imagePath: null,
+        ),
+      );
+
+      return Artist(
+        id: existingArtist.id,
+        artist: entry.key,
+        numberOfTracks: entry.value.length,
+        numberOfAlbums: artistAlbums,
+        imagePath: existingArtist.imagePath,
+      );
+    }).toList();
+  }
+
+  List<Album> _extractAlbums(List<Song> songs) {
+    final Map<String, List<Song>> albumSongsGroup = {};
+    for (final song in songs) {
+      if (song.album != null) {
+        final key = '${song.album}_${song.artist}';
+        albumSongsGroup.putIfAbsent(key, () => []).add(song);
+      }
+    }
+
+    return albumSongsGroup.entries.map((entry) {
+      final firstSong = entry.value.first;
+      return Album(
+        id: firstSong.id,
+        album: firstSong.album!,
+        artist: firstSong.artist,
+        numberOfSongs: entry.value.length,
+      );
+    }).toList();
+  }
+
+  List<String> _extractFolders(List<Song> songs) {
+    final folders = <String>{};
+    for (final song in songs) {
+      final folder = File(song.url).parent.path;
+      folders.add(folder);
+    }
+    return folders.toList();
   }
 }
 

@@ -4,6 +4,8 @@ class Artist {
   final int numberOfTracks;
   final int numberOfAlbums;
   final String? imagePath;
+  final List<int> albumIds;
+  final List<int> songIds;
 
   Artist({
     required this.id,
@@ -11,6 +13,8 @@ class Artist {
     required this.numberOfTracks,
     required this.numberOfAlbums,
     this.imagePath,
+    this.albumIds = const [],
+    this.songIds = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -20,6 +24,8 @@ class Artist {
       'numberOfTracks': numberOfTracks,
       'numberOfAlbums': numberOfAlbums,
       'imagePath': imagePath,
+      'albumIds': albumIds,
+      'songIds': songIds,
     };
   }
 
@@ -30,6 +36,8 @@ class Artist {
       numberOfTracks: map['numberOfTracks'] ?? 0,
       numberOfAlbums: map['numberOfAlbums'] ?? 0,
       imagePath: map['imagePath'],
+      albumIds: List<int>.from(map['albumIds'] ?? []),
+      songIds: List<int>.from(map['songIds'] ?? []),
     );
   }
 
@@ -39,6 +47,8 @@ class Artist {
     int? numberOfTracks,
     int? numberOfAlbums,
     String? imagePath,
+    List<int>? albumIds,
+    List<int>? songIds,
   }) {
     return Artist(
       id: id ?? this.id,
@@ -46,6 +56,8 @@ class Artist {
       numberOfTracks: numberOfTracks ?? this.numberOfTracks,
       numberOfAlbums: numberOfAlbums ?? this.numberOfAlbums,
       imagePath: imagePath ?? this.imagePath,
+      albumIds: albumIds ?? this.albumIds,
+      songIds: songIds ?? this.songIds,
     );
   }
 }

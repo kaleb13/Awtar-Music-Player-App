@@ -90,11 +90,14 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
       },
     );
 
-    _songSub = ref.listenManual(playerProvider, (prev, next) {
-      if (prev?.currentSong?.albumArt != next.currentSong?.albumArt) {
-        _updatePalette();
-      }
-    });
+    _songSub = ref.listenManual(
+      playerProvider.select((s) => s.currentSong?.id),
+      (prev, next) {
+        if (next != null) {
+          _updatePalette();
+        }
+      },
+    );
 
     _screenSub = ref.listenManual(screenProvider, (prev, next) {
       const fastDuration = Duration(milliseconds: 350);

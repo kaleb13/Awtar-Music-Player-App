@@ -5,7 +5,7 @@ import '../models/playlist.dart';
 
 class DatabaseService {
   static Database? _db;
-  static const int _version = 1;
+  static const int _version = 2;
 
   static Future<Database> get database async {
     if (_db != null) return _db!;
@@ -25,12 +25,16 @@ class DatabaseService {
             title TEXT NOT NULL,
             artist TEXT,
             album TEXT,
+            albumArtist TEXT,
             url TEXT NOT NULL,
             duration INTEGER,
             albumArt TEXT,
             isFavorite INTEGER DEFAULT 0,
             lastPlayed INTEGER,
-            playCount INTEGER DEFAULT 0
+            playCount INTEGER DEFAULT 0,
+            trackNumber INTEGER,
+            genre TEXT,
+            year INTEGER
           )
         ''');
 
@@ -71,6 +75,14 @@ class DatabaseService {
           )
         ''');
       },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE songs ADD COLUMN albumArtist TEXT');
+          await db.execute('ALTER TABLE songs ADD COLUMN trackNumber INTEGER');
+          await db.execute('ALTER TABLE songs ADD COLUMN genre TEXT');
+          await db.execute('ALTER TABLE songs ADD COLUMN year INTEGER');
+        }
+      },
     );
   }
 
@@ -84,10 +96,14 @@ class DatabaseService {
         'title': song.title,
         'artist': song.artist,
         'album': song.album,
+        'albumArtist': song.albumArtist,
         'url': song.url,
         'duration': song.duration,
         'albumArt': song.albumArt,
         'isFavorite': song.isFavorite ? 1 : 0,
+        'trackNumber': song.trackNumber,
+        'genre': song.genre,
+        'year': song.year,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
@@ -121,11 +137,15 @@ class DatabaseService {
           title: m['title'],
           artist: m['artist'] ?? "Unknown Artist",
           album: m['album'],
+          albumArtist: m['albumArtist'],
           url: m['url'],
           duration: m['duration'] ?? 0,
           albumArt: m['albumArt'],
           isFavorite: m['isFavorite'] == 1,
           lyrics: lyrics,
+          trackNumber: m['trackNumber'],
+          genre: m['genre'],
+          year: m['year'],
         ),
       );
     }

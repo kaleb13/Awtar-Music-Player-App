@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_theme.dart';
@@ -6,6 +7,7 @@ import '../../models/song.dart';
 import '../details/artist_details_screen.dart';
 import '../../widgets/app_widgets.dart';
 import '../../providers/navigation_provider.dart';
+import '../../services/media_menu_service.dart';
 
 class ArtistsTab extends ConsumerWidget {
   const ArtistsTab({super.key});
@@ -14,9 +16,17 @@ class ArtistsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final libraryState = ref.watch(libraryProvider);
     // Filter hidden artists
-    final artists = libraryState.artists
-        .where((a) => !libraryState.hiddenArtists.contains(a.artist))
-        .toList();
+    // Filter hidden artists and apply new filters
+    final artists = libraryState.artists.where((a) {
+      if (libraryState.hiddenArtists.contains(a.artist)) return false;
+      if (libraryState.hideSmallArtists && a.numberOfTracks < 3) return false;
+      if (libraryState.hideUnknownArtist &&
+          (a.artist.toLowerCase() == "<unknown>" ||
+              a.artist.toLowerCase() == "unknown")) {
+        return false;
+      }
+      return true;
+    }).toList();
 
     if (libraryState.permissionStatus != LibraryPermissionStatus.granted) {
       return Center(
@@ -95,8 +105,20 @@ class ArtistsTab extends ConsumerWidget {
           title: artist.artist,
           subtitle: "${artist.numberOfTracks} Tracks",
           songId: artistSong.id,
-          flexible: true, // Replicate Album's old flexible style
-          isPortrait: true, // Replicate Album's old portrait style
+          flexible: true,
+          isPortrait: true,
+          borderColor: libraryState.artistColors[artist.artist],
+          artwork: artist.imagePath != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image.file(
+                    File(artist.imagePath!),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
+                )
+              : null,
           onTap: () {
             ref.read(bottomNavVisibleProvider.notifier).state = false;
             Navigator.push(
@@ -110,60 +132,42 @@ class ArtistsTab extends ConsumerWidget {
             });
           },
           onLongPress: () {
-            _showHideDialog(context, ref, artist.artist);
+            AppCenteredModal.show(
+              context,
+              title: artist.artist,
+              items: [
+                ...MediaMenuService.buildArtistActions(
+                  context: context,
+                  ref: ref,
+                  artist: artist,
+                ),
+                AppModalItem(
+                  icon: Icons.visibility_off_outlined,
+                  label: "Hide Artist",
+                  onTap: () {
+                    ref
+                        .read(libraryProvider.notifier)
+                        .toggleArtistVisibility(artist.artist);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Hidden ${artist.artist}"),
+                        action: SnackBarAction(
+                          label: "Undo",
+                          onPressed: () {
+                            ref
+                                .read(libraryProvider.notifier)
+                                .toggleArtistVisibility(artist.artist);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
           },
         );
       },
-    );
-  }
-
-  void _showHideDialog(BuildContext context, WidgetRef ref, String artistName) {
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetC) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surfaceDark,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.visibility_off, color: Colors.white),
-              title: Text(
-                "Hide $artistName",
-                style: const TextStyle(color: Colors.white),
-              ),
-              subtitle: const Text(
-                "You can unhide it later from Settings",
-                style: TextStyle(color: Colors.white54),
-              ),
-              onTap: () {
-                ref
-                    .read(libraryProvider.notifier)
-                    .toggleArtistVisibility(artistName);
-                Navigator.pop(sheetC);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("Hidden $artistName"),
-                    action: SnackBarAction(
-                      label: "Undo",
-                      onPressed: () {
-                        ref
-                            .read(libraryProvider.notifier)
-                            .toggleArtistVisibility(artistName);
-                      },
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

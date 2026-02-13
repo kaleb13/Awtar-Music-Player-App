@@ -8,6 +8,7 @@ import '../../providers/player_provider.dart';
 import '../../widgets/app_artwork.dart';
 import '../../services/palette_service.dart';
 import '../../providers/performance_provider.dart';
+import '../../widgets/app_widgets.dart';
 
 class AlbumDetailsScreen extends ConsumerStatefulWidget {
   final String title;
@@ -272,52 +273,11 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
                 SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final song = albumSongs[index];
-                    return Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.02),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 4,
-                        ),
-                        leading: Text(
-                          (index + 1).toString().padLeft(2, '0'),
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.2),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        title: Text(
-                          song.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                        subtitle: Text(
-                          "Track ${index + 1}", // Or duration if available
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.4),
-                            fontSize: 11,
-                          ),
-                        ),
-                        trailing: Icon(
-                          Icons.more_vert,
-                          color: Colors.white.withOpacity(0.3),
-                          size: 20,
-                        ),
-                        onTap: () => ref
-                            .read(playerProvider.notifier)
-                            .playPlaylist(albumSongs, index),
-                      ),
+                    return AppSongTile(
+                      song: song,
+                      index: index,
+                      playlist: albumSongs,
+                      showArtwork: false,
                     );
                   }, childCount: albumSongs.length),
                 ),

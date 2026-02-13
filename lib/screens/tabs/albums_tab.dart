@@ -5,9 +5,10 @@ import '../../providers/library_provider.dart';
 import '../../models/song.dart';
 import '../../widgets/color_aware_album_card.dart';
 import '../details/album_details_screen.dart';
+import '../../widgets/app_widgets.dart';
 import '../../providers/navigation_provider.dart';
-import '../../providers/player_provider.dart';
-import '../details/artist_details_screen.dart';
+import '../../services/media_menu_service.dart';
+import '../../providers/album_selection_provider.dart';
 
 class AlbumsTab extends ConsumerWidget {
   const AlbumsTab({super.key});
@@ -15,12 +16,16 @@ class AlbumsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final libraryState = ref.watch(libraryProvider);
-    // Filter hidden albums
-    final albums = libraryState.albums
-        .where(
-          (a) => !libraryState.hiddenAlbums.contains("${a.album}_${a.artist}"),
-        )
-        .toList();
+    final isSelectionMode = ref.watch(isAlbumSelectionModeProvider);
+    final selectedIds = ref.watch(selectedAlbumIdsProvider);
+
+    // Filter hidden albums and small albums if enabled
+    final albums = libraryState.albums.where((a) {
+      final key = "${a.album}_${a.artist}";
+      if (libraryState.hiddenAlbums.contains(key)) return false;
+      if (libraryState.hideSmallAlbums && a.numberOfSongs < 3) return false;
+      return true;
+    }).toList();
 
     if (libraryState.permissionStatus != LibraryPermissionStatus.granted) {
       return Center(
@@ -81,6 +86,9 @@ class AlbumsTab extends ConsumerWidget {
       itemCount: albums.length,
       itemBuilder: (context, index) {
         final album = albums[index];
+        final albumKey = "${album.album}_${album.artist}";
+        final isSelected = selectedIds.contains(albumKey);
+
         final albumSong = libraryState.songs.firstWhere(
           (s) => s.album == album.album,
           orElse: () => libraryState.songs.isNotEmpty
@@ -95,188 +103,109 @@ class AlbumsTab extends ConsumerWidget {
                 ),
         );
 
-        return ColorAwareAlbumCard(
-          title: album.album,
-          artist: album.artist,
-          songId: albumSong.id,
-          songPath: albumSong.url,
-          size: 100, // Reduced from 140 to fix overflow
-          flexible: true, // Use flexible scaling
-          isPortrait: false, // Ensure square 'compact' shape
-          showThreeDotsMenu: true,
-          onTap: () {
-            ref.read(bottomNavVisibleProvider.notifier).state = false;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AlbumDetailsScreen(
-                  title: album.album,
-                  artist: album.artist,
-                  imageUrl: "",
-                ),
-              ),
-            ).then((_) {
-              ref.read(bottomNavVisibleProvider.notifier).state = true;
-            });
-          },
-          menuBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'play',
-              child: Row(
-                children: [
-                  Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
-                  SizedBox(width: 12),
-                  Text("Play Album", style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'play_next',
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.playlist_play_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  SizedBox(width: 12),
-                  Text("Play Next", style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'queue',
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.queue_music_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  SizedBox(width: 12),
-                  Text("Add to Queue", style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'artist',
-              child: Row(
-                children: [
-                  Icon(Icons.person_rounded, color: Colors.white, size: 20),
-                  SizedBox(width: 12),
-                  Text("Artist Details", style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'hide',
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.visibility_off_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  SizedBox(width: 12),
-                  Text("Hide Album", style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-          ],
-          onMenuSelected: (value) async {
-            final albumSongs = libraryState.songs
-                .where((s) => s.album == album.album)
-                .toList();
-
-            if (value == 'play') {
-              ref.read(playerProvider.notifier).playPlaylist(albumSongs, 0);
-            } else if (value == 'play_next') {
-              ref.read(playerProvider.notifier).addNext(albumSongs);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Playing ${album.album} next"),
-                  backgroundColor: AppColors.primaryGreen,
-                ),
-              );
-            } else if (value == 'queue') {
-              ref.read(playerProvider.notifier).addToQueue(albumSongs);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Added ${album.album} to queue"),
-                  backgroundColor: AppColors.primaryGreen,
-                ),
-              );
-            } else if (value == 'artist') {
-              ref.read(bottomNavVisibleProvider.notifier).state = false;
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      ArtistDetailsScreen(name: album.artist, imageUrl: ""),
-                ),
-              ).then((_) {
-                ref.read(bottomNavVisibleProvider.notifier).state = true;
-              });
-            } else if (value == 'hide') {
-              _showHideDialog(context, ref, album.album, album.artist);
-            }
-          },
-        );
-      },
-    );
-  }
-
-  void _showHideDialog(
-    BuildContext context,
-    WidgetRef ref,
-    String albumName,
-    String artistName,
-  ) {
-    final key = "${albumName}_${artistName}";
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetC) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surfaceDark,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        return Stack(
           children: [
-            ListTile(
-              leading: const Icon(Icons.visibility_off, color: Colors.white),
-              title: Text(
-                "Hide $albumName",
-                style: const TextStyle(color: Colors.white),
-              ),
-              subtitle: const Text(
-                "You can unhide it later from Settings",
-                style: TextStyle(color: Colors.white54),
-              ),
+            ColorAwareAlbumCard(
+              title: album.album,
+              artist: album.artist,
+              songId: albumSong.id,
+              songPath: albumSong.url,
+              size: 100, // Reduced from 140 to fix overflow
+              flexible: true, // Use flexible scaling
+              isPortrait: false, // Ensure square 'compact' shape
+              showThreeDotsMenu: true,
               onTap: () {
-                ref.read(libraryProvider.notifier).toggleAlbumVisibility(key);
-                Navigator.pop(sheetC);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("Hidden $albumName"),
-                    action: SnackBarAction(
-                      label: "Undo",
-                      onPressed: () {
+                if (isSelectionMode) {
+                  final newSet = Set<String>.from(selectedIds);
+                  if (isSelected) {
+                    newSet.remove(albumKey);
+                  } else {
+                    newSet.add(albumKey);
+                  }
+                  ref.read(selectedAlbumIdsProvider.notifier).state = newSet;
+                } else {
+                  ref.read(bottomNavVisibleProvider.notifier).state = false;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AlbumDetailsScreen(
+                        title: album.album,
+                        artist: album.artist,
+                        imageUrl: "",
+                      ),
+                    ),
+                  ).then((_) {
+                    ref.read(bottomNavVisibleProvider.notifier).state = true;
+                  });
+                }
+              },
+              onLongPress: () {
+                AppCenteredModal.show(
+                  context,
+                  title: album.album,
+                  items: [
+                    ...MediaMenuService.buildAlbumActions(
+                      context: context,
+                      ref: ref,
+                      album: album,
+                    ),
+                    AppModalItem(
+                      icon: Icons.visibility_off_outlined,
+                      label: "Hide Album",
+                      onTap: () {
+                        final key = "${album.album}_${album.artist}";
                         ref
                             .read(libraryProvider.notifier)
                             .toggleAlbumVisibility(key);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Hidden ${album.album}"),
+                            action: SnackBarAction(
+                              label: "Undo",
+                              onPressed: () {
+                                ref
+                                    .read(libraryProvider.notifier)
+                                    .toggleAlbumVisibility(key);
+                              },
+                            ),
+                          ),
+                        );
                       },
                     ),
-                  ),
+                  ],
                 );
               },
+              menuBuilder: (context) => MediaMenuService.buildAlbumMenuItems(
+                context: context,
+                ref: ref,
+                album: album,
+              ),
             ),
+            if (isSelectionMode)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primaryGreen
+                        : Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Icon(
+                      Icons.check,
+                      size: 16,
+                      color: isSelected ? Colors.black : Colors.transparent,
+                    ),
+                  ),
+                ),
+              ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
