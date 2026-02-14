@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/song.dart';
 
 class PlayStats {
   final Map<int, int> songPlayCounts; // id -> count
@@ -20,6 +21,71 @@ class PlayStats {
     this.weeklyPlays = const {},
     this.monthlyPlays = const {},
   });
+
+  Map<String, dynamic> toMapPortable(List<Song> songs) {
+    Map<int, String> idToIdentity = {
+      for (var s in songs) s.id: "${s.title}|${s.artist}|${s.album ?? ''}",
+    };
+
+    return {
+      'songPlayCounts': songPlayCounts.map(
+        (id, count) => MapEntry(idToIdentity[id] ?? "unknown_$id", count),
+      ),
+      'songPlayDuration': songPlayDuration.map(
+        (id, dur) => MapEntry(idToIdentity[id] ?? "unknown_$id", dur),
+      ),
+      'artistPlayDuration': artistPlayDuration,
+      'albumPlayDuration': albumPlayDuration,
+      'recentPlayedIdentities': recentPlayedIds
+          .map((id) => idToIdentity[id])
+          .where((ident) => ident != null)
+          .toList(),
+      'weeklyPlays': weeklyPlays,
+      'monthlyPlays': monthlyPlays,
+    };
+  }
+
+  factory PlayStats.fromMapPortable(
+    Map<String, dynamic> map,
+    List<Song> currentSongs,
+  ) {
+    Map<String, int> identToId = {
+      for (var s in currentSongs)
+        "${s.title}|${s.artist}|${s.album ?? ''}": s.id,
+    };
+
+    final Map<int, int> counts = {};
+    (map['songPlayCounts'] as Map<String, dynamic>?)?.forEach((ident, count) {
+      final id = identToId[ident];
+      if (id != null) counts[id] = count as int;
+    });
+
+    final Map<int, int> durations = {};
+    (map['songPlayDuration'] as Map<String, dynamic>?)?.forEach((ident, dur) {
+      final id = identToId[ident];
+      if (id != null) durations[id] = dur as int;
+    });
+
+    final List<int> recent =
+        (map['recentPlayedIdentities'] as List?)
+            ?.map((ident) => identToId[ident])
+            .where((id) => id != null)
+            .cast<int>()
+            .toList() ??
+        [];
+
+    return PlayStats(
+      songPlayCounts: counts,
+      songPlayDuration: durations,
+      artistPlayDuration: Map<String, int>.from(
+        map['artistPlayDuration'] ?? {},
+      ),
+      albumPlayDuration: Map<String, int>.from(map['albumPlayDuration'] ?? {}),
+      recentPlayedIds: recent,
+      weeklyPlays: Map<String, int>.from(map['weeklyPlays'] ?? {}),
+      monthlyPlays: Map<String, int>.from(map['monthlyPlays'] ?? {}),
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -63,6 +129,11 @@ class StatsNotifier extends StateNotifier<PlayStats> {
 
   StatsNotifier(this._prefs) : super(PlayStats()) {
     _load();
+  }
+
+  void updateState(PlayStats newState) {
+    state = newState;
+    _save();
   }
 
   void _load() {

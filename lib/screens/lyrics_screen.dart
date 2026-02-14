@@ -8,6 +8,8 @@ import 'package:awtar_music_player/providers/navigation_provider.dart';
 import 'package:awtar_music_player/widgets/app_artwork.dart';
 import 'package:awtar_music_player/widgets/media_edit_dialogs.dart';
 
+import 'package:awtar_music_player/widgets/app_widgets.dart';
+
 class LyricsScreen extends ConsumerWidget {
   const LyricsScreen({super.key});
 
@@ -117,31 +119,17 @@ class LyricsScreen extends ConsumerWidget {
                             size: 28,
                           ),
                         ),
-                        color: const Color(0xFF1C1C1E),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
                         onSelected: (value) {
                           if (value == 'edit_lyrics') {
                             MediaEditDialogs.showEditLyrics(context, ref, song);
                           }
                         },
                         itemBuilder: (context) => [
-                          const PopupMenuItem(
+                          PopupMenuItem(
                             value: 'edit_lyrics',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.edit_note,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                                SizedBox(width: 12),
-                                Text(
-                                  "Edit Lyrics",
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ],
+                            child: AppMenuEntry(
+                              icon: Icons.edit_note,
+                              label: "Edit Lyrics",
                             ),
                           ),
                         ],

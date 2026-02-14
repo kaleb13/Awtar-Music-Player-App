@@ -842,9 +842,13 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     _saveToCache();
   }
 
-  void deletePlaylist(Playlist playlist) {
+  void deletePlaylist(String playlistId) {
+    // Remove from DB
+    DatabaseService.deletePlaylist(playlistId);
+
+    // Update State
     state = state.copyWith(
-      playlists: state.playlists.where((p) => p.id != playlist.id).toList(),
+      playlists: state.playlists.where((p) => p.id != playlistId).toList(),
     );
     _saveToCache();
   }
@@ -1268,18 +1272,25 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     try {
       // 1. Update File Metadata if it's a local file
       if (!song.url.startsWith("http") && !song.url.startsWith("content://")) {
-        final currentTag = await AudioTags.read(song.url);
-        final tag = Tag(
-          title: title ?? song.title,
-          trackArtist: artist ?? song.artist,
-          album: album ?? song.album,
-          trackNumber: trackNumber ?? song.trackNumber,
-          genre: genre ?? song.genre,
-          year: year ?? song.year,
-          albumArtist: albumArtist ?? song.albumArtist,
-          pictures: currentTag?.pictures ?? [],
-        );
-        await AudioTags.write(song.url, tag);
+        try {
+          final currentTag = await AudioTags.read(song.url);
+          final tag = Tag(
+            title: title ?? song.title,
+            trackArtist: artist ?? song.artist,
+            album: album ?? song.album,
+            trackNumber: trackNumber ?? song.trackNumber,
+            genre: genre ?? song.genre,
+            year: year ?? song.year,
+            albumArtist: albumArtist ?? song.albumArtist,
+            pictures: currentTag?.pictures ?? [],
+          );
+          await AudioTags.write(song.url, tag);
+        } catch (e) {
+          debugPrint(
+            "Note: Could not write metadata to physical file (it may be in use): $e",
+          );
+          // We continue anyway so the changes are saved to the app's database
+        }
       }
 
       // 2. Update Database & State
@@ -1298,6 +1309,9 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
             .map((s) => s.id == song.id ? updatedSong : s)
             .toList(),
       );
+
+      // Update player provider to reflect changes in current queue/song
+      _ref.read(playerProvider.notifier).updateSongMetadataInState(updatedSong);
 
       // 3. Rebuild structures
       state = state.copyWith(
@@ -1320,24 +1334,39 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       }
 
       if (lyrics.isEmpty) {
-        lyrics = lyricsText
+        final lines = lyricsText
             .split('\n')
             .where((line) => line.trim().isNotEmpty)
-            .map((line) => LyricLine(time: Duration.zero, text: line.trim()))
             .toList();
+        lyrics = [];
+        for (int i = 0; i < lines.length; i++) {
+          lyrics.add(
+            LyricLine(
+              time: Duration(milliseconds: i),
+              text: lines[i].trim(),
+            ),
+          );
+        }
       }
 
       // 1. Update file metadata
       if (!song.url.startsWith("http") && !song.url.startsWith("content://")) {
-        final currentTag = await AudioTags.read(song.url);
-        final tag = Tag(
-          title: currentTag?.title,
-          trackArtist: currentTag?.trackArtist,
-          album: currentTag?.album,
-          lyrics: lyricsText,
-          pictures: currentTag?.pictures ?? [],
-        );
-        await AudioTags.write(song.url, tag);
+        try {
+          final currentTag = await AudioTags.read(song.url);
+          final tag = Tag(
+            title: currentTag?.title,
+            trackArtist: currentTag?.trackArtist,
+            album: currentTag?.album,
+            lyrics: lyricsText,
+            pictures: currentTag?.pictures ?? [],
+          );
+          await AudioTags.write(song.url, tag);
+        } catch (e) {
+          debugPrint(
+            "Note: Could not write lyrics to physical file (it may be in use): $e",
+          );
+          // We continue anyway so the changes are saved to the app's database
+        }
       }
 
       // 2. Update DB & State
@@ -1388,6 +1417,172 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     }
   }
 
+  Future<void> applyBackupRestoration({
+    required List<Map<String, dynamic>> favorites,
+    required List<Map<String, dynamic>> playlists,
+    required Function(double progress, String message) onProgress,
+  }) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    try {
+      if (state.songs.isEmpty) {
+        onProgress(0.05, "Library appears empty, scanning...");
+        await scanLibrary();
+        if (state.songs.isEmpty) {
+          throw Exception(
+            "Cannot restore: Library is empty. Please ensure you have music on your device and permissions are granted.",
+          );
+        }
+      }
+
+      // 1. Map Identities to current Song IDs
+      onProgress(0.1, "Mapping song identities...");
+
+      String normalize(String? s) => (s ?? '').trim().toLowerCase();
+
+      final Map<String, int> exactMap = {};
+      final Map<String, int> fuzzyMap = {}; // Title|Artist
+
+      for (var s in state.songs) {
+        final title = normalize(s.title);
+        final artist = normalize(s.artist);
+        final album = normalize(s.album);
+
+        exactMap["$title|$artist|$album"] = s.id;
+        // Keep the first one found for fuzzy matching if duplicates exist
+        fuzzyMap.putIfAbsent("$title|$artist", () => s.id);
+      }
+
+      // 2. Process Favorites
+      onProgress(0.3, "Processing favorites...");
+      final Set<int> restoredFavoriteIds = {};
+      int favoriteConflicts = 0;
+      for (final fav in favorites) {
+        try {
+          final title = normalize(fav['title']);
+          final artist = normalize(fav['artist']);
+          final album = normalize(fav['album']);
+
+          int? id = exactMap["$title|$artist|$album"];
+          if (id == null) {
+            // Try fuzzy match (ignore album)
+            id = fuzzyMap["$title|$artist"];
+          }
+
+          if (id != null) {
+            restoredFavoriteIds.add(id);
+          } else {
+            favoriteConflicts++;
+          }
+        } catch (e) {
+          debugPrint("Conflict in favorite: $e");
+          favoriteConflicts++;
+        }
+      }
+
+      // 3. Process Playlists
+      onProgress(0.5, "Processing playlists...");
+      final List<Playlist> restoredPlaylists = [];
+      int playlistConflicts = 0;
+      for (final pData in playlists) {
+        try {
+          final List<int> songIds = [];
+          final List<dynamic> songIdents = pData['songs'] ?? [];
+
+          for (final sIdentData in songIdents) {
+            final title = normalize(sIdentData['title']);
+            final artist = normalize(sIdentData['artist']);
+            final album = normalize(sIdentData['album']);
+
+            int? id = exactMap["$title|$artist|$album"];
+            if (id == null) {
+              id = fuzzyMap["$title|$artist"];
+            }
+
+            if (id != null) {
+              songIds.add(id);
+            }
+          }
+
+          if (songIds.isNotEmpty || pData['name'] != null) {
+            restoredPlaylists.add(
+              Playlist(
+                id:
+                    pData['id'] ??
+                    DateTime.now().millisecondsSinceEpoch.toString(),
+                name: pData['name'] ?? "Restored Playlist",
+                imagePath: pData['imagePath'],
+                songIds: songIds,
+                createdAt: DateTime.fromMillisecondsSinceEpoch(
+                  pData['createdAt'] ?? DateTime.now().millisecondsSinceEpoch,
+                ),
+              ),
+            );
+          }
+        } catch (e) {
+          debugPrint("Conflict in playlist ${pData['name']}: $e");
+          playlistConflicts++;
+        }
+      }
+
+      // 4. Update Database
+      onProgress(0.7, "Updating database...");
+      try {
+        // Reset favorites in DB first for clean state
+        for (final s in state.songs) {
+          if (s.isFavorite) {
+            await DatabaseService.updateFavorite(s.id, false);
+          }
+        }
+
+        for (final id in restoredFavoriteIds) {
+          await DatabaseService.updateFavorite(id, true);
+        }
+
+        // Replace playlists in DB
+        await DatabaseService.savePlaylists(restoredPlaylists);
+      } catch (dbError) {
+        debugPrint("Database sync conflict: $dbError");
+        throw Exception(
+          "Database update failed. Some data might not be saved.",
+        );
+      }
+
+      // 5. Update State
+      onProgress(0.9, "Finalizing state...");
+      final updatedSongs = state.songs.map((s) {
+        return s.copyWith(isFavorite: restoredFavoriteIds.contains(s.id));
+      }).toList();
+
+      String resultMsg =
+          "Restoration complete! ${restoredFavoriteIds.length} favorites and ${restoredPlaylists.length} playlists restored.";
+      if (favoriteConflicts > 0 || playlistConflicts > 0) {
+        resultMsg +=
+            "\nNote: Some items ($favoriteConflicts stats/favs, $playlistConflicts playlists) were skipped due to conflicts or missing files.";
+      }
+
+      state = state.copyWith(
+        songs: updatedSongs,
+        playlists: restoredPlaylists,
+        isLoading: false,
+        completionMessage: resultMsg,
+      );
+
+      _saveToCache();
+
+      // Auto-clear message
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) state = state.copyWith(completionMessage: null);
+      });
+    } catch (e) {
+      debugPrint("Error applying restoration: $e");
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: "Failed to apply restoration: $e",
+      );
+    }
+  }
+
   Future<void> updateAlbumCover(
     String albumName,
     String artistName,
@@ -1402,20 +1597,26 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       for (var song in songsInAlbum) {
         if (!song.url.startsWith("http") &&
             !song.url.startsWith("content://")) {
-          final currentTag = await AudioTags.read(song.url);
-          final tag = Tag(
-            title: currentTag?.title,
-            trackArtist: currentTag?.trackArtist,
-            album: currentTag?.album,
-            pictures: [
-              Picture(
-                bytes: bytes,
-                mimeType: MimeType.values.first,
-                pictureType: PictureType.values.first,
-              ),
-            ],
-          );
-          await AudioTags.write(song.url, tag);
+          try {
+            final currentTag = await AudioTags.read(song.url);
+            final tag = Tag(
+              title: currentTag?.title,
+              trackArtist: currentTag?.trackArtist,
+              album: currentTag?.album,
+              pictures: [
+                Picture(
+                  bytes: bytes,
+                  mimeType: MimeType.values.first,
+                  pictureType: PictureType.values.first,
+                ),
+              ],
+            );
+            await AudioTags.write(song.url, tag);
+          } catch (e) {
+            debugPrint(
+              "Note: Could not write album cover to physical file: $e",
+            );
+          }
         }
       }
 
@@ -1551,11 +1752,20 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         }
 
         if (parsedLyrics.isEmpty) {
-          parsedLyrics = lyricsText
+          final lines = lyricsText
               .split('\n')
-              .map((line) => LyricLine(time: Duration.zero, text: line.trim()))
-              .where((l) => l.text.isNotEmpty)
+              .map((line) => line.trim())
+              .where((text) => text.isNotEmpty)
               .toList();
+          parsedLyrics = [];
+          for (int i = 0; i < lines.length; i++) {
+            parsedLyrics.add(
+              LyricLine(
+                time: Duration(milliseconds: i),
+                text: lines[i],
+              ),
+            );
+          }
         }
 
         if (parsedLyrics.isNotEmpty) {

@@ -13,6 +13,7 @@ import '../../providers/stats_provider.dart';
 import '../../providers/performance_provider.dart';
 import '../../widgets/app_widgets.dart';
 import '../../services/image_processing_service.dart';
+import '../../services/media_menu_service.dart';
 
 class ArtistDetailsScreen extends ConsumerStatefulWidget {
   final String name;
@@ -380,6 +381,17 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                                     artist: album.artist,
                                     imageUrl: "",
                                   ),
+                                ),
+                              );
+                            },
+                            onLongPress: () {
+                              AppCenteredModal.show(
+                                context,
+                                title: album.album,
+                                items: MediaMenuService.buildAlbumActions(
+                                  context: context,
+                                  ref: ref,
+                                  album: album,
                                 ),
                               );
                             },

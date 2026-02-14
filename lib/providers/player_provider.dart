@@ -326,11 +326,20 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
         }
 
         if (parsedLyrics.isEmpty) {
-          final lines = lyricsText.split('\n');
-          parsedLyrics = lines
-              .map((line) => LyricLine(time: Duration.zero, text: line.trim()))
-              .where((l) => l.text.isNotEmpty)
+          final lines = lyricsText
+              .split('\n')
+              .map((line) => line.trim())
+              .where((text) => text.isNotEmpty)
               .toList();
+          parsedLyrics = [];
+          for (int i = 0; i < lines.length; i++) {
+            parsedLyrics.add(
+              LyricLine(
+                time: Duration(milliseconds: i),
+                text: lines[i],
+              ),
+            );
+          }
         }
 
         if (parsedLyrics.isNotEmpty) {
@@ -387,8 +396,13 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     if (state.isPlaying) {
       await pause();
     } else {
-      if (song != null && state.currentSong?.id != song.id) {
-        await play(song);
+      final targetSong = song ?? state.currentSong;
+      if (targetSong == null) return;
+
+      // If no audio source is set (common after startup), we must call play() to load it
+      if (_audioPlayer.audioSource == null ||
+          (song != null && state.currentSong?.id != song.id)) {
+        await play(targetSong);
       } else {
         await _audioPlayer.play();
       }
@@ -438,6 +452,27 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     final updatedQueue = state.queue.map((s) {
       if (s.id == songId) {
         return s.copyWith(isFavorite: isFavorite);
+      }
+      return s;
+    }).toList();
+
+    state = state.copyWith(
+      currentSong: updatedCurrentSong,
+      queue: updatedQueue,
+    );
+  }
+
+  void updateSongMetadataInState(Song updatedSong) {
+    if (!mounted) return;
+
+    Song? updatedCurrentSong = state.currentSong;
+    if (state.currentSong?.id == updatedSong.id) {
+      updatedCurrentSong = updatedSong;
+    }
+
+    final updatedQueue = state.queue.map((s) {
+      if (s.id == updatedSong.id) {
+        return updatedSong;
       }
       return s;
     }).toList();

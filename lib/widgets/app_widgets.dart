@@ -509,15 +509,10 @@ class _MenuButtonState extends ConsumerState<_MenuButton> {
         position.dx,
         anchorTop.clamp(safeAreaTop, safeAreaBottom),
         position.dx + size.width,
-        screenHeight - safeAreaBottom, // Tell Flutter the 'Floor' is here
+        screenHeight - safeAreaBottom,
       ),
       items: widget.menuBuilder?.call(context) ?? [],
-      color: AppColors.surfaceDark,
       useRootNavigator: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
-      ),
     );
 
     if (mounted) {
@@ -538,28 +533,29 @@ class _MenuButtonState extends ConsumerState<_MenuButton> {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
           color: _isOpen
-              ? AppColors.primaryGreen.withOpacity(0.3)
-              : const Color(0xFF0D0D0F).withOpacity(0.8),
+              ? AppColors.primaryGreen.withOpacity(0.15)
+              : const Color(0xFF0D0D0F).withOpacity(0.4),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _isOpen
-                ? AppColors.primaryGreen.withOpacity(0.5)
-                : Colors.white.withOpacity(0.1),
+                ? AppColors.primaryGreen.withOpacity(0.4)
+                : Colors.white.withOpacity(0.05),
             width: 1,
           ),
           boxShadow: [
-            BoxShadow(
-              color: _isOpen
-                  ? AppColors.primaryGreen.withOpacity(0.2)
-                  : Colors.black.withOpacity(0.2),
-              blurRadius: _isOpen ? 8 : 4,
-              offset: const Offset(0, 2),
-            ),
+            if (_isOpen)
+              BoxShadow(
+                color: AppColors.primaryGreen.withOpacity(0.1),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
           ],
         ),
         child: Icon(
           Icons.more_horiz,
-          color: _isOpen ? AppColors.primaryGreen : Colors.white,
+          color: _isOpen
+              ? AppColors.primaryGreen
+              : Colors.white.withOpacity(0.5),
           size: 14,
         ),
       ),
@@ -1058,11 +1054,6 @@ class AppTopBar extends ConsumerWidget {
               children: [
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, color: Colors.white),
-                  color: AppColors.surfaceDark,
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                   onSelected: (value) {
                     if (value == 'select_mode') {
                       ref.read(isAlbumSelectionModeProvider.notifier).state =
@@ -1182,7 +1173,6 @@ class AppTopBar extends ConsumerWidget {
             ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: Colors.white),
-              color: AppColors.surfaceDark,
               onSelected: (val) {
                 if (val == 'reload') {
                   Navigator.push(
@@ -1296,11 +1286,6 @@ class AppTopBar extends ConsumerWidget {
             icon: const Icon(Icons.more_vert, color: Colors.white),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            color: AppColors.surfaceDark,
-            elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
             onSelected: (value) {
               final rootNav = Navigator.of(context, rootNavigator: true);
 
@@ -1499,7 +1484,33 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
     final borderColor = _dominantColor ?? AppColors.accentYellow;
 
     return GestureDetector(
-      onTap: () => ref.read(playerProvider.notifier).play(bannerSong),
+      onTap: () {
+        if (bannerSong.album != null) {
+          final albumSongs = libraryState.songs
+              .where(
+                (s) =>
+                    s.album == bannerSong.album &&
+                    s.artist == bannerSong.artist,
+              )
+              .toList();
+
+          // Sort by track number if available, then by title
+          albumSongs.sort((a, b) {
+            final aNum = a.trackNumber ?? 0;
+            final bNum = b.trackNumber ?? 0;
+            if (aNum != bNum) return aNum.compareTo(bNum);
+            return a.title.compareTo(b.title);
+          });
+
+          final index = albumSongs.indexWhere((s) => s.id == bannerSong.id);
+          if (index != -1) {
+            ref.read(playerProvider.notifier).playPlaylist(albumSongs, index);
+            return;
+          }
+        }
+        // Fallback or if album is null
+        ref.read(playerProvider.notifier).play(bannerSong);
+      },
       child: Container(
         width: double.infinity,
         height: 180,
@@ -1608,11 +1619,22 @@ class AppCenteredModal extends StatelessWidget {
     required String title,
     required List<Widget> items,
   }) {
-    return showDialog<T>(
+    return showGeneralDialog<T>(
       context: context,
+      barrierDismissible: true,
+      barrierLabel: title,
+      barrierColor: Colors.black.withOpacity(0.7),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, anim1, anim2) =>
+          AppCenteredModal(title: title, items: items),
+      transitionBuilder: (context, anim1, anim2, child) {
+        final curve = Curves.easeInOutBack.transform(anim1.value);
+        return Transform.scale(
+          scale: 0.8 + (curve * 0.2),
+          child: Opacity(opacity: anim1.value, child: child),
+        );
+      },
       useRootNavigator: true,
-      barrierColor: Colors.black54,
-      builder: (context) => AppCenteredModal(title: title, items: items),
     );
   }
 
@@ -1621,44 +1643,77 @@ class AppCenteredModal extends StatelessWidget {
     return Center(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 40),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceDark,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.5),
-              blurRadius: 30,
-              spreadRadius: 5,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D0D0F).withOpacity(0.85),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.08),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 40,
+                    offset: const Offset(0, 15),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.titleMedium.copyWith(
+                          color: Colors.white,
+                          fontSize: 20,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      height: 1,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withOpacity(0.0),
+                            Colors.white.withOpacity(0.1),
+                            Colors.white.withOpacity(0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Flexible(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.5,
+                        ),
+                        child: ListView(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          children: items,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 20),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Divider(color: Colors.white.withOpacity(0.1), height: 1),
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  children: items,
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
           ),
         ),
       ),
@@ -1687,23 +1742,42 @@ class AppModalItem extends StatelessWidget {
         Navigator.pop(context);
         onTap();
       },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.transparent,
+        ),
         child: Row(
           children: [
             if (icon != null) ...[
-              Icon(icon, color: color ?? Colors.white70, size: 22),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (color ?? Colors.white).withOpacity(0.05),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color ?? Colors.white70, size: 20),
+              ),
               const SizedBox(width: 16),
             ],
             Expanded(
               child: Text(
                 label,
-                style: TextStyle(
-                  color: color ?? Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
+                style: AppTextStyles.bodyMain.copyWith(
+                  color: color ?? Colors.white.withOpacity(0.9),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.1,
                 ),
               ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.white.withOpacity(0.15),
+              size: 16,
             ),
           ],
         ),
@@ -1720,22 +1794,32 @@ class AppMenuEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (icon != null) ...[
-          Icon(icon, color: Colors.white70, size: 20),
-          const SizedBox(width: 12),
-        ],
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: Colors.white70, size: 16),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

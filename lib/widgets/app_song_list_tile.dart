@@ -9,6 +9,7 @@ class AppSongListTile extends ConsumerWidget {
   final VoidCallback onTap;
   final VoidCallback? onMenuTap;
   final bool isActive;
+  final Widget? trailing;
 
   const AppSongListTile({
     super.key,
@@ -16,6 +17,7 @@ class AppSongListTile extends ConsumerWidget {
     required this.onTap,
     this.onMenuTap,
     this.isActive = false,
+    this.trailing,
   });
 
   String _formatDuration(int ms) {
@@ -94,7 +96,10 @@ class AppSongListTile extends ConsumerWidget {
                 fontSize: 12,
               ),
             ),
-            if (onMenuTap != null) ...[
+            if (trailing != null) ...[
+              const SizedBox(width: 12),
+              trailing!,
+            ] else if (onMenuTap != null) ...[
               const SizedBox(width: 12),
               IconButton(
                 icon: Icon(

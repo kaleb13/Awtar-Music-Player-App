@@ -193,7 +193,7 @@ class DatabaseService {
           'songId': songId,
           'timeMs': line.time.inMilliseconds,
           'text': line.text,
-        });
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
       await batch.commit(noResult: true);
     });
@@ -239,6 +239,12 @@ class DatabaseService {
       }
       await batch.commit(noResult: true);
     });
+  }
+
+  static Future<void> deletePlaylist(String id) async {
+    final db = await database;
+    await db.delete('playlists', where: 'id = ?', whereArgs: [id]);
+    await db.delete('playlist_songs', where: 'playlistId = ?', whereArgs: [id]);
   }
 
   static Future<List<Playlist>> getAllPlaylists() async {

@@ -438,4 +438,51 @@ class PlaylistDialogs {
       ),
     );
   }
+
+  static void showDeleteConfirmation(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic playlist, {
+    bool useRootNavigator = true,
+  }) {
+    showDialog(
+      context: context,
+      useRootNavigator: useRootNavigator,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        title: const Text(
+          "Delete Playlist?",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          "Are you sure you want to delete '${playlist.name}'?",
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context, rootNavigator: useRootNavigator).pop(),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(libraryProvider.notifier).deletePlaylist(playlist.id);
+              Navigator.of(context, rootNavigator: useRootNavigator).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Deleted ${playlist.name}"),
+                  backgroundColor: Colors.redAccent,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

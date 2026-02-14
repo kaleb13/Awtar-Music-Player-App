@@ -73,18 +73,36 @@ class MediaEditDialogs {
           ),
           TextButton(
             onPressed: () async {
-              await ref
-                  .read(libraryProvider.notifier)
-                  .updateSongMetadata(
-                    song,
-                    title: titleController.text,
-                    artist: artistController.text,
-                    album: albumController.text,
-                    trackNumber: int.tryParse(trackController.text),
-                    genre: genreController.text,
-                    year: int.tryParse(yearController.text),
+              try {
+                await ref
+                    .read(libraryProvider.notifier)
+                    .updateSongMetadata(
+                      song,
+                      title: titleController.text,
+                      artist: artistController.text,
+                      album: albumController.text,
+                      trackNumber: int.tryParse(trackController.text),
+                      genre: genreController.text,
+                      year: int.tryParse(yearController.text),
+                    );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Metadata saved successfully"),
+                    ),
                   );
-              if (context.mounted) Navigator.pop(context);
+                  Navigator.pop(context);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Failed to save metadata: ${e.toString()}"),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text(
               "Save",
@@ -132,16 +150,32 @@ class MediaEditDialogs {
           ),
           TextButton(
             onPressed: () async {
-              await ref
-                  .read(libraryProvider.notifier)
-                  .updateAlbumMetadata(
-                    album.album,
-                    album.artist,
-                    newTitle: titleController.text,
-                    newArtist: artistController.text,
-                    year: int.tryParse(yearController.text),
+              try {
+                await ref
+                    .read(libraryProvider.notifier)
+                    .updateAlbumMetadata(
+                      album.album,
+                      album.artist,
+                      newTitle: titleController.text,
+                      newArtist: artistController.text,
+                      year: int.tryParse(yearController.text),
+                    );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Album updated successfully")),
                   );
-              if (context.mounted) Navigator.pop(context);
+                  Navigator.pop(context);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Failed to update album: ${e.toString()}"),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text(
               "Apply to all songs",
@@ -178,10 +212,28 @@ class MediaEditDialogs {
           ),
           TextButton(
             onPressed: () async {
-              await ref
-                  .read(libraryProvider.notifier)
-                  .updateArtistMetadata(artist.artist, controller.text);
-              if (context.mounted) Navigator.pop(context);
+              try {
+                await ref
+                    .read(libraryProvider.notifier)
+                    .updateArtistMetadata(artist.artist, controller.text);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Artist updated successfully"),
+                    ),
+                  );
+                  Navigator.pop(context);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Failed to update artist: ${e.toString()}"),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text(
               "Save",
@@ -233,10 +285,28 @@ class MediaEditDialogs {
           ),
           TextButton(
             onPressed: () async {
-              await ref
-                  .read(libraryProvider.notifier)
-                  .updateSongLyrics(song, controller.text);
-              if (context.mounted) Navigator.pop(context);
+              try {
+                await ref
+                    .read(libraryProvider.notifier)
+                    .updateSongLyrics(song, controller.text);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Lyrics updated successfully"),
+                    ),
+                  );
+                  Navigator.pop(context);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Failed to update lyrics: ${e.toString()}"),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text(
               "Apply Lyrics",

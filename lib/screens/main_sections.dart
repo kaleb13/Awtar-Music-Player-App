@@ -13,6 +13,7 @@ import 'details/playlist_details_screen.dart';
 import 'discovery_tabs.dart';
 import '../providers/search_provider.dart';
 import '../widgets/search_results_view.dart';
+import '../models/song.dart';
 
 class DiscoverScreen extends ConsumerWidget {
   const DiscoverScreen({super.key});
@@ -133,10 +134,7 @@ class CollectionScreen extends ConsumerWidget {
                     ? const SearchResultsView()
                     : const TabBarView(
                         physics: ClampingScrollPhysics(),
-                        children: [
-                          _FavoritesTab(),
-                          _PlaylistsTab(),
-                        ],
+                        children: [_FavoritesTab(), _PlaylistsTab()],
                       ),
               ),
             ],
@@ -188,6 +186,16 @@ class _FavoritesTab extends ConsumerWidget {
                   .read(playerProvider.notifier)
                   .play(song, queue: favorites, index: index);
             },
+            trailing: IconButton(
+              icon: const Icon(
+                Icons.favorite,
+                color: AppColors.primaryGreen,
+                size: 20,
+              ),
+              onPressed: () {
+                ref.read(libraryProvider.notifier).toggleFavorite(song);
+              },
+            ),
           ),
         );
       },
@@ -272,6 +280,116 @@ class _PlaylistsTab extends ConsumerWidget {
                           ref.read(bottomNavVisibleProvider.notifier).state =
                               true;
                         });
+                      },
+                      onLongPress: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: const Color(0xFF161618),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            title: Text(
+                              playlist.name,
+                              style: const TextStyle(color: Colors.white),
+                              textAlign: TextAlign.center,
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.play_arrow,
+                                    color: Colors.white,
+                                  ),
+                                  title: const Text(
+                                    "Play",
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  onTap: () async {
+                                    Navigator.pop(context);
+                                    if (playlist.songIds.isEmpty) return;
+
+                                    final songs = ref
+                                        .read(libraryProvider)
+                                        .songs;
+                                    final songMap = {
+                                      for (var s in songs) s.id: s,
+                                    };
+                                    final playlistSongs = playlist.songIds
+                                        .map((id) => songMap[id])
+                                        .where((s) => s != null)
+                                        .cast<Song>()
+                                        .toList();
+
+                                    if (playlistSongs.isNotEmpty) {
+                                      ref
+                                          .read(playerProvider.notifier)
+                                          .play(
+                                            playlistSongs.first,
+                                            queue: playlistSongs,
+                                          );
+                                    }
+                                  },
+                                ),
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.shuffle,
+                                    color: Colors.white,
+                                  ),
+                                  title: const Text(
+                                    "Shuffle Play",
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  onTap: () async {
+                                    Navigator.pop(context);
+                                    if (playlist.songIds.isEmpty) return;
+
+                                    final songs = ref
+                                        .read(libraryProvider)
+                                        .songs;
+                                    final songMap = {
+                                      for (var s in songs) s.id: s,
+                                    };
+                                    final playlistSongs = playlist.songIds
+                                        .map((id) => songMap[id])
+                                        .where((s) => s != null)
+                                        .cast<Song>()
+                                        .toList();
+
+                                    if (playlistSongs.isNotEmpty) {
+                                      playlistSongs.shuffle();
+                                      ref
+                                          .read(playerProvider.notifier)
+                                          .play(
+                                            playlistSongs.first,
+                                            queue: playlistSongs,
+                                          );
+                                    }
+                                  },
+                                ),
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.delete,
+                                    color: Colors.redAccent,
+                                  ),
+                                  title: const Text(
+                                    "Delete",
+                                    style: TextStyle(color: Colors.redAccent),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    PlaylistDialogs.showDeleteConfirmation(
+                                      context,
+                                      ref,
+                                      playlist,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
                       },
                       artwork: AspectRatio(
                         aspectRatio: 1.0,
