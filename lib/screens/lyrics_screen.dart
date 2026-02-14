@@ -10,17 +10,75 @@ import 'package:awtar_music_player/widgets/media_edit_dialogs.dart';
 
 import 'package:awtar_music_player/widgets/app_widgets.dart';
 
-class LyricsScreen extends ConsumerWidget {
+class LyricsScreen extends ConsumerStatefulWidget {
   const LyricsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LyricsScreen> createState() => _LyricsScreenState();
+}
+
+class _LyricsScreenState extends ConsumerState<LyricsScreen> {
+  final List<GlobalKey> _lyricKeys = [];
+  int _prevIndex = -1;
+  bool _isUserScrolling = false;
+  // Timer to reset user scrolling state
+  // Timer? _userScrollTimer; // Optional: auto-resume scrolling after interaction
+
+  @override
+  Widget build(BuildContext context) {
     final playerState = ref.watch(playerProvider);
     final library = ref.watch(libraryProvider);
     final song =
         playerState.currentSong ??
         (library.songs.isNotEmpty ? library.songs.first : null);
     final progress = ref.watch(scrollProgressProvider);
+
+    // Sync keys with lyrics length
+    if (song != null) {
+      if (_lyricKeys.length != song.lyrics.length) {
+        _lyricKeys.clear();
+        for (int i = 0; i < song.lyrics.length; i++) {
+          _lyricKeys.add(GlobalKey());
+        }
+      }
+    }
+
+    // Determine active index
+    int currentIndex = -1;
+    if (song != null && song.lyrics.isNotEmpty) {
+      for (int i = 0; i < song.lyrics.length; i++) {
+        final lyric = song.lyrics[i];
+        final nextTime = (i + 1 < song.lyrics.length)
+            ? song.lyrics[i + 1].time
+            : const Duration(hours: 99); // arbitrarily large
+
+        if (playerState.position >= lyric.time &&
+            playerState.position < nextTime) {
+          currentIndex = i;
+          break;
+        }
+      }
+    }
+
+    // Trigger Scroll Effect if index changed
+    if (currentIndex != -1 && currentIndex != _prevIndex) {
+      _prevIndex = currentIndex;
+      // Schedule scroll after build
+      if (!_isUserScrolling) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted &&
+              currentIndex < _lyricKeys.length &&
+              _lyricKeys[currentIndex].currentContext != null) {
+            Scrollable.ensureVisible(
+              _lyricKeys[currentIndex].currentContext!,
+              alignment: 0.5, // Center the item
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeInOut,
+            );
+          }
+        });
+      }
+    }
 
     if (song == null) {
       return const Scaffold(
@@ -106,7 +164,7 @@ class LyricsScreen extends ConsumerWidget {
                         ),
                       ),
 
-                      // Interactive Icons (Separated from the back-tap gesture)
+                      // Interactive Icons
                       PopupMenuButton<String>(
                         padding: EdgeInsets.zero,
                         icon: Container(
@@ -225,7 +283,7 @@ class LyricsScreen extends ConsumerWidget {
           // Lyrics content
           Expanded(
             child: Container(
-              color: Colors.transparent, // Required for hit testing blank areas
+              color: Colors.transparent,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onLongPress: () {
@@ -288,56 +346,84 @@ class LyricsScreen extends ConsumerWidget {
                           ),
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 40,
-                          vertical: 40,
-                        ),
-                        itemCount: song.lyrics.length,
-                        physics: const BouncingScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          final lyric = song.lyrics[index];
-                          final isCurrent =
-                              playerState.position >= lyric.time &&
-                              (index == song.lyrics.length - 1 ||
-                                  playerState.position <
-                                      song.lyrics[index + 1].time);
+                    : NotificationListener<ScrollNotification>(
+                        onNotification: (scrollNotification) {
+                          if (scrollNotification is UserScrollNotification) {
+                            // User started scrolling, pause auto-scroll
+                            // _isUserScrolling = true;
+                            // Optionally set a timer to re-enable
+                          }
+                          return false;
+                        },
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 40,
+                            vertical: 40,
+                          ),
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (
+                                int index = 0;
+                                index < song.lyrics.length;
+                                index++
+                              )
+                                Padding(
+                                  key: _lyricKeys[index],
+                                  padding: const EdgeInsets.only(bottom: 28.0),
+                                  child: Builder(
+                                    builder: (context) {
+                                      final lyric = song.lyrics[index];
+                                      final isCurrent = index == currentIndex;
 
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 28.0),
-                            child: Row(
-                              children: [
-                                if (isCurrent)
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 12.0),
-                                    child: SvgPicture.asset(
-                                      "assets/icons/play_icon.svg",
-                                      colorFilter: const ColorFilter.mode(
-                                        Color(0xFFEEE544),
-                                        BlendMode.srcIn,
-                                      ),
-                                      width: 20,
-                                      height: 20,
-                                    ),
-                                  ),
-                                Expanded(
-                                  child: Text(
-                                    lyric.text,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: isCurrent ? 22 : 18,
-                                      fontWeight: isCurrent
-                                          ? FontWeight.bold
-                                          : FontWeight.w500,
-                                      color: isCurrent
-                                          ? Colors.white
-                                          : Colors.grey.withOpacity(0.4),
-                                    ),
+                                      return Row(
+                                        children: [
+                                          if (isCurrent)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 12.0,
+                                              ),
+                                              child: SvgPicture.asset(
+                                                "assets/icons/play_icon.svg",
+                                                colorFilter:
+                                                    const ColorFilter.mode(
+                                                      Color(0xFFEEE544),
+                                                      BlendMode.srcIn,
+                                                    ),
+                                                width: 20,
+                                                height: 20,
+                                              ),
+                                            ),
+                                          Expanded(
+                                            child: Text(
+                                              lyric.text,
+                                              style: GoogleFonts.outfit(
+                                                fontSize: isCurrent ? 22 : 18,
+                                                fontWeight: isCurrent
+                                                    ? FontWeight.bold
+                                                    : FontWeight.w500,
+                                                color: isCurrent
+                                                    ? Colors.white
+                                                    : Colors.grey.withOpacity(
+                                                        0.4,
+                                                      ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                 ),
-                              ],
-                            ),
-                          );
-                        },
+                              // Add padding at the bottom so the last line can be centered
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.4,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
               ),
             ),

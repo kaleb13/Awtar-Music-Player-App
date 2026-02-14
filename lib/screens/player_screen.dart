@@ -12,6 +12,7 @@ import 'details/album_details_screen.dart';
 import 'details/artist_details_screen.dart';
 import 'package:awtar_music_player/widgets/app_song_list_tile.dart';
 import '../models/artist.dart';
+import 'dart:async';
 
 class PlayerScreenContent extends ConsumerWidget {
   const PlayerScreenContent({super.key});
@@ -554,23 +555,99 @@ class LyricsHeaderContent extends ConsumerWidget {
   }
 }
 
-class LyricsScreenContent extends ConsumerWidget {
+class LyricsScreenContent extends ConsumerStatefulWidget {
   final void Function(double)? onDragUpdate;
   final void Function(double)? onDragEnd;
 
   const LyricsScreenContent({super.key, this.onDragUpdate, this.onDragEnd});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LyricsScreenContent> createState() =>
+      _LyricsScreenContentState();
+}
+
+class _LyricsScreenContentState extends ConsumerState<LyricsScreenContent> {
+  final List<GlobalKey> _lyricKeys = [];
+  int _prevIndex = -1;
+  bool _isUserScrolling = false;
+  Timer? _userScrollTimer;
+
+  @override
+  void dispose() {
+    _userScrollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onUserScroll() {
+    _isUserScrolling = true;
+    _userScrollTimer?.cancel();
+    _userScrollTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _isUserScrolling = false;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentSong = ref.watch(playerProvider.select((s) => s.currentSong));
+    final position =
+        ref.watch(playerPositionStreamProvider).value ?? Duration.zero;
+
     if (currentSong == null) return const SizedBox.shrink();
+
+    // Sync keys with lyrics length
+    if (_lyricKeys.length != currentSong.lyrics.length) {
+      _lyricKeys.clear();
+      for (int i = 0; i < currentSong.lyrics.length; i++) {
+        _lyricKeys.add(GlobalKey());
+      }
+    }
+
+    // Determine active index
+    int currentIndex = -1;
+    if (currentSong.lyrics.isNotEmpty) {
+      for (int i = 0; i < currentSong.lyrics.length; i++) {
+        final lyric = currentSong.lyrics[i];
+        final nextTime = (i + 1 < currentSong.lyrics.length)
+            ? currentSong.lyrics[i + 1].time
+            : const Duration(hours: 99);
+
+        if (position >= lyric.time && position < nextTime) {
+          currentIndex = i;
+          break;
+        }
+      }
+    }
+
+    // Trigger Scroll Effect if index changed
+    if (currentIndex != -1 && currentIndex != _prevIndex) {
+      _prevIndex = currentIndex;
+      if (!_isUserScrolling) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted &&
+              currentIndex < _lyricKeys.length &&
+              _lyricKeys[currentIndex].currentContext != null) {
+            Scrollable.ensureVisible(
+              _lyricKeys[currentIndex].currentContext!,
+              alignment:
+                  0.4, // Position slightly above center for better visibility
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeInOutCubic,
+            );
+          }
+        });
+      }
+    }
 
     return GestureDetector(
       onVerticalDragUpdate: (details) {
-        onDragUpdate?.call(details.delta.dy);
+        widget.onDragUpdate?.call(details.delta.dy);
       },
       onVerticalDragEnd: (details) {
-        onDragEnd?.call(details.primaryVelocity ?? 0);
+        widget.onDragEnd?.call(details.primaryVelocity ?? 0);
       },
       onLongPress: () {
         showModalBottomSheet(
@@ -630,23 +707,56 @@ class LyricsScreenContent extends ConsumerWidget {
         padding: const EdgeInsets.only(top: 140),
         child: NotificationListener<ScrollNotification>(
           onNotification: (notification) {
+            if (notification is UserScrollNotification) {
+              _onUserScroll();
+            }
+
             if (notification is ScrollUpdateNotification) {
               if (notification.metrics.pixels <= 0 &&
                   notification.dragDetails != null) {
-                onDragUpdate?.call(notification.dragDetails!.delta.dy);
+                widget.onDragUpdate?.call(notification.dragDetails!.delta.dy);
               }
             } else if (notification is ScrollEndNotification) {
-              onDragEnd?.call(notification.dragDetails?.primaryVelocity ?? 0);
+              widget.onDragEnd?.call(
+                notification.dragDetails?.primaryVelocity ?? 0,
+              );
             }
             return false;
           },
-          child: ListView.builder(
-            physics: const ClampingScrollPhysics(),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(40, 40, 40, 160),
-            itemCount: currentSong.lyrics.length,
-            itemBuilder: (context, index) {
-              return _LyricLineItem(index: index, lyrics: currentSong.lyrics);
-            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (currentSong.lyrics.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 100),
+                      child: Text(
+                        "No lyrics available",
+                        style: AppTextStyles.bodyMain.copyWith(
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  for (
+                    int index = 0;
+                    index < currentSong.lyrics.length;
+                    index++
+                  )
+                    _LyricLineItem(
+                      key: _lyricKeys[index],
+                      index: index,
+                      lyrics: currentSong.lyrics,
+                      position: position,
+                    ),
+                // Extra space at bottom to allow scrolling last items to center
+                SizedBox(height: MediaQuery.of(context).size.height * 0.4),
+              ],
+            ),
           ),
         ),
       ),
@@ -654,18 +764,21 @@ class LyricsScreenContent extends ConsumerWidget {
   }
 }
 
-class _LyricLineItem extends ConsumerWidget {
+class _LyricLineItem extends StatelessWidget {
   final int index;
   final List<LyricLine> lyrics;
+  final Duration position;
 
-  const _LyricLineItem({required this.index, required this.lyrics});
+  const _LyricLineItem({
+    super.key,
+    required this.index,
+    required this.lyrics,
+    required this.position,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final position =
-        ref.watch(playerPositionStreamProvider).value ?? Duration.zero;
+  Widget build(BuildContext context) {
     final lyric = lyrics[index];
-
     final isCurrent =
         position >= lyric.time &&
         (index == lyrics.length - 1 || position < lyrics[index + 1].time);

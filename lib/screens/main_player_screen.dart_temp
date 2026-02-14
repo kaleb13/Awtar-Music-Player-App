@@ -1,0 +1,95 @@
+
+class _LyricsPreview extends ConsumerWidget {
+  const _LyricsPreview();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playerState = ref.watch(playerProvider);
+    final song =
+        playerState.currentSong ??
+        (ref.read(libraryProvider).songs.isNotEmpty
+            ? ref.read(libraryProvider).songs.first
+            : null);
+    final position =
+        ref.watch(playerPositionStreamProvider).value ?? Duration.zero;
+
+    String? currentLyricText;
+
+    if (song != null && song.lyrics.isNotEmpty) {
+      for (int i = 0; i < song.lyrics.length; i++) {
+        final lyric = song.lyrics[i];
+        final nextTime =
+            (i + 1 < song.lyrics.length)
+                ? song.lyrics[i + 1].time
+                : const Duration(hours: 99);
+
+        // Find the strictly current line
+        if (position >= lyric.time && position < nextTime) {
+          currentLyricText = lyric.text;
+          break;
+        }
+      }
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.0, 0.5),
+            end: Offset.zero,
+          ).animate(animation),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+      child:
+          currentLyricText != null && currentLyricText.isNotEmpty
+              ? Container(
+                key: ValueKey<String>(currentLyricText),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  currentLyricText,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              : Column(
+                key: const ValueKey('static_lyrics'),
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Lyrics by",
+                    style: AppTextStyles.caption.copyWith(
+                      color: Colors.white70,
+                      fontSize: 10,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "AWTAR",
+                    style: AppTextStyles.titleMedium.copyWith(
+                      letterSpacing: 1.5,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+    );
+  }
+}
