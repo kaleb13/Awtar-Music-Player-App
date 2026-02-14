@@ -1,7 +1,7 @@
 import 'package:audiotags/audiotags.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -75,24 +75,14 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     _audioPlayer = AudioPlayer();
     _playlist = ConcatenatingAudioSource(children: []);
 
-    // Set up the player with our playlist structure for later use
-    // Initial setup might be empty until we play something
-    // We defer setting source until play() or load()
-    // However, just_audio recommends setting source early if possible, but empty source is fine.
-
     _loadLastPlayedSong();
     _listenToStreams();
   }
 
   void _listenToStreams() {
-    // Only update position if it has changed significantly (e.g. 200ms) or use a separate stream
-    // for progress to avoid excessive StateNotifier notifications.
-    // For now, let's keep it but ensure it's not blocking.
-    // Throttle MusicPlayerState position updates to once per 1000ms
     Duration lastThrottledPos = Duration.zero;
     _audioPlayer.positionStream.listen((pos) {
       if (mounted) {
-        // Only update global state occasionally to avoid broad rebuilds
         if ((pos - lastThrottledPos).inMilliseconds.abs() >= 1000) {
           lastThrottledPos = pos;
           state = state.copyWith(position: pos);
@@ -116,7 +106,6 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       }
     });
 
-    // sequenceStateStream is the most reliable way to stay in sync with what's actually playing
     _audioPlayer.sequenceStateStream.listen((sequenceState) {
       if (sequenceState == null || !mounted) return;
 
@@ -124,23 +113,30 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       if (index < state.queue.length) {
         final song = state.queue[index];
         if (state.currentSong?.id != song.id) {
-          debugPrint('🎵 Song sync update: "${song.title}" (index: $index)');
+          // Try to get lyrics synchronously from cache first
+          final cachedLyrics = LyricsService.peekCache(song.id);
+          final songWithLyrics = cachedLyrics != null
+              ? song.copyWith(lyrics: cachedLyrics)
+              : song;
 
-          // Update state IMMEDIATELY
-          state = state.copyWith(currentSong: song, currentIndex: index);
+          state = state.copyWith(
+            currentSong: songWithLyrics,
+            currentIndex: index,
+          );
 
-          // Background tasks
           _saveLastPlayedSong(song);
           _ref
               .read(statsProvider.notifier)
               .recordPlay(song.id, song.artist, song.album ?? "Unknown");
-          _fetchLyrics(song);
+
+          if (cachedLyrics == null) {
+            _fetchLyrics(song);
+          }
           _warmUpQueue();
         }
       }
     });
 
-    // Listen for detailed errors and events
     _audioPlayer.playbackEventStream.listen(
       (event) {
         debugPrint(
@@ -156,15 +152,10 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     );
   }
 
-  // Helper method to create AudioSource with MediaItem metadata
-  // This is the implementation of the user's request
   AudioSource _createAudioSource(Song song) {
-    debugPrint('💿 _createAudioSource: "${song.title}"');
-    debugPrint('   📍 URI: ${song.url}');
     Uri? artUri;
     if (song.albumArt != null && song.albumArt!.isNotEmpty) {
       try {
-        // Handle local file vs network URL for artwork
         if (song.albumArt!.startsWith('/')) {
           artUri = Uri.file(song.albumArt!);
         } else {
@@ -175,12 +166,9 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       }
     }
 
-    // Determine if audio URL is local or network
     final audioUri = (song.url.startsWith('/') || song.url.contains(':\\'))
         ? Uri.file(song.url)
         : Uri.parse(song.url);
-
-    debugPrint('   🔗 Audio URI: $audioUri');
 
     return AudioSource.uri(
       audioUri,
@@ -196,9 +184,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
   }
 
   Future<void> play(Song song, {List<Song>? queue, int? index}) async {
-    debugPrint('▶️ Play called for: "${song.title}"');
     try {
-      // Clear previous error
       if (state.errorMessage != null) {
         state = state.copyWith(errorMessage: null);
       }
@@ -207,49 +193,58 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       final targetIndex =
           index ?? newQueue.indexOf(song).clamp(0, newQueue.length - 1);
 
-      // If the queue has changed, rebuild the playlist
-      if (state.queue != newQueue) {
-        debugPrint('   📋 Rebuilding playlist with ${newQueue.length} songs');
+      // Use peekCache to get lyrics instantly if they were preloaded
+      final cachedLyrics = LyricsService.peekCache(song.id);
+      final songWithLyrics = cachedLyrics != null
+          ? song.copyWith(lyrics: cachedLyrics)
+          : song;
 
-        // Optimistically update state first to reflect queue changes UI side immediately
+      if (cachedLyrics == null) {
+        _fetchLyrics(song);
+      }
+
+      if (state.queue != newQueue) {
         state = state.copyWith(
           queue: newQueue,
-          currentSong: newQueue[targetIndex],
+          currentSong: songWithLyrics,
           currentIndex: targetIndex,
         );
 
-        // Build new audio sources
         final sources = newQueue.map((s) => _createAudioSource(s)).toList();
-
-        // Create a new playlist
         _playlist = ConcatenatingAudioSource(children: sources);
 
-        // Set the new source to the player
-        debugPrint('   ⏳ Setting audio source...');
+        // Preload lyrics for the entire queue in background
+        LyricsService.preloadLyrics(newQueue).then((_) {
+          if (mounted) {
+            // Re-peek current song lyrics if they weren't ready
+            final current = state.currentSong;
+            if (current != null && current.lyrics.isEmpty) {
+              final newLyrics = LyricsService.peekCache(current.id);
+              if (newLyrics != null) {
+                updateLyricsInState(current.id, newLyrics, false);
+              }
+            }
+          }
+        });
+
         await _audioPlayer.setAudioSource(
           _playlist,
           initialIndex: targetIndex,
           initialPosition: Duration.zero,
         );
       } else {
-        // Queue hasn't changed, just seek to the song
         if (_audioPlayer.currentIndex != targetIndex) {
-          debugPrint('   ⏩ Seeking to index $targetIndex');
-          // Update state optimistically
           state = state.copyWith(
-            currentSong: state.queue[targetIndex],
+            currentSong: songWithLyrics,
             currentIndex: targetIndex,
           );
           await _audioPlayer.seek(Duration.zero, index: targetIndex);
         }
       }
 
-      debugPrint('   🚀 Calling _audioPlayer.play()');
       await _audioPlayer.play();
-      debugPrint('   ✅ Playback command sent');
-    } catch (e, stack) {
+    } catch (e) {
       debugPrint('❌ Playback failed: $e');
-      debugPrint('   Stack: $stack');
       if (mounted) {
         state = state.copyWith(errorMessage: "Playback failed: $e");
       }
@@ -304,11 +299,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     for (int i = 0; i < 5; i++) {
       final index = (startIndex + i) % state.queue.length;
       final song = state.queue[index];
-
-      // Warm up artwork
       ArtworkCacheService.warmUp(song.url, song.id);
-
-      // Warm up lyrics (Pre-fetch in background)
       if (song.lyrics.isEmpty) {
         _fetchLyrics(song, isWarmUp: true);
       }
@@ -317,17 +308,14 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
 
   Future<void> _fetchLyrics(Song song, {bool isWarmUp = false}) async {
     try {
-      // 1. Try Service (Memory Cache -> DB -> LRC File)
       final List<LyricLine> cachedLyrics = await LyricsService.getLyricsForSong(
         song,
       );
-
       if (cachedLyrics.isNotEmpty) {
-        _updateLyricsInState(song.id, cachedLyrics, isWarmUp);
+        updateLyricsInState(song.id, cachedLyrics, isWarmUp);
         return;
       }
 
-      // 2. Try Embedded Tags (Slowest fallback)
       final tag = await AudioTags.read(song.url);
       final String? lyricsText = tag?.lyrics;
 
@@ -346,9 +334,8 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
         }
 
         if (parsedLyrics.isNotEmpty) {
-          // Save to DB persistently so next session is instant
           DatabaseService.saveLyrics(song.id, parsedLyrics);
-          _updateLyricsInState(song.id, parsedLyrics, isWarmUp);
+          updateLyricsInState(song.id, parsedLyrics, isWarmUp);
         }
       }
     } catch (e) {
@@ -356,25 +343,38 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     }
   }
 
-  void _updateLyricsInState(int songId, List<LyricLine> lyrics, bool isWarmUp) {
+  void updateLyricsInState(int songId, List<LyricLine> lyrics, bool isWarmUp) {
     if (!mounted) return;
 
-    // Update current song if it matches
-    if (state.currentSong?.id == songId) {
-      state = state.copyWith(
-        currentSong: state.currentSong!.copyWith(lyrics: lyrics),
-      );
+    Song? updatedCurrentSong = state.currentSong;
+    List<Song> updatedQueue = state.queue;
+    bool changed = false;
+
+    if (state.currentSong?.id == songId && state.currentSong!.lyrics.isEmpty) {
+      updatedCurrentSong = state.currentSong!.copyWith(lyrics: lyrics);
+      changed = true;
     }
 
-    // Also update in queue to ensure it's ready when user navigates
     if (state.queue.any((s) => s.id == songId)) {
+      bool queueChanged = false;
+      final newQueue = state.queue.map((s) {
+        if (s.id == songId && s.lyrics.isEmpty) {
+          queueChanged = true;
+          return s.copyWith(lyrics: lyrics);
+        }
+        return s;
+      }).toList();
+
+      if (queueChanged) {
+        updatedQueue = newQueue;
+        changed = true;
+      }
+    }
+
+    if (changed) {
       state = state.copyWith(
-        queue: state.queue.map((s) {
-          if (s.id == songId && s.lyrics.isEmpty) {
-            return s.copyWith(lyrics: lyrics);
-          }
-          return s;
-        }).toList(),
+        currentSong: updatedCurrentSong,
+        queue: updatedQueue,
       );
     }
   }
@@ -403,7 +403,6 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     if (_audioPlayer.hasNext) {
       _audioPlayer.seekToNext();
     } else {
-      // Loop if needed? ConcatenatingAudioSource handles loop if loop mode is set on player
       if (state.repeatMode == RepeatMode.all && state.queue.isNotEmpty) {
         _audioPlayer.seek(Duration.zero, index: 0);
       }
@@ -431,21 +430,22 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
   }
 
   void updateFavoriteStatus(int songId, bool isFavorite) {
+    Song? updatedCurrentSong = state.currentSong;
     if (state.currentSong?.id == songId) {
-      state = state.copyWith(
-        currentSong: state.currentSong!.copyWith(isFavorite: isFavorite),
-      );
+      updatedCurrentSong = state.currentSong!.copyWith(isFavorite: isFavorite);
     }
-    if (state.queue.any((s) => s.id == songId)) {
-      state = state.copyWith(
-        queue: state.queue.map((s) {
-          if (s.id == songId) {
-            return s.copyWith(isFavorite: isFavorite);
-          }
-          return s;
-        }).toList(),
-      );
-    }
+
+    final updatedQueue = state.queue.map((s) {
+      if (s.id == songId) {
+        return s.copyWith(isFavorite: isFavorite);
+      }
+      return s;
+    }).toList();
+
+    state = state.copyWith(
+      currentSong: updatedCurrentSong,
+      queue: updatedQueue,
+    );
   }
 
   void toggleRepeat() {

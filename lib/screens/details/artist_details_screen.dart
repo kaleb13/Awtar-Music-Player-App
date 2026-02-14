@@ -12,6 +12,7 @@ import 'dart:io';
 import '../../providers/stats_provider.dart';
 import '../../providers/performance_provider.dart';
 import '../../widgets/app_widgets.dart';
+import '../../services/image_processing_service.dart';
 
 class ArtistDetailsScreen extends ConsumerStatefulWidget {
   final String name;
@@ -40,12 +41,55 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
       orElse: () => libraryState.artists.first,
     );
 
-    final artistSongs = libraryState.songs
-        .where((s) => s.artist == widget.name)
-        .toList();
-    final artistAlbums = libraryState.albums
-        .where((a) => a.artist == widget.name)
-        .toList();
+    final artistAlbums =
+        libraryState.albums.where((a) => a.artist == widget.name).toList()
+          ..sort((a, b) {
+            if (a.firstYear != null && b.firstYear != null) {
+              int cmp = a.firstYear!.compareTo(b.firstYear!);
+              if (cmp != 0) return cmp;
+            } else if (a.firstYear != null) {
+              return -1;
+            } else if (b.firstYear != null) {
+              return 1;
+            }
+            return a.album.toLowerCase().compareTo(b.album.toLowerCase());
+          });
+
+    // Group songs by album in the same order as artistAlbums
+    final List<Song> artistSongs = [];
+    final Map<String, List<Song>> songsByAlbum = {};
+    for (final s in libraryState.songs.where((s) => s.artist == widget.name)) {
+      songsByAlbum.putIfAbsent(s.album ?? "Single", () => []).add(s);
+    }
+
+    for (final album in artistAlbums) {
+      final songs = songsByAlbum[album.album] ?? [];
+      songs.sort((a, b) {
+        if (a.trackNumber != null && b.trackNumber != null) {
+          int cmp = a.trackNumber!.compareTo(b.trackNumber!);
+          if (cmp != 0) return cmp;
+        } else if (a.trackNumber != null) {
+          return -1;
+        } else if (b.trackNumber != null) {
+          return 1;
+        }
+        return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+      });
+      artistSongs.addAll(songs);
+    }
+
+    // Add any remaining songs not captured by the identifies albums
+    final capturedIds = artistSongs.map((s) => s.id).toSet();
+    final remaining =
+        libraryState.songs
+            .where(
+              (s) => s.artist == widget.name && !capturedIds.contains(s.id),
+            )
+            .toList()
+          ..sort(
+            (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+          );
+    artistSongs.addAll(remaining);
 
     final stats = ref.watch(statsProvider);
 
@@ -65,11 +109,20 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
 
     Future<void> pickArtistImage() async {
       final picker = ImagePicker();
-      final image = await picker.pickImage(source: ImageSource.gallery);
+      final options = ImageProcessingService.getPickOptions();
+      final image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: options['maxWidth'],
+        maxHeight: options['maxHeight'],
+        imageQuality: options['imageQuality'],
+      );
       if (image != null) {
-        await ref
-            .read(libraryProvider.notifier)
-            .updateArtistImage(widget.name, image.path);
+        final processed = await ImageProcessingService.processImage(image.path);
+        if (processed != null) {
+          await ref
+              .read(libraryProvider.notifier)
+              .updateArtistImage(widget.name, processed.path);
+        }
       }
     }
 

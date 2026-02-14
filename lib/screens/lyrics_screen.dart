@@ -6,6 +6,7 @@ import '../providers/player_provider.dart';
 import '../providers/library_provider.dart';
 import 'package:awtar_music_player/providers/navigation_provider.dart';
 import 'package:awtar_music_player/widgets/app_artwork.dart';
+import 'package:awtar_music_player/widgets/media_edit_dialogs.dart';
 
 class LyricsScreen extends ConsumerWidget {
   const LyricsScreen({super.key});
@@ -31,201 +32,330 @@ class LyricsScreen extends ConsumerWidget {
       );
     }
 
-    // Fade in lyrics as we slide up
     final opacity = progress.clamp(0.0, 1.0);
 
     return Opacity(
       opacity: opacity,
       child: Column(
         children: [
-          // New Top Info Card (Matches the new UI)
-          GestureDetector(
-            onTap: () {
-              ref
-                  .read(pageControllerProvider)
-                  .animateToPage(
-                    0,
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.easeOutQuart,
-                  );
-            },
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(50),
-                  bottomRight: Radius.circular(50),
-                ),
+          // Header section
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(50),
+                bottomRight: Radius.circular(50),
               ),
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: AppArtwork(
-                            songId: song.id,
-                            size: 50,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      // Tappable info section to go back
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            ref
+                                .read(pageControllerProvider)
+                                .animateToPage(
+                                  0,
+                                  duration: const Duration(milliseconds: 600),
+                                  curve: Curves.easeOutQuart,
+                                );
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: Row(
                             children: [
-                              Text(
-                                song.title,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: AppArtwork(
+                                  songId: song.id,
+                                  size: 50,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
-                              Text(
-                                song.artist,
-                                style: GoogleFonts.outfit(
-                                  color: Colors.grey,
-                                  fontSize: 14,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      song.title,
+                                      style: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    Text(
+                                      song.artist,
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.grey,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const Icon(
-                          Icons.more_horiz,
-                          color: Colors.grey,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 16),
-                        const Icon(
-                          Icons.favorite,
-                          color: Color(0xFF1DB954),
-                          size: 22,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(2),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    // Page indicator dots
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.grey.shade300),
+
+                      // Interactive Icons (Separated from the back-tap gesture)
+                      PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        icon: Container(
+                          width: 48,
+                          height: 48,
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.more_horiz,
+                            color: Colors.grey,
+                            size: 28,
                           ),
-                          padding: const EdgeInsets.all(2),
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              color: Colors.grey,
-                              shape: BoxShape.circle,
+                        ),
+                        color: const Color(0xFF1C1C1E),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        onSelected: (value) {
+                          if (value == 'edit_lyrics') {
+                            MediaEditDialogs.showEditLyrics(context, ref, song);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'edit_lyrics',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.edit_note,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  "Edit Lyrics",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            shape: BoxShape.circle,
+                        ],
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          ref
+                              .read(playerProvider.notifier)
+                              .updateFavoriteStatus(song.id, !song.isFavorite);
+                          ref
+                              .read(libraryProvider.notifier)
+                              .toggleFavorite(song);
+                        },
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          alignment: Alignment.center,
+                          child: Icon(
+                            song.isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: song.isFavorite
+                                ? const Color(0xFF1DB954)
+                                : Colors.grey,
+                            size: 24,
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Lyrics Section
-          Expanded(
-            child: song.lyrics.isEmpty
-                ? Center(
-                    child: Text(
-                      "No lyrics available",
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        color: Colors.grey.withOpacity(0.5),
-                        fontWeight: FontWeight.w500,
                       ),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 40,
-                      vertical: 40,
-                    ),
-                    itemCount: song.lyrics.length,
-                    itemBuilder: (context, index) {
-                      final lyric = song.lyrics[index];
-                      // Use a simplified check for current line if no timestamps are present (all 0)
-                      // If all timestamps are 0, we can't really adhere to positions.
-                      // But let's keep the logic. If all 0, first logic: pos >= 0 (true).
-                      // pos < next (0). false.
-                      // So index 0 is not current.
-                      // Last index: pos >= 0. index == length-1. True.
-                      // So basically only the last line would be highlighted.
-                      // If we detect no sync, maybe highlight all or none?
-                      // For now, let's keep it as is, or maybe highlight none if duration is 0.
-
-                      final isCurrent =
-                          playerState.position >= lyric.time &&
-                          (index == song.lyrics.length - 1 ||
-                              playerState.position <
-                                  song.lyrics[index + 1].time);
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 28.0),
-                        child: Row(
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  // Drag handle also triggers the back animation
+                  GestureDetector(
+                    onTap: () {
+                      ref
+                          .read(pageControllerProvider)
+                          .animateToPage(
+                            0,
+                            duration: const Duration(milliseconds: 600),
+                            curve: Curves.easeOutQuart,
+                          );
+                    },
+                    behavior: HitTestBehavior.opaque,
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            if (isCurrent)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 12.0),
-                                child: SvgPicture.asset(
-                                  "assets/icons/play_icon.svg",
-                                  colorFilter: const ColorFilter.mode(
-                                    Color(0xFFEEE544),
-                                    BlendMode.srcIn,
-                                  ),
-                                  width: 20,
-                                  height: 20,
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              padding: const EdgeInsets.all(2),
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  color: Colors.grey,
+                                  shape: BoxShape.circle,
                                 ),
                               ),
-                            Expanded(
-                              child: Text(
-                                lyric.text,
-                                style: GoogleFonts.outfit(
-                                  fontSize: isCurrent ? 22 : 18,
-                                  fontWeight: isCurrent
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                  color: isCurrent
-                                      ? Colors.white
-                                      : Colors.grey.withOpacity(0.4),
-                                ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                shape: BoxShape.circle,
                               ),
                             ),
                           ],
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
+                ],
+              ),
+            ),
           ),
-          // Bottom Controls (Matches the new UI)
+
+          // Lyrics content
+          Expanded(
+            child: Container(
+              color: Colors.transparent, // Required for hit testing blank areas
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onLongPress: () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1C1C1E),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(24),
+                          topRight: Radius.circular(24),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 12),
+                          Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.white24,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          ListTile(
+                            leading: const Icon(
+                              Icons.edit_note,
+                              color: Colors.white,
+                            ),
+                            title: const Text(
+                              "Edit Lyrics",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            onTap: () {
+                              Navigator.pop(context);
+                              MediaEditDialogs.showEditLyrics(
+                                context,
+                                ref,
+                                song,
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                child: song.lyrics.isEmpty
+                    ? Center(
+                        child: Text(
+                          "No lyrics available",
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            color: Colors.grey.withOpacity(0.5),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 40,
+                        ),
+                        itemCount: song.lyrics.length,
+                        physics: const BouncingScrollPhysics(),
+                        itemBuilder: (context, index) {
+                          final lyric = song.lyrics[index];
+                          final isCurrent =
+                              playerState.position >= lyric.time &&
+                              (index == song.lyrics.length - 1 ||
+                                  playerState.position <
+                                      song.lyrics[index + 1].time);
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 28.0),
+                            child: Row(
+                              children: [
+                                if (isCurrent)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 12.0),
+                                    child: SvgPicture.asset(
+                                      "assets/icons/play_icon.svg",
+                                      colorFilter: const ColorFilter.mode(
+                                        Color(0xFFEEE544),
+                                        BlendMode.srcIn,
+                                      ),
+                                      width: 20,
+                                      height: 20,
+                                    ),
+                                  ),
+                                Expanded(
+                                  child: Text(
+                                    lyric.text,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: isCurrent ? 22 : 18,
+                                      fontWeight: isCurrent
+                                          ? FontWeight.bold
+                                          : FontWeight.w500,
+                                      color: isCurrent
+                                          ? Colors.white
+                                          : Colors.grey.withOpacity(0.4),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ),
+
+          // Bottom controls
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 30),
             child: SafeArea(

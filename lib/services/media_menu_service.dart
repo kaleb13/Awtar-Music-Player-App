@@ -9,6 +9,7 @@ import '../widgets/app_widgets.dart';
 import '../widgets/playlist_dialogs.dart';
 import '../widgets/media_edit_dialogs.dart';
 import 'package:image_picker/image_picker.dart';
+import 'image_processing_service.dart';
 
 class MediaMenuService {
   static List<Widget> buildSongActions({
@@ -117,11 +118,22 @@ class MediaMenuService {
         label: "Change Cover",
         onTap: () async {
           final picker = ImagePicker();
-          final image = await picker.pickImage(source: ImageSource.gallery);
+          final options = ImageProcessingService.getPickOptions();
+          final image = await picker.pickImage(
+            source: ImageSource.gallery,
+            maxWidth: options['maxWidth'],
+            maxHeight: options['maxHeight'],
+            imageQuality: options['imageQuality'],
+          );
           if (image != null) {
-            await ref
-                .read(libraryProvider.notifier)
-                .updateAlbumCover(album.album, album.artist, image.path);
+            final processed = await ImageProcessingService.processImage(
+              image.path,
+            );
+            if (processed != null) {
+              await ref
+                  .read(libraryProvider.notifier)
+                  .updateAlbumCover(album.album, album.artist, processed.path);
+            }
           }
         },
       ),
@@ -189,11 +201,22 @@ class MediaMenuService {
         label: "Add / Edit Artist Image",
         onTap: () async {
           final picker = ImagePicker();
-          final image = await picker.pickImage(source: ImageSource.gallery);
+          final options = ImageProcessingService.getPickOptions();
+          final image = await picker.pickImage(
+            source: ImageSource.gallery,
+            maxWidth: options['maxWidth'],
+            maxHeight: options['maxHeight'],
+            imageQuality: options['imageQuality'],
+          );
           if (image != null) {
-            await ref
-                .read(libraryProvider.notifier)
-                .updateArtistImage(artist.artist, image.path);
+            final processed = await ImageProcessingService.processImage(
+              image.path,
+            );
+            if (processed != null) {
+              await ref
+                  .read(libraryProvider.notifier)
+                  .updateArtistImage(artist.artist, processed.path);
+            }
           }
         },
       ),
@@ -250,11 +273,22 @@ class MediaMenuService {
       }),
       _ActionData(null, "Add / Edit Artist Image", () async {
         final picker = ImagePicker();
-        final image = await picker.pickImage(source: ImageSource.gallery);
+        final options = ImageProcessingService.getPickOptions();
+        final image = await picker.pickImage(
+          source: ImageSource.gallery,
+          maxWidth: options['maxWidth'],
+          maxHeight: options['maxHeight'],
+          imageQuality: options['imageQuality'],
+        );
         if (image != null) {
-          await ref
-              .read(libraryProvider.notifier)
-              .updateArtistImage(artist.artist, image.path);
+          final processed = await ImageProcessingService.processImage(
+            image.path,
+          );
+          if (processed != null) {
+            await ref
+                .read(libraryProvider.notifier)
+                .updateArtistImage(artist.artist, processed.path);
+          }
         }
       }),
       _ActionData(
@@ -389,11 +423,22 @@ class MediaMenuService {
       }),
       _ActionData(null, "Change Cover", () async {
         final picker = ImagePicker();
-        final image = await picker.pickImage(source: ImageSource.gallery);
+        final options = ImageProcessingService.getPickOptions();
+        final image = await picker.pickImage(
+          source: ImageSource.gallery,
+          maxWidth: options['maxWidth'],
+          maxHeight: options['maxHeight'],
+          imageQuality: options['imageQuality'],
+        );
         if (image != null) {
-          await ref
-              .read(libraryProvider.notifier)
-              .updateAlbumCover(album.album, album.artist, image.path);
+          final processed = await ImageProcessingService.processImage(
+            image.path,
+          );
+          if (processed != null) {
+            await ref
+                .read(libraryProvider.notifier)
+                .updateAlbumCover(album.album, album.artist, processed.path);
+          }
         }
       }),
       _ActionData(

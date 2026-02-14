@@ -13,6 +13,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../main.dart';
 import 'player_provider.dart';
+import '../services/lyrics_service.dart';
 import '../services/database_service.dart';
 import '../services/palette_service.dart';
 
@@ -181,6 +182,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     await _loadFromCache();
     // 2. Check permissions and scan in background
     await _checkPermission();
+    _scanForLyrics();
   }
 
   Future<void> _loadFromCache() async {
@@ -282,11 +284,30 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         );
       }).toList();
 
+      // NEW: Rebuild Folders and Folder Song Counts immediately from cached songs
+      final Set<String> folderSet = {};
+      final Map<String, int> folderCounts = {};
+      for (final s in songs) {
+        final path = s.url;
+        final index = path.lastIndexOf('/');
+        if (index != -1) {
+          final dirPath = path.substring(0, index);
+          // Check if folder is excluded
+          if (!excludedFolders.contains(dirPath)) {
+            folderSet.add(dirPath);
+            folderCounts[dirPath] = (folderCounts[dirPath] ?? 0) + 1;
+          }
+        }
+      }
+      final List<String> folders = folderSet.toList()..sort();
+
       state = state.copyWith(
         songs: songs,
         artists: artists,
         albums: albums,
         playlists: playlists,
+        folders: folders,
+        folderSongCounts: folderCounts,
         storageMap: storageMap,
         excludedFolders: excludedFolders,
         hiddenArtists: hiddenArtists,
@@ -642,6 +663,10 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
             url: s.data,
             duration: s.duration ?? 0,
             lyrics: [],
+            trackNumber: (s.track != null && s.track! >= 1000)
+                ? s.track! % 1000
+                : s.track,
+            genre: s.genre,
           ),
         );
 
@@ -764,6 +789,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       _calculateAlbumColors(albums, filteredSongs);
 
       await _saveToCache();
+      _scanForLyrics();
     } catch (e) {
       debugPrint("Error scanning library: $e");
       state = state.copyWith(
@@ -1190,7 +1216,14 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
                 title: tag.title,
                 artist: tag.trackArtist,
                 album: tag.album,
+                albumArtist: tag.albumArtist,
                 lyrics: lyrics,
+                trackNumber:
+                    (tag.trackNumber != null && tag.trackNumber! >= 1000)
+                    ? tag.trackNumber! % 1000
+                    : tag.trackNumber,
+                genre: tag.genre,
+                year: tag.year,
               );
               updatedCount++;
             }
@@ -1230,6 +1263,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     int? trackNumber,
     String? genre,
     int? year,
+    String? albumArtist,
   }) async {
     try {
       // 1. Update File Metadata if it's a local file
@@ -1242,6 +1276,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           trackNumber: trackNumber ?? song.trackNumber,
           genre: genre ?? song.genre,
           year: year ?? song.year,
+          albumArtist: albumArtist ?? song.albumArtist,
           pictures: currentTag?.pictures ?? [],
         );
         await AudioTags.write(song.url, tag);
@@ -1255,6 +1290,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         trackNumber: trackNumber,
         genre: genre,
         year: year,
+        albumArtist: albumArtist,
       );
 
       state = state.copyWith(
@@ -1278,11 +1314,18 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
 
   Future<void> updateSongLyrics(Song song, String lyricsText) async {
     try {
-      final List<LyricLine> lyrics = lyricsText
-          .split('\n')
-          .where((line) => line.trim().isNotEmpty)
-          .map((line) => LyricLine(time: Duration.zero, text: line.trim()))
-          .toList();
+      List<LyricLine> lyrics = [];
+      if (lyricsText.contains('[') && lyricsText.contains(']')) {
+        lyrics = LyricsService.parseLrc(lyricsText);
+      }
+
+      if (lyrics.isEmpty) {
+        lyrics = lyricsText
+            .split('\n')
+            .where((line) => line.trim().isNotEmpty)
+            .map((line) => LyricLine(time: Duration.zero, text: line.trim()))
+            .toList();
+      }
 
       // 1. Update file metadata
       if (!song.url.startsWith("http") && !song.url.startsWith("content://")) {
@@ -1306,6 +1349,12 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       );
 
       await DatabaseService.saveLyrics(song.id, lyrics);
+
+      // 3. Update Player Provider if this is the current song
+      _ref
+          .read(playerProvider.notifier)
+          .updateLyricsInState(song.id, lyrics, false);
+
       await _saveToCache();
     } catch (e) {
       debugPrint("Error updating lyrics: $e");
@@ -1457,6 +1506,65 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       folders.add(folder);
     }
     return folders.toList();
+  }
+
+  Future<void> _scanForLyrics() async {
+    final songs = state.songs;
+    if (songs.isEmpty) return;
+
+    debugPrint(
+      "🚀 Starting background lyrics scan for ${songs.length} songs...",
+    );
+
+    int processed = 0;
+    for (final song in songs) {
+      if (!mounted) break;
+
+      if (LyricsService.peekCache(song.id) == null) {
+        await _fetchLyricsInBackground(song);
+        processed++;
+
+        if (processed % 50 == 0) {
+          await Future.delayed(const Duration(seconds: 2));
+        }
+      }
+    }
+    debugPrint(
+      "✅ Background lyrics scan complete. Processed $processed new songs.",
+    );
+  }
+
+  Future<void> _fetchLyricsInBackground(Song song) async {
+    try {
+      final dbLyrics = await DatabaseService.getLyricsForSong(song.id);
+      if (dbLyrics.isNotEmpty) return;
+
+      final lrcLyrics = await LyricsService.getLyricsForSong(song);
+      if (lrcLyrics.isNotEmpty) return;
+
+      final tag = await AudioTags.read(song.url);
+      final lyricsText = tag?.lyrics;
+      if (lyricsText != null && lyricsText.isNotEmpty) {
+        List<LyricLine> parsedLyrics = [];
+        if (lyricsText.contains('[') && lyricsText.contains(']')) {
+          parsedLyrics = LyricsService.parseLrc(lyricsText);
+        }
+
+        if (parsedLyrics.isEmpty) {
+          parsedLyrics = lyricsText
+              .split('\n')
+              .map((line) => LyricLine(time: Duration.zero, text: line.trim()))
+              .where((l) => l.text.isNotEmpty)
+              .toList();
+        }
+
+        if (parsedLyrics.isNotEmpty) {
+          await DatabaseService.saveLyrics(song.id, parsedLyrics);
+        }
+      }
+    } catch (e) {
+      // Ignore background errors
+    }
   }
 }
 

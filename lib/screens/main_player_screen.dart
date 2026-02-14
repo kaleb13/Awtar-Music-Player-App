@@ -14,6 +14,8 @@ import 'package:awtar_music_player/widgets/app_widgets.dart';
 import 'package:awtar_music_player/widgets/playlist_dialogs.dart';
 import 'package:awtar_music_player/models/song.dart';
 import 'player_screen.dart';
+import '../providers/sleep_timer_provider.dart';
+import '../widgets/sleep_timer_dialog.dart';
 
 import 'package:awtar_music_player/providers/performance_provider.dart';
 import 'dart:async';
@@ -463,12 +465,6 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                       height: currentHeight,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          if (_controller.value > 1.5) {
-                            ref.read(screenProvider.notifier).state =
-                                AppScreen.player;
-                          }
-                        },
                         onVerticalDragUpdate: _onVerticalDragUpdate,
                         onVerticalDragEnd: _onVerticalDragEnd,
                         child: Container(
@@ -482,7 +478,15 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                       AppRadius.large,
                                     ),
                                   )
-                                : BorderRadius.circular(currentRadius),
+                                : BorderRadius.vertical(
+                                    top: Radius.circular(
+                                      Tween<double>(
+                                        begin: 30,
+                                        end: 0,
+                                      ).transform(val),
+                                    ),
+                                    bottom: Radius.circular(currentRadius),
+                                  ),
                             boxShadow: val < 0.1
                                 ? []
                                 : [
@@ -503,7 +507,15 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                       AppRadius.large,
                                     ),
                                   )
-                                : BorderRadius.circular(currentRadius),
+                                : BorderRadius.vertical(
+                                    top: Radius.circular(
+                                      Tween<double>(
+                                        begin: 30,
+                                        end: 0,
+                                      ).transform(val),
+                                    ),
+                                    bottom: Radius.circular(currentRadius),
+                                  ),
                             child:
                                 (performanceMode == PerformanceMode.ultraLow &&
                                     val < 0.1)
@@ -715,7 +727,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      song.artist,
+                      "${song.artist}${song.year != null ? ' • ${song.year}' : ''}",
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -939,24 +951,36 @@ class PlayerBottomBar extends ConsumerWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // SECTION 1: Mic (Far Left)
+                // SECTION 1: Sleep Timer (Far Left)
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    // Future Feature
-                  },
+                  onTap: () => SleepTimerDialog.show(context),
                   child: Container(
                     padding: const EdgeInsets.only(left: 30, right: 10),
                     alignment: Alignment.centerLeft,
                     child: Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: const BoxDecoration(
-                        color: AppColors.accentYellow,
+                      decoration: BoxDecoration(
+                        color: ref.watch(sleepTimerProvider).isActive
+                            ? AppColors.primaryGreen
+                            : AppColors.accentYellow,
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          if (ref.watch(sleepTimerProvider).isActive)
+                            BoxShadow(
+                              color: AppColors.primaryGreen.withOpacity(0.3),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            ),
+                        ],
                       ),
-                      child: const Icon(
-                        Icons.mic_none,
-                        color: Colors.black,
+                      child: Icon(
+                        ref.watch(sleepTimerProvider).isActive
+                            ? Icons.timer
+                            : Icons.timer_outlined,
+                        color: ref.watch(sleepTimerProvider).isActive
+                            ? Colors.white
+                            : Colors.black,
                         size: 24,
                       ),
                     ),

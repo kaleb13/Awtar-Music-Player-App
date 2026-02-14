@@ -37,9 +37,19 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
 
   Future<void> _updatePalette() async {
     final libraryState = ref.read(libraryProvider);
-    final albumSongs = libraryState.songs
-        .where((s) => s.album == widget.title)
-        .toList();
+    final albumSongs =
+        libraryState.songs.where((s) => s.album == widget.title).toList()
+          ..sort((a, b) {
+            if (a.trackNumber != null && b.trackNumber != null) {
+              int cmp = a.trackNumber!.compareTo(b.trackNumber!);
+              if (cmp != 0) return cmp;
+            } else if (a.trackNumber != null) {
+              return -1;
+            } else if (b.trackNumber != null) {
+              return 1;
+            }
+            return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+          });
 
     if (albumSongs.isNotEmpty) {
       final color = await PaletteService.generateAccentColor(
@@ -58,9 +68,19 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
     final playerState = ref.watch(playerProvider);
     final currentSong = playerState.currentSong;
 
-    final albumSongs = libraryState.songs
-        .where((s) => s.album == widget.title)
-        .toList();
+    final albumSongs =
+        libraryState.songs.where((s) => s.album == widget.title).toList()
+          ..sort((a, b) {
+            if (a.trackNumber != null && b.trackNumber != null) {
+              int cmp = a.trackNumber!.compareTo(b.trackNumber!);
+              if (cmp != 0) return cmp;
+            } else if (a.trackNumber != null) {
+              return -1;
+            } else if (b.trackNumber != null) {
+              return 1;
+            }
+            return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+          });
 
     return Scaffold(
       backgroundColor: Colors.transparent,

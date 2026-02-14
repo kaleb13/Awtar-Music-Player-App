@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../services/image_processing_service.dart';
 import '../../providers/library_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../theme/app_theme.dart';
@@ -17,19 +18,28 @@ class PlaylistDetailsScreen extends ConsumerWidget {
   Future<void> _pickImage(BuildContext context, WidgetRef ref) async {
     try {
       final picker = ImagePicker();
-      final image = await picker.pickImage(source: ImageSource.gallery);
+      final options = ImageProcessingService.getPickOptions();
+      final image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: options['maxWidth'],
+        maxHeight: options['maxHeight'],
+        imageQuality: options['imageQuality'],
+      );
 
       if (image != null) {
-        await ref
-            .read(libraryProvider.notifier)
-            .updatePlaylistImage(playlistId, image.path);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Playlist cover updated!"),
-              backgroundColor: AppColors.primaryGreen,
-            ),
-          );
+        final processed = await ImageProcessingService.processImage(image.path);
+        if (processed != null) {
+          await ref
+              .read(libraryProvider.notifier)
+              .updatePlaylistImage(playlistId, processed.path);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Playlist cover updated!"),
+                backgroundColor: AppColors.primaryGreen,
+              ),
+            );
+          }
         }
       }
     } catch (e) {

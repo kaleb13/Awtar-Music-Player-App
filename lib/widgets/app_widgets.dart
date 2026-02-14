@@ -629,80 +629,126 @@ class AppSummaryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
-        borderRadius: BorderRadius.circular(AppRadius.medium),
-        border: Border.all(color: Colors.white.withOpacity(0.03), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: AppTextStyles.caption.copyWith(
-              letterSpacing: 1.2,
-              fontSize: 10,
-              color: Colors.white.withOpacity(0.4),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.08),
+                Colors.white.withOpacity(0.02),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                value,
-                style: AppTextStyles.titleLarge.copyWith(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              if (trend != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        (isTrendPositive
-                                ? AppColors.primaryGreen
-                                : Colors.redAccent)
-                            .withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isTrendPositive
-                            ? Icons.trending_up
-                            : Icons.trending_down,
-                        size: 14,
-                        color: isTrendPositive
-                            ? AppColors.primaryGreen
-                            : Colors.redAccent,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        trend!,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isTrendPositive
-                              ? AppColors.primaryGreen
-                              : Colors.redAccent,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
             ],
           ),
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    label.toUpperCase(),
+                    style: AppTextStyles.caption.copyWith(
+                      letterSpacing: 1.5,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                  Icon(
+                    isTrendPositive
+                        ? Icons.analytics_outlined
+                        : Icons.show_chart,
+                    size: 14,
+                    color: Colors.white.withOpacity(0.2),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    value,
+                    style: AppTextStyles.titleLarge.copyWith(
+                      fontSize: 26,
+                      height: 1,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  if (trend != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            (isTrendPositive
+                                    ? AppColors.primaryGreen
+                                    : Colors.redAccent)
+                                .withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color:
+                              (isTrendPositive
+                                      ? AppColors.primaryGreen
+                                      : Colors.redAccent)
+                                  .withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isTrendPositive
+                                ? Icons.arrow_upward
+                                : Icons.arrow_downward,
+                            size: 10,
+                            color: isTrendPositive
+                                ? AppColors.primaryGreen
+                                : Colors.redAccent,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            trend!,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: isTrendPositive
+                                  ? AppColors.primaryGreen
+                                  : Colors.redAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1370,15 +1416,8 @@ class AppSearchBar extends ConsumerWidget {
             autofocus: autoFocus,
             onChanged: (value) {
               ref.read(searchQueryProvider.notifier).state = value;
-              if (ref.read(mainTabProvider) != MainTab.discover) {
-                ref.read(mainTabProvider.notifier).state = MainTab.discover;
-              }
             },
-            onTap: () {
-              if (ref.read(mainTabProvider) != MainTab.discover) {
-                ref.read(mainTabProvider.notifier).state = MainTab.discover;
-              }
-            },
+            onTap: () {},
             style: const TextStyle(color: Colors.white, fontSize: 14),
             decoration: InputDecoration(
               hintText: "Search songs, artists, albums...",
@@ -1530,7 +1569,7 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        "${bannerSong.artist} • ${bannerSong.album ?? 'Single'}",
+                        "${bannerSong.artist} • ${bannerSong.album ?? 'Single'}${bannerSong.year != null ? ' • ${bannerSong.year}' : ''}",
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.7),
                           fontSize: 15,
@@ -1717,47 +1756,84 @@ class AppSongTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentSong = ref.watch(playerProvider.select((s) => s.currentSong));
+    final isCurrent = currentSong?.id == song.id;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: isCurrent
+            ? AppColors.primaryGreen.withOpacity(0.15)
+            : Colors.white.withOpacity(0.02),
         borderRadius: BorderRadius.circular(12),
+        border: isCurrent
+            ? Border.all(
+                color: AppColors.primaryGreen.withOpacity(0.3),
+                width: 1,
+              )
+            : Border.all(color: Colors.white.withOpacity(0.02), width: 1),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        leading: showArtwork
+        leading: isCurrent
             ? Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: AppArtwork(songId: song.id, songPath: song.url),
+                alignment: Alignment.center,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryGreen.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
                 ),
               )
-            : (index != null
-                  ? Text(
-                      (index! + 1).toString().padLeft(2, '0'),
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.3),
-                        fontWeight: FontWeight.bold,
+            : (showArtwork
+                  ? Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: AppArtwork(songId: song.id, songPath: song.url),
                       ),
                     )
-                  : null),
+                  : (song.trackNumber != null || index != null
+                        ? Text(
+                            (() {
+                              final val = song.trackNumber ?? (index! + 1);
+                              return (val >= 1000 ? val % 1000 : val)
+                                  .toString()
+                                  .padLeft(2, '0');
+                            })(),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.3),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null)),
         title: Text(
           song.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
+          style: TextStyle(
+            color: isCurrent ? AppColors.primaryGreen : Colors.white,
+            fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
             fontSize: 14,
           ),
         ),
         subtitle: Text(
-          "${song.artist} • ${song.album ?? 'Single'}",
+          "${song.artist} • ${song.album ?? 'Single'}${song.year != null ? ' • ${song.year}' : ''}",
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),

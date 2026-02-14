@@ -11,6 +11,8 @@ import '../providers/stats_provider.dart';
 import '../providers/player_provider.dart';
 import '../models/song.dart';
 import '../widgets/app_artwork.dart';
+import '../providers/search_provider.dart';
+import '../widgets/search_results_view.dart';
 import '../services/artwork_cache_service.dart';
 
 import 'tabs/folders_tab.dart';
@@ -91,46 +93,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: AppSearchBar(),
             ),
             const SizedBox(height: 12),
-            TabBar(
-              controller: _tabController,
-              dividerColor: Colors.transparent,
-              indicatorColor: AppColors.accentYellow,
-              indicator: const UnderlineTabIndicator(
-                borderSide: BorderSide(
-                  width: 2.0,
-                  color: AppColors.accentYellow,
-                ),
-                insets: EdgeInsets.only(top: 40),
-              ),
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.grey,
-              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.normal,
-                fontSize: 13,
-              ),
-              tabs: const [
-                Tab(text: "LIBRARY"),
-                Tab(text: "FOLDERS"),
-                Tab(text: "ARTISTS"),
-                Tab(text: "ALBUMS"),
-              ],
-            ),
-            Expanded(
-              child: TabBarView(
+            if (ref.watch(searchQueryProvider).isEmpty)
+              TabBar(
                 controller: _tabController,
-                physics: const ClampingScrollPhysics(),
-                children: const [
-                  HomeOverviewContent(),
-                  FoldersTab(),
-                  ArtistsTab(),
-                  AlbumsTab(),
+                dividerColor: Colors.transparent,
+                indicatorColor: AppColors.accentYellow,
+                indicator: const UnderlineTabIndicator(
+                  borderSide: BorderSide(
+                    width: 2.0,
+                    color: AppColors.accentYellow,
+                  ),
+                  insets: EdgeInsets.only(top: 40),
+                ),
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.grey,
+                labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontWeight: FontWeight.normal,
+                  fontSize: 13,
+                ),
+                tabs: const [
+                  Tab(text: "LIBRARY"),
+                  Tab(text: "FOLDERS"),
+                  Tab(text: "ARTISTS"),
+                  Tab(text: "ALBUMS"),
                 ],
               ),
+            Expanded(
+              child: ref.watch(searchQueryProvider).isEmpty
+                  ? TabBarView(
+                      controller: _tabController,
+                      physics: const ClampingScrollPhysics(),
+                      children: const [
+                        HomeOverviewContent(),
+                        FoldersTab(),
+                        ArtistsTab(),
+                        AlbumsTab(),
+                      ],
+                    )
+                  : const SearchResultsView(),
             ),
           ],
         ),

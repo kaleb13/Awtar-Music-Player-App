@@ -5,6 +5,8 @@ import 'database_service.dart';
 class LyricsService {
   static final Map<int, List<LyricLine>> _cache = {};
 
+  static List<LyricLine>? peekCache(int songId) => _cache[songId];
+
   static void clearCache() => _cache.clear();
 
   static List<LyricLine> parseLrc(String content) {
@@ -86,5 +88,19 @@ class LyricsService {
     }
 
     return song.lyrics;
+  }
+
+  static Future<void> preloadLyrics(List<Song> songs) async {
+    final List<int> missingIds = songs
+        .where((s) => !_cache.containsKey(s.id) && s.lyrics.isEmpty)
+        .map((s) => s.id)
+        .toList();
+
+    if (missingIds.isEmpty) return;
+
+    final lyricsMap = await DatabaseService.getLyricsForMultipleSongs(
+      missingIds,
+    );
+    _cache.addAll(lyricsMap);
   }
 }

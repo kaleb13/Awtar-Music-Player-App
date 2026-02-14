@@ -9,6 +9,7 @@ import 'folder_management_screen.dart';
 import 'reload_metadata_screen.dart';
 import 'rescan_library_screen.dart';
 import 'configuration_settings_screen.dart';
+import 'about_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -308,6 +309,53 @@ class SettingsScreen extends ConsumerWidget {
                             MaterialPageRoute(
                               builder: (context) =>
                                   const ConfigurationSettingsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  _buildSettingsSection(
+                    title: "About",
+                    children: [
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.info_outline,
+                            color: Colors.white,
+                          ),
+                        ),
+                        title: const Text(
+                          "About AwtarPlayer",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          "App version, mission and upcoming features",
+                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.white54,
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AboutScreen(),
                             ),
                           );
                         },

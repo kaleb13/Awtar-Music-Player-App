@@ -33,6 +33,7 @@ Future<void> main() async {
           'com.example.awtart_music_player.channel.audio',
       androidNotificationChannelName: 'Music Playback',
       androidNotificationOngoing: true,
+      androidNotificationIcon: 'drawable/ic_notification',
     );
   } catch (e) {
     debugPrint("❌ Critical Error: JustAudioBackground.init failed: $e");

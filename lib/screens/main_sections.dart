@@ -1,284 +1,95 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
-import '../services/media_menu_service.dart';
 import '../widgets/app_song_list_tile.dart';
-import '../providers/search_provider.dart';
 import '../providers/player_provider.dart';
 import '../providers/library_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../widgets/app_artwork.dart';
 import '../widgets/playlist_dialogs.dart';
-import 'details/album_details_screen.dart';
-import 'details/artist_details_screen.dart';
 import 'details/playlist_details_screen.dart';
+import 'discovery_tabs.dart';
+import '../providers/search_provider.dart';
+import '../widgets/search_results_view.dart';
 
 class DiscoverScreen extends ConsumerWidget {
   const DiscoverScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final query = ref.watch(searchQueryProvider);
-    final results = ref.watch(searchResultsProvider);
+    final isSearching = ref.watch(searchQueryProvider).isNotEmpty;
 
-    return Container(
-      decoration: const BoxDecoration(color: Colors.transparent),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(left: 8, right: 8, top: 20),
-              child: AppTopBar(),
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: AppSearchBar(autoFocus: true),
-            ),
-            Expanded(
-              child: query.isEmpty
-                  ? _buildSearchPlaceholder()
-                  : results.isEmpty
-                  ? _buildNoResults()
-                  : _buildSearchResults(results, ref),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SvgPicture.asset(
-            AppAssets.search,
-            width: 64,
-            height: 64,
-            colorFilter: ColorFilter.mode(
-              AppColors.textGrey.withOpacity(0.3),
-              BlendMode.srcIn,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            "Find your favorite music",
-            style: AppTextStyles.bodyMain.copyWith(
-              color: AppColors.textGrey.withOpacity(0.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoResults() {
-    return const Center(
-      child: Text(
-        "No results found",
-        style: TextStyle(color: AppColors.textGrey),
-      ),
-    );
-  }
-
-  Widget _buildSearchResults(SearchResult results, WidgetRef ref) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      children: [
-        if (results.songs.isNotEmpty) ...[
-          _buildHeader("SONGS"),
-          ...results.songs.map(
-            (song) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: AppSongTile(
-                song: song,
-                playlist: results.songs,
-                index: results.songs.indexOf(song),
-                showArtwork: true,
+    return DefaultTabController(
+      length: 3,
+      child: Container(
+        decoration: const BoxDecoration(color: Colors.transparent),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(left: 8, right: 8, top: 20),
+                child: AppTopBar(),
               ),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-        if (results.albums.isNotEmpty) ...[
-          _buildHeader("ALBUMS"),
-          SizedBox(
-            height: 180,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: results.albums.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 16),
-              itemBuilder: (context, index) {
-                final album = results.albums[index];
-                final repAlbums = ref.watch(
-                  libraryProvider.select((s) => s.representativeAlbumSongs),
-                );
-
-                // Get a representative song ID for this album
-                final albumKey = '${album.album}_${album.artist}';
-                final albumSongId = repAlbums[albumKey];
-
-                return AppAlbumCard(
-                  title: album.album,
-                  artist: album.artist,
-                  imageUrl: "",
-                  songId: albumSongId,
-                  artwork: AspectRatio(
-                    aspectRatio: 1.0,
-                    child: AppArtwork(
-                      songId: albumSongId,
-                      borderRadius: 12,
-                      size: 120,
-                    ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: AppSearchBar(),
+              ),
+              const SizedBox(height: 10),
+              if (!isSearching) ...[
+                const TabBar(
+                  dividerColor: Colors.transparent,
+                  indicatorColor: AppColors.accentYellow,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.grey,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  padding: EdgeInsets.symmetric(horizontal: 14),
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
-                  size: 120,
-                  onTap: () {
-                    ref.read(bottomNavVisibleProvider.notifier).state = false;
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AlbumDetailsScreen(
-                          title: album.album,
-                          artist: album.artist,
-                          imageUrl: "",
-                        ),
-                      ),
-                    ).then((_) {
-                      ref.read(bottomNavVisibleProvider.notifier).state = true;
-                    });
-                  },
-                  onLongPress: () => AppCenteredModal.show(
-                    context,
-                    title: album.album,
-                    items: MediaMenuService.buildAlbumActions(
-                      context: context,
-                      ref: ref,
-                      album: album,
-                    ),
+                  unselectedLabelStyle: TextStyle(
+                    fontWeight: FontWeight.normal,
+                    fontSize: 16,
                   ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-        if (results.artists.isNotEmpty) ...[
-          _buildHeader("ARTISTS"),
-          SizedBox(
-            height: 140,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: results.artists.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 16),
-              itemBuilder: (context, index) {
-                final artist = results.artists[index];
-                final artistSongId = ref.watch(
-                  libraryProvider.select(
-                    (s) => s.representativeArtistSongs[artist.artist],
-                  ),
-                );
-                final fallbackSongId = ref.watch(
-                  libraryProvider.select(
-                    (s) => s.songs.isNotEmpty ? s.songs.first.id : 0,
-                  ),
-                );
-                final finalSongId = artistSongId ?? fallbackSongId;
-
-                return Column(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        ref.read(bottomNavVisibleProvider.notifier).state =
-                            false;
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ArtistDetailsScreen(
-                              name: artist.artist,
-                              imageUrl: "",
-                            ),
-                          ),
-                        ).then((_) {
-                          ref.read(bottomNavVisibleProvider.notifier).state =
-                              true;
-                        });
-                      },
-                      onLongPress: () => AppCenteredModal.show(
-                        context,
-                        title: artist.artist,
-                        items: MediaMenuService.buildArtistActions(
-                          context: context,
-                          ref: ref,
-                          artist: artist,
-                        ),
-                      ),
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.primaryGreen.withOpacity(0.3),
-                            width: 2,
-                          ),
-                        ),
-                        child: ClipOval(
-                          child: AppArtwork(
-                            songId: finalSongId,
-                            size: 80,
-                            borderRadius: 0,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: 80,
-                      child: Text(
-                        artist.artist,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                  tabs: [
+                    Tab(text: "Random Remix"),
+                    Tab(text: "Upcoming Musics"),
+                    Tab(text: "Tickets"),
                   ],
-                );
-              },
-            ),
+                ),
+                const SizedBox(height: 10),
+              ],
+              Expanded(
+                child: isSearching
+                    ? const SearchResultsView()
+                    : const TabBarView(
+                        physics: ClampingScrollPhysics(),
+                        children: [
+                          RemixTab(),
+                          UpcomingMusicTab(),
+                          TicketsTab(),
+                        ],
+                      ),
+              ),
+            ],
           ),
-        ],
-        const SizedBox(height: 100), // Bottom padding for player
-      ],
-    );
-  }
-
-  Widget _buildHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Text(
-        title,
-        style: AppTextStyles.caption.copyWith(
-          letterSpacing: 2,
-          color: Colors.white.withOpacity(0.5),
         ),
       ),
     );
   }
 }
 
-class CollectionScreen extends StatelessWidget {
+class CollectionScreen extends ConsumerWidget {
   const CollectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isSearching = ref.watch(searchQueryProvider).isNotEmpty;
+
     return DefaultTabController(
       length: 2,
       child: Container(
@@ -291,31 +102,42 @@ class CollectionScreen extends StatelessWidget {
                 padding: EdgeInsets.only(left: 8, right: 8, top: 20),
                 child: AppTopBar(),
               ),
-              const SizedBox(height: 10),
-              const TabBar(
-                dividerColor: Colors.transparent,
-                indicatorColor: AppColors.accentYellow,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.grey,
-                labelStyle: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-                unselectedLabelStyle: TextStyle(
-                  fontWeight: FontWeight.normal,
-                  fontSize: 16,
-                ),
-                tabs: [
-                  Tab(text: "Favorites"),
-                  Tab(text: "Playlist"),
-                ],
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: AppSearchBar(),
               ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: TabBarView(
-                  physics: const ClampingScrollPhysics(),
-                  children: [const _FavoritesTab(), const _PlaylistsTab()],
+              const SizedBox(height: 10),
+              if (!isSearching) ...[
+                const TabBar(
+                  dividerColor: Colors.transparent,
+                  indicatorColor: AppColors.accentYellow,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.grey,
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  unselectedLabelStyle: TextStyle(
+                    fontWeight: FontWeight.normal,
+                    fontSize: 16,
+                  ),
+                  tabs: [
+                    Tab(text: "Favorites"),
+                    Tab(text: "Playlist"),
+                  ],
                 ),
+                const SizedBox(height: 20),
+              ],
+              Expanded(
+                child: isSearching
+                    ? const SearchResultsView()
+                    : const TabBarView(
+                        physics: ClampingScrollPhysics(),
+                        children: [
+                          _FavoritesTab(),
+                          _PlaylistsTab(),
+                        ],
+                      ),
               ),
             ],
           ),
@@ -341,9 +163,9 @@ class _FavoritesTab extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.favorite_border, size: 64, color: Colors.white24),
+            const Icon(Icons.favorite_border, size: 64, color: Colors.white24),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               "No favorite songs yet",
               style: TextStyle(color: Colors.white54, fontSize: 16),
             ),
@@ -389,7 +211,7 @@ class _PlaylistsTab extends ConsumerWidget {
             children: [
               Text(
                 "${playlists.length} Playlists",
-                style: TextStyle(color: Colors.white54, fontSize: 14),
+                style: const TextStyle(color: Colors.white54, fontSize: 14),
               ),
               ElevatedButton.icon(
                 onPressed: () =>
@@ -438,7 +260,6 @@ class _PlaylistsTab extends ConsumerWidget {
                       imageUrl: "",
                       songId: firstSongId,
                       onTap: () {
-                        // Hide bottom nav for sub-screens
                         ref.read(bottomNavVisibleProvider.notifier).state =
                             false;
                         Navigator.push(
@@ -494,9 +315,9 @@ class _PlaylistsTab extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.playlist_add, size: 64, color: Colors.white24),
+          const Icon(Icons.playlist_add, size: 64, color: Colors.white24),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             "No playlists created yet",
             style: TextStyle(color: Colors.white54, fontSize: 16),
           ),

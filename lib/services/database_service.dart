@@ -155,6 +155,34 @@ class DatabaseService {
         .toList();
   }
 
+  static Future<Map<int, List<LyricLine>>> getLyricsForMultipleSongs(
+    List<int> songIds,
+  ) async {
+    if (songIds.isEmpty) return {};
+    final db = await database;
+
+    final placeholders = List.filled(songIds.length, '?').join(',');
+    final List<Map<String, dynamic>> maps = await db.query(
+      'lyrics',
+      where: 'songId IN ($placeholders)',
+      whereArgs: songIds,
+      orderBy: 'songId, timeMs ASC',
+    );
+
+    final Map<int, List<LyricLine>> result = {};
+    for (final m in maps) {
+      final int songId = m['songId'];
+      result.putIfAbsent(songId, () => []);
+      result[songId]!.add(
+        LyricLine(
+          time: Duration(milliseconds: m['timeMs']),
+          text: m['text'],
+        ),
+      );
+    }
+    return result;
+  }
+
   static Future<void> saveLyrics(int songId, List<LyricLine> lyrics) async {
     final db = await database;
     await db.transaction((txn) async {
