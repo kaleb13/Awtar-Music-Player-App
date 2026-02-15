@@ -245,9 +245,12 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         );
       }
 
+      // Filter songs based on excluded folders
+      final filteredSongs = _filterSongsByFolders(songs, excludedFolders);
+
       // Rebuild Artist objects with the loaded images
       final Map<String, List<Song>> artistSongsGroup = {};
-      for (final song in songs) {
+      for (final song in filteredSongs) {
         artistSongsGroup.putIfAbsent(song.artist, () => []).add(song);
       }
 
@@ -268,7 +271,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
 
       // Rebuild Album objects
       final Map<String, List<Song>> albumSongsGroup = {};
-      for (final song in songs) {
+      for (final song in filteredSongs) {
         if (song.album != null) {
           final key = '${song.album}_${song.artist}';
           albumSongsGroup.putIfAbsent(key, () => []).add(song);
@@ -287,7 +290,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       // NEW: Rebuild Folders and Folder Song Counts immediately from cached songs
       final Set<String> folderSet = {};
       final Map<String, int> folderCounts = {};
-      for (final s in songs) {
+      for (final s in filteredSongs) {
         final path = s.url;
         final index = path.lastIndexOf('/');
         if (index != -1) {
@@ -302,7 +305,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       final List<String> folders = folderSet.toList()..sort();
 
       state = state.copyWith(
-        songs: songs,
+        songs: filteredSongs,
         artists: artists,
         albums: albums,
         playlists: playlists,
@@ -1141,6 +1144,75 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     return false;
   }
 
+  Future<void> _syncSongWithFile(int songId, String url) async {
+    try {
+      final tag = await AudioTags.read(url);
+      if (tag == null) return;
+
+      // 1. Find the song in state
+      final index = state.songs.indexWhere((s) => s.id == songId);
+      if (index == -1) return;
+
+      final oldSong = state.songs[index];
+
+      // 2. Parse lyrics from the tag
+      List<LyricLine> lyrics = [];
+      if (tag.lyrics != null && tag.lyrics!.isNotEmpty) {
+        if (tag.lyrics!.contains('[') && tag.lyrics!.contains(']')) {
+          lyrics = LyricsService.parseLrc(tag.lyrics!);
+        } else {
+          lyrics = tag.lyrics!
+              .split('\n')
+              .where((l) => l.trim().isNotEmpty)
+              .map((l) => LyricLine(time: Duration.zero, text: l.trim()))
+              .toList();
+        }
+      }
+
+      // 3. Create updated song object
+      final updatedSong = oldSong.copyWith(
+        title: tag.title,
+        artist: tag.trackArtist,
+        album: tag.album,
+        albumArtist: tag.albumArtist,
+        lyrics: lyrics,
+        trackNumber: (tag.trackNumber != null && tag.trackNumber! >= 1000)
+            ? tag.trackNumber! % 1000
+            : tag.trackNumber,
+        genre: tag.genre,
+        year: tag.year,
+      );
+
+      // 4. Update memory cache for lyrics and DB
+      if (lyrics.isNotEmpty) {
+        LyricsService.updateCache(songId, lyrics);
+        await DatabaseService.saveLyrics(songId, lyrics);
+      } else {
+        LyricsService.invalidateCache(songId);
+      }
+
+      // 5. Update State
+      state = state.copyWith(
+        songs: state.songs
+            .map((s) => s.id == songId ? updatedSong : s)
+            .toList(),
+      );
+
+      // 6. Notify Player
+      _ref.read(playerProvider.notifier).updateSongMetadataInState(updatedSong);
+
+      // 7. Rebuild Artists/Albums as they might have changed
+      state = state.copyWith(
+        artists: _rebuildArtists(state.songs),
+        albums: _rebuildAlbums(state.songs),
+      );
+
+      await _saveToCache();
+    } catch (e) {
+      debugPrint("Error syncing song from file: $e");
+    }
+  }
+
   void _updateBannerSong(List<Song> songs) {
     if (songs.isEmpty) return;
 
@@ -1206,14 +1278,23 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
             if (tag != null) {
               List<LyricLine> lyrics = [];
               if (tag.lyrics != null && tag.lyrics!.isNotEmpty) {
-                final lines = tag.lyrics!.split('\n');
-                lyrics = lines
-                    .map(
-                      (line) =>
-                          LyricLine(time: Duration.zero, text: line.trim()),
-                    )
-                    .where((l) => l.text.isNotEmpty)
-                    .toList();
+                if (tag.lyrics!.contains('[') && tag.lyrics!.contains(']')) {
+                  lyrics = LyricsService.parseLrc(tag.lyrics!);
+                } else {
+                  lyrics = tag.lyrics!
+                      .split('\n')
+                      .map(
+                        (line) =>
+                            LyricLine(time: Duration.zero, text: line.trim()),
+                      )
+                      .where((l) => l.text.isNotEmpty)
+                      .toList();
+                }
+                // Update DB and Memory Cache
+                await DatabaseService.saveLyrics(song.id, lyrics);
+                LyricsService.updateCache(song.id, lyrics);
+              } else {
+                LyricsService.invalidateCache(song.id);
               }
 
               song = song.copyWith(
@@ -1275,25 +1356,32 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         try {
           final currentTag = await AudioTags.read(song.url);
           final tag = Tag(
-            title: title ?? song.title,
-            trackArtist: artist ?? song.artist,
-            album: album ?? song.album,
-            trackNumber: trackNumber ?? song.trackNumber,
-            genre: genre ?? song.genre,
-            year: year ?? song.year,
-            albumArtist: albumArtist ?? song.albumArtist,
+            title: title ?? currentTag?.title ?? song.title,
+            trackArtist: artist ?? currentTag?.trackArtist ?? song.artist,
+            album: album ?? currentTag?.album ?? song.album,
+            trackNumber:
+                trackNumber ?? currentTag?.trackNumber ?? song.trackNumber,
+            genre: genre ?? currentTag?.genre ?? song.genre,
+            year: year ?? currentTag?.year ?? song.year,
+            albumArtist:
+                albumArtist ?? currentTag?.albumArtist ?? song.albumArtist,
+            lyrics: currentTag?.lyrics,
             pictures: currentTag?.pictures ?? [],
           );
           await AudioTags.write(song.url, tag);
+
+          // 2. Refresh from file to be absolutely sure we have the source of truth
+          await _syncSongWithFile(song.id, song.url);
+          return;
         } catch (e) {
           debugPrint(
             "Note: Could not write metadata to physical file (it may be in use): $e",
           );
-          // We continue anyway so the changes are saved to the app's database
+          // We continue to fallback if file write fails, but usually the file is our target
         }
       }
 
-      // 2. Update Database & State
+      // Fallback: update state directly if file write failed or isn't applicable
       final updatedSong = song.copyWith(
         title: title,
         artist: artist,
@@ -1310,10 +1398,8 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
             .toList(),
       );
 
-      // Update player provider to reflect changes in current queue/song
       _ref.read(playerProvider.notifier).updateSongMetadataInState(updatedSong);
 
-      // 3. Rebuild structures
       state = state.copyWith(
         artists: _rebuildArtists(state.songs),
         albums: _rebuildAlbums(state.songs),
@@ -1328,12 +1414,38 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
 
   Future<void> updateSongLyrics(Song song, String lyricsText) async {
     try {
+      // 1. Update file metadata
+      if (!song.url.startsWith("http") && !song.url.startsWith("content://")) {
+        try {
+          final currentTag = await AudioTags.read(song.url);
+          final tag = Tag(
+            title: currentTag?.title,
+            trackArtist: currentTag?.trackArtist,
+            album: currentTag?.album,
+            albumArtist: currentTag?.albumArtist,
+            trackNumber: currentTag?.trackNumber,
+            genre: currentTag?.genre,
+            year: currentTag?.year,
+            lyrics: lyricsText,
+            pictures: currentTag?.pictures ?? [],
+          );
+          await AudioTags.write(song.url, tag);
+
+          // Refresh from file to be absolutely sure
+          await _syncSongWithFile(song.id, song.url);
+          return;
+        } catch (e) {
+          debugPrint(
+            "Note: Could not write lyrics to physical file (it may be in use): $e",
+          );
+        }
+      }
+
+      // Fallback: manual update if file write fails
       List<LyricLine> lyrics = [];
       if (lyricsText.contains('[') && lyricsText.contains(']')) {
         lyrics = LyricsService.parseLrc(lyricsText);
-      }
-
-      if (lyrics.isEmpty) {
+      } else {
         final lines = lyricsText
             .split('\n')
             .where((line) => line.trim().isNotEmpty)
@@ -1349,27 +1461,6 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         }
       }
 
-      // 1. Update file metadata
-      if (!song.url.startsWith("http") && !song.url.startsWith("content://")) {
-        try {
-          final currentTag = await AudioTags.read(song.url);
-          final tag = Tag(
-            title: currentTag?.title,
-            trackArtist: currentTag?.trackArtist,
-            album: currentTag?.album,
-            lyrics: lyricsText,
-            pictures: currentTag?.pictures ?? [],
-          );
-          await AudioTags.write(song.url, tag);
-        } catch (e) {
-          debugPrint(
-            "Note: Could not write lyrics to physical file (it may be in use): $e",
-          );
-          // We continue anyway so the changes are saved to the app's database
-        }
-      }
-
-      // 2. Update DB & State
       final updatedSong = song.copyWith(lyrics: lyrics);
       state = state.copyWith(
         songs: state.songs
@@ -1378,8 +1469,8 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       );
 
       await DatabaseService.saveLyrics(song.id, lyrics);
+      LyricsService.updateCache(song.id, lyrics);
 
-      // 3. Update Player Provider if this is the current song
       _ref
           .read(playerProvider.notifier)
           .updateLyricsInState(song.id, lyrics, false);
@@ -1464,10 +1555,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           final album = normalize(fav['album']);
 
           int? id = exactMap["$title|$artist|$album"];
-          if (id == null) {
-            // Try fuzzy match (ignore album)
-            id = fuzzyMap["$title|$artist"];
-          }
+          id ??= fuzzyMap["$title|$artist"];
 
           if (id != null) {
             restoredFavoriteIds.add(id);
@@ -1495,9 +1583,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
             final album = normalize(sIdentData['album']);
 
             int? id = exactMap["$title|$artist|$album"];
-            if (id == null) {
-              id = fuzzyMap["$title|$artist"];
-            }
+            id ??= fuzzyMap["$title|$artist"];
 
             if (id != null) {
               songIds.add(id);
@@ -1603,6 +1689,11 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
               title: currentTag?.title,
               trackArtist: currentTag?.trackArtist,
               album: currentTag?.album,
+              albumArtist: currentTag?.albumArtist,
+              trackNumber: currentTag?.trackNumber,
+              genre: currentTag?.genre,
+              year: currentTag?.year,
+              lyrics: currentTag?.lyrics,
               pictures: [
                 Picture(
                   bytes: bytes,

@@ -936,7 +936,7 @@ class _LyricsPreview extends ConsumerWidget {
 
     String? currentLyricText;
 
-    if (song != null && song.lyrics.isNotEmpty) {
+    if (song != null && song.isSynced && song.lyrics.isNotEmpty) {
       for (int i = 0; i < song.lyrics.length; i++) {
         final lyric = song.lyrics[i];
         final nextTime = (i + 1 < song.lyrics.length)

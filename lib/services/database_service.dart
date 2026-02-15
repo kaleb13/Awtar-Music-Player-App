@@ -89,24 +89,30 @@ class DatabaseService {
   // Songs
   static Future<void> saveSongs(List<Song> songs) async {
     final db = await database;
-    final batch = db.batch();
-    for (final song in songs) {
-      batch.insert('songs', {
-        'id': song.id,
-        'title': song.title,
-        'artist': song.artist,
-        'album': song.album,
-        'albumArtist': song.albumArtist,
-        'url': song.url,
-        'duration': song.duration,
-        'albumArt': song.albumArt,
-        'isFavorite': song.isFavorite ? 1 : 0,
-        'trackNumber': song.trackNumber,
-        'genre': song.genre,
-        'year': song.year,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-    }
-    await batch.commit(noResult: true);
+    await db.transaction((txn) async {
+      // Clear all songs and related data before saving the new list
+      // This ensures that songs from excluded folders are removed from DB
+      await txn.delete('songs');
+
+      final batch = txn.batch();
+      for (final song in songs) {
+        batch.insert('songs', {
+          'id': song.id,
+          'title': song.title,
+          'artist': song.artist,
+          'album': song.album,
+          'albumArtist': song.albumArtist,
+          'url': song.url,
+          'duration': song.duration,
+          'albumArt': song.albumArt,
+          'isFavorite': song.isFavorite ? 1 : 0,
+          'trackNumber': song.trackNumber,
+          'genre': song.genre,
+          'year': song.year,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+    });
   }
 
   static Future<List<Song>> getAllSongs() async {

@@ -413,6 +413,18 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     await _audioPlayer.seek(position);
   }
 
+  Future<void> seekRelative(Duration offset) async {
+    final newPosition = _audioPlayer.position + offset;
+    final duration = _audioPlayer.duration ?? Duration.zero;
+    if (newPosition < Duration.zero) {
+      await _audioPlayer.seek(Duration.zero);
+    } else if (newPosition > duration) {
+      next();
+    } else {
+      await _audioPlayer.seek(newPosition);
+    }
+  }
+
   void next() {
     if (_audioPlayer.hasNext) {
       _audioPlayer.seekToNext();

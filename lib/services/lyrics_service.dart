@@ -7,6 +7,14 @@ class LyricsService {
 
   static List<LyricLine>? peekCache(int songId) => _cache[songId];
 
+  static void updateCache(int songId, List<LyricLine> lyrics) {
+    _cache[songId] = lyrics;
+  }
+
+  static void invalidateCache(int songId) {
+    _cache.remove(songId);
+  }
+
   static void clearCache() => _cache.clear();
 
   static List<LyricLine> parseLrc(String content) {

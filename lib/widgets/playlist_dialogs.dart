@@ -14,7 +14,7 @@ class PlaylistDialogs {
     showModalBottomSheet(
       context: context,
       useRootNavigator: useRootNavigator,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: AppColors.surfacePopover,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
@@ -160,7 +160,7 @@ class PlaylistDialogs {
     showModalBottomSheet(
       context: context,
       useRootNavigator: useRootNavigator,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: AppColors.surfacePopover,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
@@ -320,7 +320,7 @@ class PlaylistDialogs {
       builder: (context) => Consumer(
         builder: (context, ref, child) {
           return AlertDialog(
-            backgroundColor: AppColors.surfaceDark,
+            backgroundColor: AppColors.surfacePopover,
             title: const Text(
               "New Playlist",
               style: TextStyle(color: Colors.white),
@@ -449,7 +449,7 @@ class PlaylistDialogs {
       context: context,
       useRootNavigator: useRootNavigator,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: AppColors.surfacePopover,
         title: const Text(
           "Delete Playlist?",
           style: TextStyle(color: Colors.white),

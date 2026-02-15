@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/song.dart';
 import '../models/album.dart';
 import '../models/artist.dart';
@@ -23,7 +24,7 @@ class MediaEditDialogs {
       context: context,
       useRootNavigator: true,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: AppColors.surfacePopover,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           "Edit Song Metadata",
@@ -125,7 +126,7 @@ class MediaEditDialogs {
       context: context,
       useRootNavigator: true,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: AppColors.surfacePopover,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Edit Album", style: TextStyle(color: Colors.white)),
         content: Column(
@@ -198,7 +199,7 @@ class MediaEditDialogs {
       context: context,
       useRootNavigator: true,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: AppColors.surfacePopover,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Edit Artist", style: TextStyle(color: Colors.white)),
         content: _buildTextField("Artist Name", controller),
@@ -254,68 +255,168 @@ class MediaEditDialogs {
       context: context,
       useRootNavigator: true,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: AppColors.surfacePopover,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text("Edit Lyrics", style: TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
-          child: TextField(
-            controller: controller,
-            maxLines: 15,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-            decoration: InputDecoration(
-              hintText: "Paste or type lyrics here...",
-              hintStyle: const TextStyle(color: Colors.white24),
-              filled: true,
-              fillColor: Colors.black26,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+          child: SingleChildScrollView(
+            child: TextField(
+              controller: controller,
+              maxLines: 10,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: "Paste or type lyrics here...",
+                hintStyle: const TextStyle(color: Colors.white24),
+                filled: true,
+                fillColor: Colors.black26,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: Colors.white54),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              try {
-                await ref
-                    .read(libraryProvider.notifier)
-                    .updateSongLyrics(song, controller.text);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Lyrics updated successfully"),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildSearchSection(song, ref),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      "Cancel",
+                      style: TextStyle(color: Colors.white54),
                     ),
-                  );
-                  Navigator.pop(context);
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Failed to update lyrics: ${e.toString()}"),
-                      backgroundColor: Colors.redAccent,
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(libraryProvider.notifier)
+                            .updateSongLyrics(song, controller.text);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Lyrics updated successfully"),
+                            ),
+                          );
+                          Navigator.pop(context);
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "Failed to update lyrics: ${e.toString()}",
+                              ),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text(
+                      "Apply Lyrics",
+                      style: TextStyle(color: AppColors.primaryGreen),
                     ),
-                  );
-                }
-              }
-            },
-            child: const Text(
-              "Apply Lyrics",
-              style: TextStyle(color: AppColors.primaryGreen),
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  static Widget _buildSearchSection(Song song, WidgetRef ref) {
+    final libraryState = ref.read(libraryProvider);
+    final titleSource = libraryState.titleSource;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.travel_explore,
+                color: AppColors.accentYellow,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "Search Lyrics Online",
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _launchLyricSearch(song, titleSource),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentYellow.withOpacity(0.1),
+                    foregroundColor: AppColors.accentYellow,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "Search in Browser",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void _launchLyricSearch(Song song, TitleSource source) {
+    String searchBase;
+    if (source == TitleSource.filename) {
+      // Use filename (the user's "music itself" preference)
+      String fileName = song.url.split('/').last.split('\\').last;
+      if (fileName.contains('.')) {
+        fileName = fileName.substring(0, fileName.lastIndexOf('.'));
+      }
+      searchBase = fileName;
+    } else {
+      // Use metadata tags
+      searchBase = "${song.artist} ${song.title}";
+    }
+
+    final query = Uri.encodeComponent("$searchBase lyric");
+    final url = Uri.parse("https://www.google.com/search?q=$query");
+    launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   static Widget _buildTextField(

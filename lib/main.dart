@@ -86,13 +86,33 @@ class MyApp extends ConsumerWidget {
           }),
         ),
         popupMenuTheme: PopupMenuThemeData(
-          color: const Color(0xFF0D0D0F).withOpacity(0.85),
+          color: AppColors.surfacePopover,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(color: Colors.white.withOpacity(0.08), width: 1.2),
           ),
           elevation: 12,
           textStyle: AppTextStyles.bodySmall.copyWith(color: Colors.white),
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: AppColors.surfacePopover,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          titleTextStyle: AppTextStyles.titleMedium,
+        ),
+        drawerTheme: const DrawerThemeData(
+          backgroundColor: AppColors.surfacePopover,
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: AppColors.surfacePopover,
+          modalBackgroundColor: AppColors.surfacePopover,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
         ),
       ),
       home: onboardingCompleted

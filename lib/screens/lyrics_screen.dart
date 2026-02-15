@@ -20,7 +20,7 @@ class LyricsScreen extends ConsumerStatefulWidget {
 class _LyricsScreenState extends ConsumerState<LyricsScreen> {
   final List<GlobalKey> _lyricKeys = [];
   int _prevIndex = -1;
-  bool _isUserScrolling = false;
+  final bool _isUserScrolling = false;
   // Timer to reset user scrolling state
   // Timer? _userScrollTimer; // Optional: auto-resume scrolling after interaction
 
@@ -45,7 +45,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
 
     // Determine active index
     int currentIndex = -1;
-    if (song != null && song.lyrics.isNotEmpty) {
+    if (song != null && song.isSynced && song.lyrics.isNotEmpty) {
       for (int i = 0; i < song.lyrics.length; i++) {
         final lyric = song.lyrics[i];
         final nextTime = (i + 1 < song.lyrics.length)
@@ -375,7 +375,10 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                                   child: Builder(
                                     builder: (context) {
                                       final lyric = song.lyrics[index];
-                                      final isCurrent = index == currentIndex;
+                                      final isActuallySynced = song.isSynced;
+                                      final isCurrent =
+                                          isActuallySynced &&
+                                          index == currentIndex;
 
                                       return Row(
                                         children: [

@@ -98,6 +98,9 @@ class Song {
       year: year ?? this.year,
     );
   }
+
+  bool get isSynced =>
+      lyrics.isNotEmpty && lyrics.any((l) => l.time.inSeconds > 0);
 }
 
 class LyricLine {

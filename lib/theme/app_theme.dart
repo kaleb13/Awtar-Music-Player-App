@@ -17,8 +17,9 @@ class AppColors {
     colors: [mainDarkLight, mainDark],
   );
 
-  static const Color surfaceWhite = Colors.white;
-  static const Color surfaceDark = Color.fromARGB(255, 14, 14, 17);
+  static const Color surfaceWhite = Color(0xFFf5f5f5);
+  static const Color surfaceDark = Color(0xFF0a0d11);
+  static const Color surfacePopover = Color(0xFF0a0d11);
 
   // Text Colors
   static const Color textMain = Colors.white;

@@ -35,7 +35,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: AppColors.surfacePopover,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.medium),
           side: BorderSide(color: Colors.white.withOpacity(0.1)),
@@ -100,7 +100,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
     final timerState = ref.watch(sleepTimerProvider);
 
     return AlertDialog(
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: AppColors.surfacePopover,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.medium),

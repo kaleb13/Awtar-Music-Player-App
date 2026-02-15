@@ -68,6 +68,8 @@ class AppPlayButton extends StatelessWidget {
 class AppIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPressStart;
+  final VoidCallback? onLongPressEnd;
   final Color? color;
   final double size;
   final bool isCircle;
@@ -76,6 +78,8 @@ class AppIconButton extends StatelessWidget {
     super.key,
     required this.icon,
     this.onTap,
+    this.onLongPressStart,
+    this.onLongPressEnd,
     this.color,
     this.size = 24,
     this.isCircle = false,
@@ -88,6 +92,8 @@ class AppIconButton extends StatelessWidget {
     if (isCircle) {
       return GestureDetector(
         onTap: onTap,
+        onLongPressStart: (_) => onLongPressStart?.call(),
+        onLongPressEnd: (_) => onLongPressEnd?.call(),
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -99,7 +105,12 @@ class AppIconButton extends StatelessWidget {
       );
     }
 
-    return GestureDetector(onTap: onTap, child: child);
+    return GestureDetector(
+      onTap: onTap,
+      onLongPressStart: (_) => onLongPressStart?.call(),
+      onLongPressEnd: (_) => onLongPressEnd?.call(),
+      child: child,
+    );
   }
 }
 
@@ -354,7 +365,7 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF0D0D0F),
+                                  color: AppColors.surfacePopover,
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
@@ -534,7 +545,7 @@ class _MenuButtonState extends ConsumerState<_MenuButton> {
         decoration: BoxDecoration(
           color: _isOpen
               ? AppColors.primaryGreen.withOpacity(0.15)
-              : const Color(0xFF0D0D0F).withOpacity(0.4),
+              : AppColors.surfacePopover.withOpacity(0.4),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _isOpen

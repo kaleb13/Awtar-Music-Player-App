@@ -11,7 +11,7 @@ class AppDrawer extends StatelessWidget {
     return SizedBox(
       width: 260,
       child: Drawer(
-        backgroundColor: AppColors.mainDark,
+        backgroundColor: AppColors.surfacePopover,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

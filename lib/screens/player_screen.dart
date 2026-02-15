@@ -14,11 +14,41 @@ import 'package:awtar_music_player/widgets/app_song_list_tile.dart';
 import '../models/artist.dart';
 import 'dart:async';
 
-class PlayerScreenContent extends ConsumerWidget {
+class PlayerScreenContent extends ConsumerStatefulWidget {
   const PlayerScreenContent({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PlayerScreenContent> createState() =>
+      _PlayerScreenContentState();
+}
+
+class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
+  Timer? _seekTimer;
+
+  void _startSeeking(bool forward) {
+    _seekTimer?.cancel();
+    _seekTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      ref
+          .read(playerProvider.notifier)
+          .seekRelative(
+            forward ? const Duration(seconds: 5) : const Duration(seconds: -5),
+          );
+    });
+  }
+
+  void _stopSeeking() {
+    _seekTimer?.cancel();
+    _seekTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _seekTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final playerState = ref.watch(playerProvider);
     final isPlaying = playerState.isPlaying;
     final Song? song = playerState.currentSong;
@@ -289,6 +319,8 @@ class PlayerScreenContent extends ConsumerWidget {
                   color: AppColors.textLight,
                   size: 40, // Significantly increased from 32
                   onTap: () => ref.read(playerProvider.notifier).previous(),
+                  onLongPressStart: () => _startSeeking(false),
+                  onLongPressEnd: _stopSeeking,
                 ),
                 AppPlayButton(
                   size: 68, // Increased from 56
@@ -301,6 +333,8 @@ class PlayerScreenContent extends ConsumerWidget {
                   color: AppColors.textLight,
                   size: 40, // Significantly increased from 32
                   onTap: () => ref.read(playerProvider.notifier).next(),
+                  onLongPressStart: () => _startSeeking(true),
+                  onLongPressEnd: _stopSeeking,
                 ),
                 AppIconButton(
                   icon: Icons.shuffle,
@@ -608,7 +642,7 @@ class _LyricsScreenContentState extends ConsumerState<LyricsScreenContent> {
 
     // Determine active index
     int currentIndex = -1;
-    if (currentSong.lyrics.isNotEmpty) {
+    if (currentSong.isSynced && currentSong.lyrics.isNotEmpty) {
       for (int i = 0; i < currentSong.lyrics.length; i++) {
         final lyric = currentSong.lyrics[i];
         final nextTime = (i + 1 < currentSong.lyrics.length)
@@ -752,6 +786,7 @@ class _LyricsScreenContentState extends ConsumerState<LyricsScreenContent> {
                       index: index,
                       lyrics: currentSong.lyrics,
                       position: position,
+                      isSynced: currentSong.isSynced,
                     ),
                 // Extra space at bottom to allow scrolling last items to center
                 SizedBox(height: MediaQuery.of(context).size.height * 0.4),
@@ -768,18 +803,21 @@ class _LyricLineItem extends StatelessWidget {
   final int index;
   final List<LyricLine> lyrics;
   final Duration position;
+  final bool isSynced;
 
   const _LyricLineItem({
     super.key,
     required this.index,
     required this.lyrics,
     required this.position,
+    required this.isSynced,
   });
 
   @override
   Widget build(BuildContext context) {
     final lyric = lyrics[index];
     final isCurrent =
+        isSynced &&
         position >= lyric.time &&
         (index == lyrics.length - 1 || position < lyrics[index + 1].time);
 
