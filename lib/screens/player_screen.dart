@@ -70,15 +70,15 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
               children: [
                 AppIconButton(
                   icon: Icons.arrow_back,
-                  color: AppColors.textLight,
+                  color: Colors.white,
                   onTap: () =>
                       ref.read(screenProvider.notifier).state = AppScreen.home,
                 ),
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
+                      ref.read(screenProvider.notifier).state = AppScreen.home;
+                      innerNavigatorKey.currentState?.push(
                         MaterialPageRoute(
                           builder: (context) => AlbumDetailsScreen(
                             title: song.album ?? 'Single',
@@ -93,7 +93,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                       TextSpan(
                         text: "FROM  ",
                         style: AppTextStyles.caption.copyWith(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.white38,
                           fontSize: 9,
                           letterSpacing: 1.2,
                           fontWeight: FontWeight.w900,
@@ -102,7 +102,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                           TextSpan(
                             text: (song.album ?? "Single").toUpperCase(),
                             style: AppTextStyles.bodyMain.copyWith(
-                              color: Colors.black,
+                              color: Colors.white,
                               fontSize: 10,
                               letterSpacing: 1.0,
                               fontWeight: FontWeight.bold,
@@ -117,10 +117,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                   ),
                 ),
                 PopupMenuButton<String>(
-                  icon: const Icon(
-                    Icons.more_horiz,
-                    color: AppColors.textLight,
-                  ),
+                  icon: const Icon(Icons.more_horiz, color: Colors.white),
                   onSelected: (value) {
                     if (value == 'Share') {
                       // Share implementation
@@ -137,8 +134,8 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                               numberOfAlbums: 0,
                             ),
                           );
-                      Navigator.push(
-                        context,
+                      ref.read(screenProvider.notifier).state = AppScreen.home;
+                      innerNavigatorKey.currentState?.push(
                         MaterialPageRoute(
                           builder: (context) => ArtistDetailsScreen(
                             name: artistObj.artist,
@@ -147,8 +144,8 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                         ),
                       );
                     } else if (value == 'View Album') {
-                      Navigator.push(
-                        context,
+                      ref.read(screenProvider.notifier).state = AppScreen.home;
+                      innerNavigatorKey.currentState?.push(
                         MaterialPageRoute(
                           builder: (context) => AlbumDetailsScreen(
                             title: song.album ?? 'Single',
@@ -199,21 +196,47 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                       Text(
                         song.title,
                         style: AppTextStyles.titleLarge.copyWith(
-                          color: AppColors.textLight,
+                          color: Colors.white,
                           fontSize: 24, // Slightly reduced from 26
                           fontWeight: FontWeight.bold,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        "${song.artist}${song.year != null ? ' • ${song.year}' : ''}",
-                        style: AppTextStyles.bodyMain.copyWith(
-                          color: AppColors.textGrey,
-                          fontSize: 16, // Slightly reduced from 18
+                      GestureDetector(
+                        onTap: () {
+                          final artistObj = ref
+                              .read(libraryProvider)
+                              .artists
+                              .firstWhere(
+                                (a) => a.artist == song.artist,
+                                orElse: () => Artist(
+                                  id: 0,
+                                  artist: song.artist,
+                                  numberOfTracks: 0,
+                                  numberOfAlbums: 0,
+                                ),
+                              );
+                          ref.read(screenProvider.notifier).state =
+                              AppScreen.home;
+                          innerNavigatorKey.currentState?.push(
+                            MaterialPageRoute(
+                              builder: (context) => ArtistDetailsScreen(
+                                name: artistObj.artist,
+                                imageUrl: artistObj.imagePath ?? '',
+                              ),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          "${song.artist}${song.year != null ? ' • ${song.year}' : ''}",
+                          style: AppTextStyles.bodyMain.copyWith(
+                            color: AppColors.textGrey,
+                            fontSize: 16, // Slightly reduced from 18
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -228,12 +251,12 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                     ),
                     decoration: BoxDecoration(
                       color: song.isFavorite
-                          ? AppColors.primaryGreen
-                          : Colors.black.withOpacity(0.05),
+                          ? AppColors.accentBlue
+                          : Colors.white.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(30),
                       border: song.isFavorite
                           ? null
-                          : Border.all(color: Colors.black12),
+                          : Border.all(color: Colors.white10),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -244,7 +267,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                               : Icons.favorite_border,
                           color: song.isFavorite
                               ? Colors.white
-                              : Colors.black54,
+                              : Colors.white70,
                           size: 16,
                         ),
                         const SizedBox(width: 8),
@@ -253,7 +276,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                           style: AppTextStyles.bodySmall.copyWith(
                             color: song.isFavorite
                                 ? Colors.white
-                                : Colors.black54,
+                                : Colors.white70,
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),
@@ -310,13 +333,13 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                       : Icons.repeat,
                   size: 26, // Scaled up
                   color: playerState.repeatMode != RepeatMode.off
-                      ? AppColors.primaryGreen
+                      ? AppColors.accentBlue
                       : AppColors.textGrey,
                   onTap: () => ref.read(playerProvider.notifier).toggleRepeat(),
                 ),
                 AppIconButton(
                   icon: Icons.skip_previous,
-                  color: AppColors.textLight,
+                  color: Colors.white,
                   size: 40, // Significantly increased from 32
                   onTap: () => ref.read(playerProvider.notifier).previous(),
                   onLongPressStart: () => _startSeeking(false),
@@ -330,7 +353,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                 ),
                 AppIconButton(
                   icon: Icons.skip_next,
-                  color: AppColors.textLight,
+                  color: Colors.white,
                   size: 40, // Significantly increased from 32
                   onTap: () => ref.read(playerProvider.notifier).next(),
                   onLongPressStart: () => _startSeeking(true),
@@ -340,7 +363,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                   icon: Icons.shuffle,
                   size: 26, // Scaled up
                   color: ref.watch(playerProvider).isShuffling
-                      ? AppColors.primaryGreen
+                      ? AppColors.accentBlue
                       : AppColors.textGrey,
                   onTap: () =>
                       ref.read(playerProvider.notifier).toggleShuffle(),
@@ -352,7 +375,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
               onTap: () {
                 showModalBottomSheet(
                   context: context,
-                  backgroundColor: const Color(0xFF1E2129),
+                  backgroundColor: AppColors.surfacePlayer,
                   shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.vertical(
                       top: Radius.circular(24),
@@ -378,7 +401,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                               children: [
                                 const Icon(
                                   Icons.queue_music,
-                                  color: AppColors.primaryGreen,
+                                  color: AppColors.accentBlue,
                                   size: 24,
                                 ),
                                 const SizedBox(width: 12),
@@ -434,7 +457,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                 child: Text(
                   "${playerState.currentIndex + 1} / ${playerState.queue.length}",
                   style: AppTextStyles.caption.copyWith(
-                    color: AppColors.mainDark,
+                    color: Colors.white60,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -491,7 +514,7 @@ class LyricsHeaderContent extends ConsumerWidget {
                       Text(
                         song.title,
                         style: AppTextStyles.titleMedium.copyWith(
-                          color: AppColors.textLight,
+                          color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -522,7 +545,7 @@ class LyricsHeaderContent extends ConsumerWidget {
                     size: 26,
                   ),
                 ),
-                color: const Color(0xFF1C1C1E),
+                color: AppColors.surfacePlayer,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -549,16 +572,11 @@ class LyricsHeaderContent extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               AppIconButton(
-                icon: song.isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: song.isFavorite
-                    ? AppColors.primaryGreen
-                    : Colors.white24,
-                size: 22,
+                icon: Icons.skip_next,
+                color: Colors.white70,
+                size: 26,
                 onTap: () {
-                  ref
-                      .read(playerProvider.notifier)
-                      .updateFavoriteStatus(song.id, !song.isFavorite);
-                  ref.read(libraryProvider.notifier).toggleFavorite(song);
+                  ref.read(playerProvider.notifier).next();
                 },
               ),
             ],
@@ -689,7 +707,7 @@ class _LyricsScreenContentState extends ConsumerState<LyricsScreenContent> {
           backgroundColor: Colors.transparent,
           builder: (context) => Container(
             decoration: const BoxDecoration(
-              color: Color(0xFF1C1C1E),
+              color: AppColors.surfacePlayer,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(24),
                 topRight: Radius.circular(24),
@@ -831,7 +849,7 @@ class _LyricLineItem extends StatelessWidget {
               child: SvgPicture.asset(
                 "assets/icons/play_icon.svg",
                 colorFilter: const ColorFilter.mode(
-                  AppColors.accentYellow,
+                  AppColors.accentBlue,
                   BlendMode.srcIn,
                 ),
                 width: 20,
@@ -844,7 +862,9 @@ class _LyricLineItem extends StatelessWidget {
               style: AppTextStyles.outfit(
                 fontSize: isCurrent ? 22 : 18,
                 fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-                color: isCurrent ? Colors.white : Colors.white.withOpacity(0.4),
+                color: !isSynced || isCurrent
+                    ? Colors.white
+                    : Colors.white.withOpacity(0.35),
               ),
             ),
           ),

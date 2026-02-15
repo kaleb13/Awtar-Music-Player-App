@@ -27,7 +27,7 @@ class FolderManagementScreen extends ConsumerWidget {
                   const Expanded(
                     child: Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.accentYellow,
+                        color: AppColors.accentBlue,
                       ),
                     ),
                   )
@@ -120,7 +120,7 @@ class FolderManagementScreen extends ConsumerWidget {
               Text(
                 "Select a storage source to manage",
                 style: AppTextStyles.caption.copyWith(
-                  color: AppColors.primaryGreen,
+                  color: AppColors.accentBlue,
                 ),
               ),
             ],
@@ -137,7 +137,7 @@ class FolderManagementScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(color: AppColors.primaryGreen),
+            const CircularProgressIndicator(color: AppColors.accentBlue),
             const SizedBox(height: 16),
             Text("Refining Library...", style: AppTextStyles.titleMedium),
             const SizedBox(height: 24),
@@ -147,7 +147,7 @@ class FolderManagementScreen extends ConsumerWidget {
                 value: progress,
                 backgroundColor: Colors.white10,
                 valueColor: const AlwaysStoppedAnimation(
-                  AppColors.primaryGreen,
+                  AppColors.accentBlue,
                 ),
               ),
             ),

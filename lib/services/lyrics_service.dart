@@ -17,30 +17,55 @@ class LyricsService {
 
   static void clearCache() => _cache.clear();
 
+  static List<LyricLine> parse(String content) {
+    if (content.isEmpty) return [];
+
+    // Check if it's actually LRC format (contains at least one timestamp)
+    final bool hasTimestamp = RegExp(r'\[\d+:\d+\.?\d*\]').hasMatch(content);
+
+    if (hasTimestamp) {
+      return parseLrc(content);
+    } else {
+      // Plain text parsing
+      return content
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .map((l) => LyricLine(time: Duration.zero, text: l))
+          .toList();
+    }
+  }
+
   static List<LyricLine> parseLrc(String content) {
     if (content.isEmpty) return [];
 
     final List<LyricLine> lines = [];
-    final RegExp regExp = RegExp(r'\[(\d+):(\d+\.?\d*)\](.*)');
+    final RegExp timeRegExp = RegExp(r'\[(\d+):(\d+\.?\d*)\]');
 
+    // Some lines might have multiple timestamps like [00:10.00][00:20.00]Lyric
     for (final line in content.split('\n')) {
-      final match = regExp.firstMatch(line);
-      if (match != null) {
-        final minutes = int.parse(match.group(1)!);
-        final seconds = double.parse(match.group(2)!);
-        final text = match.group(3)!.trim();
+      final matches = timeRegExp.allMatches(line);
+      final cleanText = line.replaceAll(timeRegExp, '').trim();
 
-        final time = Duration(
-          milliseconds: (minutes * 60 * 1000 + seconds * 1000).toInt(),
-        );
+      // Skip common metadata tags [ar:...], [ti:...], [al:...], [by:...], [offset:...], [length:...], [re:...], [ve:...]
+      final bool isMetadataTag = RegExp(
+        r'^\[[a-z]+:.*\]$',
+        caseSensitive: false,
+      ).hasMatch(cleanText);
+      if (isMetadataTag || cleanText.isEmpty) continue;
 
-        lines.add(LyricLine(time: time, text: text));
-      } else {
-        // Handle lines without timestamps as static lyrics if needed
-        final cleanText = line.trim();
-        if (cleanText.isNotEmpty && !cleanText.startsWith('[')) {
-          lines.add(LyricLine(time: Duration.zero, text: cleanText));
+      if (matches.isNotEmpty) {
+        for (final match in matches) {
+          final minutes = int.parse(match.group(1)!);
+          final seconds = double.parse(match.group(2)!);
+          final time = Duration(
+            milliseconds: (minutes * 60 * 1000 + seconds * 1000).toInt(),
+          );
+          lines.add(LyricLine(time: time, text: cleanText));
         }
+      } else {
+        // Line without timestamp - keep it as static text
+        lines.add(LyricLine(time: Duration.zero, text: cleanText));
       }
     }
 

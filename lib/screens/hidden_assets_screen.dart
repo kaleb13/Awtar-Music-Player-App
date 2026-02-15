@@ -21,8 +21,8 @@ class HiddenAssetsScreen extends ConsumerWidget {
             onTap: () => Navigator.pop(context),
           ),
           bottom: const TabBar(
-            indicatorColor: AppColors.accentYellow,
-            labelColor: AppColors.accentYellow,
+            indicatorColor: AppColors.accentBlue,
+            labelColor: AppColors.accentBlue,
             unselectedLabelColor: Colors.grey,
             tabs: [
               Tab(text: "Artists"),
@@ -72,7 +72,7 @@ class _VisibilityList extends ConsumerWidget {
           final isHidden = libraryState.hiddenArtists.contains(artist.artist);
 
           return SwitchListTile(
-            activeThumbColor: AppColors.accentYellow,
+            activeThumbColor: AppColors.accentBlue,
             title: Text(
               artist.artist,
               style: const TextStyle(color: Colors.white),
@@ -106,7 +106,7 @@ class _VisibilityList extends ConsumerWidget {
           final isHidden = libraryState.hiddenAlbums.contains(key);
 
           return SwitchListTile(
-            activeThumbColor: AppColors.accentYellow,
+            activeThumbColor: AppColors.accentBlue,
             title: Text(
               album.album,
               style: const TextStyle(color: Colors.white),

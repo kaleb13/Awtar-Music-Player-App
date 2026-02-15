@@ -80,7 +80,7 @@ class _MusicVisualizerState extends ConsumerState<MusicVisualizer>
               height: height,
               margin: const EdgeInsets.symmetric(horizontal: 1.5),
               decoration: BoxDecoration(
-                color: AppColors.primaryGreen,
+                color: AppColors.accentBlue,
                 borderRadius: BorderRadius.circular(2),
               ),
             );

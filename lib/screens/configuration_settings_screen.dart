@@ -103,7 +103,7 @@ class _ConfigurationSettingsScreenState
                                 "Standard album names from tags",
                                 style: TextStyle(color: Colors.white54),
                               ),
-                              activeColor: AppColors.accentYellow,
+                              activeColor: AppColors.accentBlue,
                             ),
                             RadioListTile<AlbumNameSource>(
                               value: AlbumNameSource.folder,
@@ -122,7 +122,7 @@ class _ConfigurationSettingsScreenState
                                 "Perfect if you organize songs by folder",
                                 style: TextStyle(color: Colors.white54),
                               ),
-                              activeColor: AppColors.accentYellow,
+                              activeColor: AppColors.accentBlue,
                             ),
                           ],
                         ),
@@ -152,7 +152,7 @@ class _ConfigurationSettingsScreenState
                                 "Titles as embedded in the file",
                                 style: TextStyle(color: Colors.white54),
                               ),
-                              activeColor: AppColors.accentYellow,
+                              activeColor: AppColors.accentBlue,
                             ),
                             RadioListTile<TitleSource>(
                               value: TitleSource.filename,
@@ -171,7 +171,7 @@ class _ConfigurationSettingsScreenState
                                 "Display files by their literal names",
                                 style: TextStyle(color: Colors.white54),
                               ),
-                              activeColor: AppColors.accentYellow,
+                              activeColor: AppColors.accentBlue,
                             ),
                           ],
                         ),
@@ -185,14 +185,14 @@ class _ConfigurationSettingsScreenState
                                 ? null
                                 : _applyChanges,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.accentYellow,
+                              backgroundColor: AppColors.accentBlue,
                               foregroundColor: Colors.black,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               elevation: 8,
-                              shadowColor: AppColors.accentYellow.withOpacity(
+                              shadowColor: AppColors.accentBlue.withOpacity(
                                 0.3,
                               ),
                             ),
@@ -229,7 +229,7 @@ class _ConfigurationSettingsScreenState
                   children: [
                     const CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.accentYellow,
+                        AppColors.accentBlue,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -255,7 +255,7 @@ class _ConfigurationSettingsScreenState
                           value: libraryState.scanProgress,
                           backgroundColor: Colors.white10,
                           valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.accentYellow,
+                            AppColors.accentBlue,
                           ),
                           minHeight: 8,
                         ),
@@ -265,7 +265,7 @@ class _ConfigurationSettingsScreenState
                     Text(
                       "${(libraryState.scanProgress * 100).toInt()}%",
                       style: const TextStyle(
-                        color: AppColors.accentYellow,
+                        color: AppColors.accentBlue,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -299,10 +299,10 @@ class _ConfigurationSettingsScreenState
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.accentYellow.withOpacity(0.1),
+                  color: AppColors.accentBlue.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: AppColors.accentYellow, size: 24),
+                child: Icon(icon, color: AppColors.accentBlue, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(

@@ -166,7 +166,7 @@ class SearchResultsView extends ConsumerWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: AppColors.primaryGreen.withOpacity(0.3),
+                            color: AppColors.accentBlue.withOpacity(0.3),
                             width: 2,
                           ),
                         ),

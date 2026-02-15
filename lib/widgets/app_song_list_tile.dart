@@ -36,12 +36,12 @@ class AppSongListTile extends ConsumerWidget {
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: isActive
-              ? AppColors.primaryGreen.withOpacity(0.1)
+              ? AppColors.accentBlue.withOpacity(0.1)
               : Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
           border: isActive
               ? Border.all(
-                  color: AppColors.primaryGreen.withOpacity(0.3),
+                  color: AppColors.accentBlue.withOpacity(0.3),
                   width: 1,
                 )
               : null,
@@ -68,7 +68,7 @@ class AppSongListTile extends ConsumerWidget {
                   Text(
                     song.title,
                     style: TextStyle(
-                      color: isActive ? AppColors.primaryGreen : Colors.white,
+                      color: isActive ? AppColors.accentBlue : Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),

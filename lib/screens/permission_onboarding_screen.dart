@@ -38,7 +38,7 @@ class _PermissionOnboardingScreenState
       description:
           'Show playback controls in your notification shade for easy access.',
       icon: Icons.notifications_active_rounded,
-      color: AppColors.accentYellow,
+      color: AppColors.accentBlue,
       permissions: [Permission.notification],
       isRequired: false,
     ),
@@ -47,7 +47,7 @@ class _PermissionOnboardingScreenState
       description:
           'Access photos and videos to set custom album art and playlist covers.',
       icon: Icons.photo_library_rounded,
-      color: AppColors.primaryGreen,
+      color: AppColors.accentBlue,
       permissions: [Permission.photos, Permission.videos],
       isRequired: false,
     ),
@@ -127,7 +127,7 @@ class _PermissionOnboardingScreenState
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'OK',
-              style: TextStyle(color: AppColors.accentYellow),
+              style: TextStyle(color: AppColors.accentBlue),
             ),
           ),
         ],
@@ -169,7 +169,7 @@ class _PermissionOnboardingScreenState
                         ),
                         decoration: BoxDecoration(
                           color: index <= _currentStep
-                              ? AppColors.accentYellow
+                              ? AppColors.accentBlue
                               : Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(2),
                         ),

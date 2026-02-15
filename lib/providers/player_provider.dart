@@ -75,7 +75,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     _audioPlayer = AudioPlayer();
     _playlist = ConcatenatingAudioSource(children: []);
 
-    _loadLastPlayedSong();
+    _loadPlaybackState();
     _listenToStreams();
   }
 
@@ -124,7 +124,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
             currentIndex: index,
           );
 
-          _saveLastPlayedSong(song);
+          _savePlaybackState();
           _ref
               .read(statsProvider.notifier)
               .recordPlay(song.id, song.artist, song.album ?? "Unknown");
@@ -232,6 +232,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
           initialIndex: targetIndex,
           initialPosition: Duration.zero,
         );
+        _savePlaybackState();
       } else {
         if (_audioPlayer.currentIndex != targetIndex) {
           state = state.copyWith(
@@ -240,6 +241,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
           );
           await _audioPlayer.seek(Duration.zero, index: targetIndex);
         }
+        _savePlaybackState();
       }
 
       await _audioPlayer.play();
@@ -251,28 +253,65 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     }
   }
 
-  Future<void> _loadLastPlayedSong() async {
+  Future<void> _loadPlaybackState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final lastSongJson = prefs.getString('last_played_song');
+      final queueJson = prefs.getString('last_played_queue');
+      final lastIndex = prefs.getInt('last_played_index') ?? -1;
 
       if (lastSongJson != null) {
         final songMap = jsonDecode(lastSongJson) as Map<String, dynamic>;
         final lastSong = Song.fromMap(songMap);
-        state = state.copyWith(currentSong: lastSong);
+
+        if (queueJson != null) {
+          final List<dynamic> queueList = jsonDecode(queueJson);
+          final queue = queueList.map((m) => Song.fromMap(m)).toList();
+
+          if (queue.isNotEmpty) {
+            state = state.copyWith(
+              currentSong: lastSong,
+              queue: queue,
+              currentIndex: lastIndex != -1 ? lastIndex : 0,
+            );
+
+            final sources = queue.map((s) => _createAudioSource(s)).toList();
+            _playlist = ConcatenatingAudioSource(children: sources);
+            await _audioPlayer.setAudioSource(
+              _playlist,
+              initialIndex: state.currentIndex,
+              initialPosition: Duration.zero,
+            );
+          } else {
+            state = state.copyWith(currentSong: lastSong);
+          }
+        } else {
+          state = state.copyWith(currentSong: lastSong);
+        }
       }
     } catch (e) {
-      debugPrint('Error loading last played song: $e');
+      debugPrint('Error loading playback state: $e');
     }
   }
 
-  Future<void> _saveLastPlayedSong(Song song) async {
+  Future<void> _savePlaybackState() async {
     try {
       final prefs = _ref.read(sharedPreferencesProvider);
-      final songJson = jsonEncode(song.toMap());
-      await prefs.setString('last_played_song', songJson);
+      if (state.currentSong != null) {
+        await prefs.setString(
+          'last_played_song',
+          jsonEncode(state.currentSong!.toMap()),
+        );
+      }
+      if (state.queue.isNotEmpty) {
+        await prefs.setString(
+          'last_played_queue',
+          jsonEncode(state.queue.map((s) => s.toMap()).toList()),
+        );
+        await prefs.setInt('last_played_index', state.currentIndex);
+      }
     } catch (e) {
-      debugPrint('Error saving last played song: $e');
+      debugPrint('Error saving playback state: $e');
     }
   }
 
@@ -320,27 +359,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       final String? lyricsText = tag?.lyrics;
 
       if (lyricsText != null && lyricsText.isNotEmpty) {
-        List<LyricLine> parsedLyrics = [];
-        if (lyricsText.contains('[') && lyricsText.contains(']')) {
-          parsedLyrics = LyricsService.parseLrc(lyricsText);
-        }
-
-        if (parsedLyrics.isEmpty) {
-          final lines = lyricsText
-              .split('\n')
-              .map((line) => line.trim())
-              .where((text) => text.isNotEmpty)
-              .toList();
-          parsedLyrics = [];
-          for (int i = 0; i < lines.length; i++) {
-            parsedLyrics.add(
-              LyricLine(
-                time: Duration(milliseconds: i),
-                text: lines[i],
-              ),
-            );
-          }
-        }
+        final List<LyricLine> parsedLyrics = LyricsService.parse(lyricsText);
 
         if (parsedLyrics.isNotEmpty) {
           DatabaseService.saveLyrics(song.id, parsedLyrics);
@@ -449,6 +468,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     final newValue = !state.isShuffling;
     _audioPlayer.setShuffleModeEnabled(newValue);
     state = state.copyWith(isShuffling: newValue);
+    _savePlaybackState();
   }
 
   Future<void> playPlaylist(List<Song> playlist, int index) async {
@@ -517,6 +537,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
     final newQueue = List<Song>.from(state.queue)..addAll(songs);
     state = state.copyWith(queue: newQueue);
     await _playlist.addAll(songs.map((s) => _createAudioSource(s)).toList());
+    _savePlaybackState();
   }
 
   Future<void> addNext(List<Song> songs) async {
@@ -534,6 +555,7 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
       insertIndex,
       songs.map((s) => _createAudioSource(s)).toList(),
     );
+    _savePlaybackState();
   }
 
   Stream<Duration> get positionStream => _audioPlayer.positionStream;

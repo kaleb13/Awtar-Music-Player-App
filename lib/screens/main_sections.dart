@@ -42,7 +42,7 @@ class DiscoverScreen extends ConsumerWidget {
               if (!isSearching) ...[
                 const TabBar(
                   dividerColor: Colors.transparent,
-                  indicatorColor: AppColors.accentYellow,
+                  indicatorColor: AppColors.accentBlue,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.grey,
                   isScrollable: true,
@@ -111,7 +111,7 @@ class CollectionScreen extends ConsumerWidget {
               if (!isSearching) ...[
                 const TabBar(
                   dividerColor: Colors.transparent,
-                  indicatorColor: AppColors.accentYellow,
+                  indicatorColor: AppColors.accentBlue,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.grey,
                   labelStyle: TextStyle(
@@ -189,7 +189,7 @@ class _FavoritesTab extends ConsumerWidget {
             trailing: IconButton(
               icon: const Icon(
                 Icons.favorite,
-                color: AppColors.primaryGreen,
+                color: AppColors.accentBlue,
                 size: 20,
               ),
               onPressed: () {
@@ -227,7 +227,7 @@ class _PlaylistsTab extends ConsumerWidget {
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text("New Playlist"),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
+                  backgroundColor: AppColors.accentBlue,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,

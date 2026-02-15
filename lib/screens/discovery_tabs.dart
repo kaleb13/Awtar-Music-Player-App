@@ -153,7 +153,7 @@ class _RemixCapsule extends ConsumerWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(100),
               border: Border.all(
-                color: AppColors.accentYellow.withOpacity(0.8),
+                color: AppColors.accentBlue.withOpacity(0.8),
                 width: 2,
               ),
               color: Colors.white.withOpacity(0.03),
@@ -283,16 +283,16 @@ Widget _buildComingSoonState({
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppColors.primaryGreen.withOpacity(0.1),
+                color: AppColors.accentBlue.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: AppColors.primaryGreen, size: 64),
+              child: Icon(icon, color: AppColors.accentBlue, size: 64),
             ),
             const SizedBox(height: 32),
             Text(
               "Coming Soon",
               style: AppTextStyles.caption.copyWith(
-                color: AppColors.accentYellow,
+                color: AppColors.accentBlue,
                 letterSpacing: 3,
                 fontWeight: FontWeight.bold,
               ),

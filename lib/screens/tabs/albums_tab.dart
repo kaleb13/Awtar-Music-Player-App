@@ -56,7 +56,7 @@ class AlbumsTab extends ConsumerWidget {
               onPressed: () =>
                   ref.read(libraryProvider.notifier).requestPermission(),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentYellow,
+                backgroundColor: AppColors.accentBlue,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
@@ -201,7 +201,7 @@ class AlbumsTab extends ConsumerWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.primaryGreen
+                        ? AppColors.accentBlue
                         : Colors.black.withOpacity(0.5),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 1.5),

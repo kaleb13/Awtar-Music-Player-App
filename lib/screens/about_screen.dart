@@ -43,7 +43,7 @@ class AboutScreen extends StatelessWidget {
                           errorBuilder: (context, error, stackTrace) =>
                               const Icon(
                                 Icons.music_note,
-                                color: AppColors.primaryGreen,
+                                color: AppColors.accentBlue,
                                 size: 80,
                               ),
                         ),
@@ -58,7 +58,7 @@ class AboutScreen extends StatelessWidget {
                         Text(
                           "PREMIUM EXPERIENCE",
                           style: AppTextStyles.caption.copyWith(
-                            color: AppColors.primaryGreen,
+                            color: AppColors.accentBlue,
                             letterSpacing: 2,
                           ),
                         ),
@@ -86,7 +86,7 @@ class AboutScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: AppColors.primaryGreen.withOpacity(0.2),
+                              color: AppColors.accentBlue.withOpacity(0.2),
                               width: 2,
                             ),
                           ),
@@ -102,11 +102,11 @@ class AboutScreen extends StatelessWidget {
                                     errorBuilder:
                                         (context, error, stackTrace) =>
                                             Container(
-                                              color: AppColors.primaryGreen
+                                              color: AppColors.accentBlue
                                                   .withOpacity(0.1),
                                               child: const Icon(
                                                 Icons.person,
-                                                color: AppColors.primaryGreen,
+                                                color: AppColors.accentBlue,
                                                 size: 30,
                                               ),
                                             ),
@@ -150,7 +150,7 @@ class AboutScreen extends StatelessWidget {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primaryGreen.withOpacity(
+                                    color: AppColors.accentBlue.withOpacity(
                                       0.1,
                                     ),
                                     borderRadius: BorderRadius.circular(10),
@@ -160,14 +160,14 @@ class AboutScreen extends StatelessWidget {
                                     children: [
                                       const Icon(
                                         Icons.send_rounded,
-                                        color: AppColors.primaryGreen,
+                                        color: AppColors.accentBlue,
                                         size: 14,
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         "@zkaleb",
                                         style: AppTextStyles.caption.copyWith(
-                                          color: AppColors.primaryGreen,
+                                          color: AppColors.accentBlue,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 11,
                                         ),
@@ -247,7 +247,7 @@ class AboutScreen extends StatelessWidget {
         Text(
           title,
           style: AppTextStyles.caption.copyWith(
-            color: AppColors.accentYellow,
+            color: AppColors.accentBlue,
             letterSpacing: 1.5,
           ),
         ),
@@ -257,12 +257,12 @@ class AboutScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isFeature
-                  ? AppColors.primaryGreen.withOpacity(0.1)
+                  ? AppColors.accentBlue.withOpacity(0.1)
                   : Colors.white.withOpacity(0.03),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isFeature
-                    ? AppColors.primaryGreen.withOpacity(0.3)
+                    ? AppColors.accentBlue.withOpacity(0.3)
                     : Colors.white10,
                 width: 1,
               ),
@@ -271,7 +271,7 @@ class AboutScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (icon != null) ...[
-                  Icon(icon, color: AppColors.primaryGreen, size: 20),
+                  Icon(icon, color: AppColors.accentBlue, size: 20),
                   const SizedBox(width: 12),
                 ],
                 Expanded(
@@ -309,10 +309,10 @@ class AboutScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.accentYellow.withOpacity(0.1),
+              color: AppColors.accentBlue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: AppColors.accentYellow, size: 20),
+            child: Icon(icon, color: AppColors.accentBlue, size: 20),
           ),
           const SizedBox(width: 16),
           Expanded(

@@ -11,7 +11,8 @@ class AppDrawer extends StatelessWidget {
     return SizedBox(
       width: 260,
       child: Drawer(
-        backgroundColor: AppColors.surfacePopover,
+        backgroundColor: AppColors.surfacePlayer,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,7 +31,7 @@ class AppDrawer extends StatelessWidget {
                           errorBuilder: (context, error, stackTrace) =>
                               const Icon(
                                 Icons.music_note,
-                                color: AppColors.primaryGreen,
+                                color: AppColors.accentBlue,
                                 size: 32,
                               ),
                         ),

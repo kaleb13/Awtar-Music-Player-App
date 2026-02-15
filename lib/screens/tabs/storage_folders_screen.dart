@@ -60,7 +60,7 @@ class StorageFoldersScreen extends ConsumerWidget {
                                 border: Border.all(
                                   color: isExcluded
                                       ? Colors.white.withOpacity(0.05)
-                                      : AppColors.primaryGreen.withOpacity(0.1),
+                                      : AppColors.accentBlue.withOpacity(0.1),
                                   width: 1,
                                 ),
                               ),
@@ -74,7 +74,7 @@ class StorageFoldersScreen extends ConsumerWidget {
                                   decoration: BoxDecoration(
                                     color: isExcluded
                                         ? Colors.white.withOpacity(0.05)
-                                        : AppColors.primaryGreen.withOpacity(
+                                        : AppColors.accentBlue.withOpacity(
                                             0.1,
                                           ),
                                     borderRadius: BorderRadius.circular(10),
@@ -83,7 +83,7 @@ class StorageFoldersScreen extends ConsumerWidget {
                                     Icons.folder,
                                     color: isExcluded
                                         ? Colors.white24
-                                        : AppColors.primaryGreen,
+                                        : AppColors.accentBlue,
                                     size: 20,
                                   ),
                                 ),
@@ -112,7 +112,7 @@ class StorageFoldersScreen extends ConsumerWidget {
                                   scale: 0.8,
                                   child: Switch(
                                     value: !isExcluded,
-                                    activeThumbColor: AppColors.primaryGreen,
+                                    activeThumbColor: AppColors.accentBlue,
                                     inactiveThumbColor: Colors.white24,
                                     inactiveTrackColor: Colors.white
                                         .withOpacity(0.1),
@@ -144,7 +144,7 @@ class StorageFoldersScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(color: AppColors.primaryGreen),
+            const CircularProgressIndicator(color: AppColors.accentBlue),
             const SizedBox(height: 16),
             Text("Refining Library...", style: AppTextStyles.titleMedium),
             const SizedBox(height: 24),
@@ -154,7 +154,7 @@ class StorageFoldersScreen extends ConsumerWidget {
                 value: progress,
                 backgroundColor: Colors.white10,
                 valueColor: const AlwaysStoppedAnimation(
-                  AppColors.primaryGreen,
+                  AppColors.accentBlue,
                 ),
               ),
             ),
@@ -181,7 +181,7 @@ class StorageFoldersScreen extends ConsumerWidget {
               Text(
                 "$count Music Folders Found",
                 style: AppTextStyles.caption.copyWith(
-                  color: AppColors.primaryGreen,
+                  color: AppColors.accentBlue,
                 ),
               ),
             ],

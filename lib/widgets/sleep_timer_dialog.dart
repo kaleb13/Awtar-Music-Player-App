@@ -58,7 +58,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
                   borderSide: BorderSide(color: Colors.white24),
                 ),
                 focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.primaryGreen),
+                  borderSide: BorderSide(color: AppColors.accentBlue),
                 ),
               ),
             ),
@@ -83,7 +83,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
+              backgroundColor: AppColors.accentBlue,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -108,7 +108,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
       ),
       title: Row(
         children: [
-          Icon(Icons.timer_outlined, color: AppColors.accentYellow, size: 28),
+          Icon(Icons.timer_outlined, color: AppColors.accentBlue, size: 28),
           const SizedBox(width: 12),
           Text(
             "Sleep Timer",
@@ -128,7 +128,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
                 color: Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(AppRadius.small),
                 border: Border.all(
-                  color: AppColors.primaryGreen.withOpacity(0.3),
+                  color: AppColors.accentBlue.withOpacity(0.3),
                 ),
               ),
               child: Column(
@@ -145,7 +145,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
                     style: AppTextStyles.outfit(
                       fontSize: 36,
                       fontWeight: FontWeight.w900,
-                      color: AppColors.primaryGreen,
+                      color: AppColors.accentBlue,
                       letterSpacing: 2,
                     ),
                   ),
@@ -155,7 +155,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
                       child: Text(
                         "Finishing last track...",
                         style: AppTextStyles.caption.copyWith(
-                          color: AppColors.accentYellow,
+                          color: AppColors.accentBlue,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -177,7 +177,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
                 child: Text(
                   "Set custom duration",
                   style: AppTextStyles.caption.copyWith(
-                    color: AppColors.accentYellow,
+                    color: AppColors.accentBlue,
                     decoration: TextDecoration.underline,
                   ),
                 ),
@@ -194,7 +194,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryGreen,
+                  color: AppColors.accentBlue,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -221,7 +221,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.primaryGreen
+                        ? AppColors.accentBlue
                         : Colors.white.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
@@ -258,7 +258,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
                       value: _finishLastTrack,
                       onChanged: (val) =>
                           setState(() => _finishLastTrack = val ?? false),
-                      activeColor: AppColors.primaryGreen,
+                      activeColor: AppColors.accentBlue,
                       checkColor: Colors.white,
                       side: const BorderSide(color: Colors.white38),
                       shape: RoundedRectangleBorder(
@@ -324,7 +324,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
             Navigator.pop(context);
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryGreen,
+            backgroundColor: AppColors.accentBlue,
             foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(

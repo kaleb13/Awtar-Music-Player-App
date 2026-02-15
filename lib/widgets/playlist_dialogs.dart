@@ -59,7 +59,7 @@ class PlaylistDialogs {
                     ListTile(
                       leading: const Icon(
                         Icons.add_circle,
-                        color: AppColors.primaryGreen,
+                        color: AppColors.accentBlue,
                         size: 28,
                       ),
                       title: const Text(
@@ -111,7 +111,7 @@ class PlaylistDialogs {
                         (p) => ListTile(
                           leading: const Icon(
                             Icons.playlist_add,
-                            color: AppColors.primaryGreen,
+                            color: AppColors.accentBlue,
                           ),
                           title: Text(
                             p.name,
@@ -135,7 +135,7 @@ class PlaylistDialogs {
                                   "Added ${song.title} to ${p.name}",
                                 ),
                                 duration: const Duration(seconds: 1),
-                                backgroundColor: AppColors.primaryGreen,
+                                backgroundColor: AppColors.accentBlue,
                               ),
                             );
                           },
@@ -205,7 +205,7 @@ class PlaylistDialogs {
                     ListTile(
                       leading: const Icon(
                         Icons.add_circle,
-                        color: AppColors.primaryGreen,
+                        color: AppColors.accentBlue,
                         size: 28,
                       ),
                       title: const Text(
@@ -290,7 +290,7 @@ class PlaylistDialogs {
                                   "Added ${songs.length} songs to ${playlist.name}",
                                 ),
                                 duration: const Duration(seconds: 2),
-                                backgroundColor: AppColors.primaryGreen,
+                                backgroundColor: AppColors.accentBlue,
                               ),
                             );
                           },
@@ -334,11 +334,11 @@ class PlaylistDialogs {
                 hintStyle: const TextStyle(color: Colors.white38),
                 enabledBorder: UnderlineInputBorder(
                   borderSide: BorderSide(
-                    color: AppColors.primaryGreen.withOpacity(0.5),
+                    color: AppColors.accentBlue.withOpacity(0.5),
                   ),
                 ),
                 focusedBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.primaryGreen),
+                  borderSide: BorderSide(color: AppColors.accentBlue),
                 ),
               ),
             ),
@@ -384,7 +384,7 @@ class PlaylistDialogs {
                                   "Created $name and added ${songsToAddAfter.length} songs",
                                 ),
                                 duration: const Duration(seconds: 2),
-                                backgroundColor: AppColors.primaryGreen,
+                                backgroundColor: AppColors.accentBlue,
                               ),
                             );
                           }
@@ -408,7 +408,7 @@ class PlaylistDialogs {
                                   "Created $name and added ${songToAddAfter.title}",
                                 ),
                                 duration: const Duration(seconds: 2),
-                                backgroundColor: AppColors.primaryGreen,
+                                backgroundColor: AppColors.accentBlue,
                               ),
                             );
                           }
@@ -420,7 +420,7 @@ class PlaylistDialogs {
                           SnackBar(
                             content: Text("Created playlist: $name"),
                             duration: const Duration(seconds: 1),
-                            backgroundColor: AppColors.primaryGreen,
+                            backgroundColor: AppColors.accentBlue,
                           ),
                         );
                       }
@@ -429,7 +429,7 @@ class PlaylistDialogs {
                 },
                 child: const Text(
                   "Create",
-                  style: TextStyle(color: AppColors.primaryGreen),
+                  style: TextStyle(color: AppColors.accentBlue),
                 ),
               ),
             ],

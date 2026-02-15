@@ -63,7 +63,7 @@ class ArtistsTab extends ConsumerWidget {
               onPressed: () =>
                   ref.read(libraryProvider.notifier).requestPermission(),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentYellow,
+                backgroundColor: AppColors.accentBlue,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,

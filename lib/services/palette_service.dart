@@ -93,7 +93,7 @@ class PaletteService {
       } else if (imageUrl.isNotEmpty && File(imageUrl).existsSync()) {
         provider = FileImage(File(imageUrl));
       } else {
-        return _finalize(cacheKey, AppColors.accentYellow);
+        return _finalize(cacheKey, AppColors.accentBlue);
       }
 
       final PaletteGenerator generator =
@@ -107,11 +107,11 @@ class PaletteService {
           generator.vibrantColor?.color ??
           generator.lightVibrantColor?.color ??
           generator.dominantColor?.color ??
-          AppColors.accentYellow;
+          AppColors.accentBlue;
 
       return _finalize(cacheKey, color);
     } catch (e) {
-      return _finalize(cacheKey, AppColors.accentYellow);
+      return _finalize(cacheKey, AppColors.accentBlue);
     }
   }
 

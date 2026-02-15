@@ -155,7 +155,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     // Use a default path if albumArt is null
     final String artPath = song.albumArt ?? "";
     if (artPath.isEmpty) {
-      if (mounted) setState(() => _dominantColor = AppColors.accentYellow);
+      if (mounted) setState(() => _dominantColor = AppColors.accentBlue);
       return;
     }
 
@@ -297,7 +297,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
             double currentTop;
             double currentRadius;
             double currentMargin;
-            Color currentColor = AppColors.surfaceWhite;
+            Color currentColor = AppColors.surfacePlayer;
 
             if (val <= 1.0) {
               currentHeight = Tween<double>(
@@ -314,8 +314,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
               ).transform(val);
               currentMargin = Tween<double>(begin: 16, end: 0).transform(val);
               currentColor = Color.lerp(
-                Colors.transparent, // Transparent for blurring bg
-                AppColors.surfaceWhite,
+                Colors.black.withOpacity(0.2), // Darker glass for miniplayer
+                AppColors.surfacePlayer,
                 val.clamp(0.0, 1.0),
               )!;
 
@@ -324,8 +324,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                 SystemChrome.setSystemUIOverlayStyle(
                   const SystemUiOverlayStyle(
                     statusBarColor: Colors.transparent,
-                    statusBarIconBrightness: Brightness.dark,
-                    statusBarBrightness: Brightness.light,
+                    statusBarIconBrightness: Brightness.light,
+                    statusBarBrightness: Brightness.dark,
                   ),
                 );
               } else {
@@ -810,7 +810,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     String? songPath,
   }) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final borderColor = _dominantColor ?? AppColors.accentYellow;
+    final borderColor = _dominantColor ?? AppColors.accentBlue;
 
     double top;
     double left;
@@ -1055,13 +1055,13 @@ class PlayerBottomBar extends ConsumerWidget {
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: ref.watch(sleepTimerProvider).isActive
-                            ? AppColors.primaryGreen
-                            : AppColors.accentYellow,
+                            ? AppColors.accentBlue
+                            : AppColors.accentBlue,
                         shape: BoxShape.circle,
                         boxShadow: [
                           if (ref.watch(sleepTimerProvider).isActive)
                             BoxShadow(
-                              color: AppColors.primaryGreen.withOpacity(0.3),
+                              color: AppColors.accentBlue.withOpacity(0.3),
                               blurRadius: 10,
                               spreadRadius: 2,
                             ),
@@ -1071,9 +1071,7 @@ class PlayerBottomBar extends ConsumerWidget {
                         ref.watch(sleepTimerProvider).isActive
                             ? Icons.timer
                             : Icons.timer_outlined,
-                        color: ref.watch(sleepTimerProvider).isActive
-                            ? Colors.white
-                            : Colors.black,
+                        color: Colors.white,
                         size: 24,
                       ),
                     ),

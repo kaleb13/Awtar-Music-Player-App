@@ -3,8 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   // Primary Palette
-  static const Color primaryGreen = Color(0xFF00664e);
-  static const Color accentYellow = Color(0xFF5186d2);
+  static const Color accentBlue = Color(0xFF5186d2);
+  static const Color accentYellow = Color(0xFFEEE544);
 
   // Backgrounds & Surfaces
   static const Color mainDark = Color.fromARGB(255, 0, 0, 0);
@@ -19,7 +19,10 @@ class AppColors {
 
   static const Color surfaceWhite = Color(0xFFf5f5f5);
   static const Color surfaceDark = Color(0xFF0a0d11);
-  static const Color surfacePopover = Color(0xFF0a0d11);
+  static const Color surfacePlayer = Color(
+    0xFF121212,
+  ); // Deep Charcoal / Eerie Black
+  static const Color surfacePopover = Color(0xFF121212);
 
   // Text Colors
   static const Color textMain = Colors.white;

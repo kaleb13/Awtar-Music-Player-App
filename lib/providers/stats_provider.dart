@@ -172,7 +172,7 @@ class StatsNotifier extends StateNotifier<PlayStats> {
     final recent = List<int>.from(state.recentPlayedIds);
     recent.remove(songId);
     recent.insert(0, songId);
-    if (recent.length > 50) recent.removeLast();
+    if (recent.length > 100) recent.removeLast();
 
     state = PlayStats(
       songPlayCounts: counts,

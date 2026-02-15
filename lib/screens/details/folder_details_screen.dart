@@ -127,7 +127,7 @@ class FolderDetailsScreen extends ConsumerWidget {
                               ),
                               child: const Icon(
                                 Icons.folder,
-                                color: AppColors.accentYellow,
+                                color: AppColors.accentBlue,
                                 size: 18,
                               ),
                             ),
@@ -232,12 +232,12 @@ class FolderDetailsScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.accentYellow.withOpacity(0.1),
+                  color: AppColors.accentBlue.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Icon(
                   Icons.folder,
-                  color: AppColors.accentYellow,
+                  color: AppColors.accentBlue,
                   size: 40,
                 ),
               ),

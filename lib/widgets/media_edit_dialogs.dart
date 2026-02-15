@@ -55,8 +55,8 @@ class MediaEditDialogs {
                   showEditLyrics(context, ref, song);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen.withOpacity(0.1),
-                  foregroundColor: AppColors.primaryGreen,
+                  backgroundColor: AppColors.accentBlue.withOpacity(0.1),
+                  foregroundColor: AppColors.accentBlue,
                   elevation: 0,
                 ),
                 child: const Text("Edit Lyrics"),
@@ -107,7 +107,7 @@ class MediaEditDialogs {
             },
             child: const Text(
               "Save",
-              style: TextStyle(color: AppColors.primaryGreen),
+              style: TextStyle(color: AppColors.accentBlue),
             ),
           ),
         ],
@@ -180,7 +180,7 @@ class MediaEditDialogs {
             },
             child: const Text(
               "Apply to all songs",
-              style: TextStyle(color: AppColors.primaryGreen),
+              style: TextStyle(color: AppColors.accentBlue),
             ),
           ),
         ],
@@ -238,7 +238,7 @@ class MediaEditDialogs {
             },
             child: const Text(
               "Save",
-              style: TextStyle(color: AppColors.primaryGreen),
+              style: TextStyle(color: AppColors.accentBlue),
             ),
           ),
         ],
@@ -326,7 +326,7 @@ class MediaEditDialogs {
                     },
                     child: const Text(
                       "Apply Lyrics",
-                      style: TextStyle(color: AppColors.primaryGreen),
+                      style: TextStyle(color: AppColors.accentBlue),
                     ),
                   ),
                 ],
@@ -357,7 +357,7 @@ class MediaEditDialogs {
             children: [
               const Icon(
                 Icons.travel_explore,
-                color: AppColors.accentYellow,
+                color: AppColors.accentBlue,
                 size: 16,
               ),
               const SizedBox(width: 8),
@@ -379,8 +379,8 @@ class MediaEditDialogs {
                 child: ElevatedButton(
                   onPressed: () => _launchLyricSearch(song, titleSource),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentYellow.withOpacity(0.1),
-                    foregroundColor: AppColors.accentYellow,
+                    backgroundColor: AppColors.accentBlue.withOpacity(0.1),
+                    foregroundColor: AppColors.accentBlue,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -437,7 +437,7 @@ class MediaEditDialogs {
             borderSide: BorderSide(color: Colors.white24),
           ),
           focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: AppColors.primaryGreen),
+            borderSide: BorderSide(color: AppColors.accentBlue),
           ),
         ),
       ),

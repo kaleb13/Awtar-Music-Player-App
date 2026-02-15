@@ -36,7 +36,7 @@ class PlaylistDetailsScreen extends ConsumerWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text("Playlist cover updated!"),
-                backgroundColor: AppColors.primaryGreen,
+                backgroundColor: AppColors.accentBlue,
               ),
             );
           }
@@ -160,7 +160,7 @@ class PlaylistDetailsScreen extends ConsumerWidget {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryGreen,
+                          color: AppColors.accentBlue,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
@@ -190,7 +190,7 @@ class PlaylistDetailsScreen extends ConsumerWidget {
                         const Text(
                           "PLAYLIST",
                           style: TextStyle(
-                            color: AppColors.primaryGreen,
+                            color: AppColors.accentBlue,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 2,
@@ -244,7 +244,7 @@ class PlaylistDetailsScreen extends ConsumerWidget {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
+                      backgroundColor: AppColors.accentBlue,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
@@ -254,7 +254,7 @@ class PlaylistDetailsScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(30),
                       ),
                       elevation: 4,
-                      shadowColor: AppColors.primaryGreen.withOpacity(0.3),
+                      shadowColor: AppColors.accentBlue.withOpacity(0.3),
                     ),
                   ),
                   const SizedBox(width: 16),

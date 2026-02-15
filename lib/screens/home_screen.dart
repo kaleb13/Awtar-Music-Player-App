@@ -97,11 +97,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               TabBar(
                 controller: _tabController,
                 dividerColor: Colors.transparent,
-                indicatorColor: AppColors.accentYellow,
+                indicatorColor: AppColors.accentBlue,
                 indicator: const UnderlineTabIndicator(
                   borderSide: BorderSide(
                     width: 2.0,
-                    color: AppColors.accentYellow,
+                    color: AppColors.accentBlue,
                   ),
                   insets: EdgeInsets.only(top: 40),
                 ),
@@ -155,7 +155,7 @@ class HomeOverviewContent extends ConsumerWidget {
     if (libraryState.permissionStatus != LibraryPermissionStatus.granted) {
       if (libraryState.permissionStatus == LibraryPermissionStatus.requesting) {
         return const Center(
-          child: CircularProgressIndicator(color: AppColors.accentYellow),
+          child: CircularProgressIndicator(color: AppColors.accentBlue),
         );
       }
       return Center(
@@ -184,7 +184,7 @@ class HomeOverviewContent extends ConsumerWidget {
               onPressed: () =>
                   ref.read(libraryProvider.notifier).requestPermission(),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentYellow,
+                backgroundColor: AppColors.accentBlue,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 40,
@@ -243,7 +243,7 @@ class HomeOverviewContent extends ConsumerWidget {
           if (libraryState.isLoading)
             const LinearProgressIndicator(
               backgroundColor: Colors.transparent,
-              valueColor: AlwaysStoppedAnimation(AppColors.accentYellow),
+              valueColor: AlwaysStoppedAnimation(AppColors.accentBlue),
               minHeight: 2,
             ),
           const SizedBox(height: 10),
@@ -536,7 +536,7 @@ class HomeOverviewContent extends ConsumerWidget {
       ..sort((a, b) => b.value.compareTo(a.value));
 
     final fullQueue = <Song>[];
-    for (var entry in sortedSongs.take(50)) {
+    for (var entry in sortedSongs.take(100)) {
       final song = libraryState.songs
           .where((s) => s.id == entry.key)
           .firstOrNull;
@@ -556,7 +556,7 @@ class HomeOverviewContent extends ConsumerWidget {
       return _buildEmptyState("Play music to see your top songs");
     }
 
-    final limitedQueue = fullQueue.take(30).toList();
+    final limitedQueue = fullQueue.take(100).toList();
     final displaySongs = limitedQueue.take(3).toList();
 
     return _buildSongRow(context, ref, displaySongs, limitedQueue);
@@ -573,7 +573,7 @@ class HomeOverviewContent extends ConsumerWidget {
     }
 
     final fullQueue = <Song>[];
-    for (var id in stats.recentPlayedIds.take(50)) {
+    for (var id in stats.recentPlayedIds.take(100)) {
       final song = libraryState.songs.where((s) => s.id == id).firstOrNull;
       if (song != null) {
         // Filter out if artist or album is hidden
@@ -591,7 +591,7 @@ class HomeOverviewContent extends ConsumerWidget {
       return _buildEmptyState("History is currently empty");
     }
 
-    final limitedQueue = fullQueue.take(30).toList();
+    final limitedQueue = fullQueue.take(100).toList();
     final displaySongs = limitedQueue.take(3).toList();
 
     return _buildSongRow(context, ref, displaySongs, limitedQueue);

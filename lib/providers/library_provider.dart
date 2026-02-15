@@ -1156,18 +1156,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       final oldSong = state.songs[index];
 
       // 2. Parse lyrics from the tag
-      List<LyricLine> lyrics = [];
-      if (tag.lyrics != null && tag.lyrics!.isNotEmpty) {
-        if (tag.lyrics!.contains('[') && tag.lyrics!.contains(']')) {
-          lyrics = LyricsService.parseLrc(tag.lyrics!);
-        } else {
-          lyrics = tag.lyrics!
-              .split('\n')
-              .where((l) => l.trim().isNotEmpty)
-              .map((l) => LyricLine(time: Duration.zero, text: l.trim()))
-              .toList();
-        }
-      }
+      final lyrics = LyricsService.parse(tag.lyrics ?? "");
 
       // 3. Create updated song object
       final updatedSong = oldSong.copyWith(
@@ -1276,20 +1265,8 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           if (await file.exists()) {
             final tag = await AudioTags.read(song.url);
             if (tag != null) {
-              List<LyricLine> lyrics = [];
-              if (tag.lyrics != null && tag.lyrics!.isNotEmpty) {
-                if (tag.lyrics!.contains('[') && tag.lyrics!.contains(']')) {
-                  lyrics = LyricsService.parseLrc(tag.lyrics!);
-                } else {
-                  lyrics = tag.lyrics!
-                      .split('\n')
-                      .map(
-                        (line) =>
-                            LyricLine(time: Duration.zero, text: line.trim()),
-                      )
-                      .where((l) => l.text.isNotEmpty)
-                      .toList();
-                }
+              final lyrics = LyricsService.parse(tag.lyrics ?? "");
+              if (lyrics.isNotEmpty) {
                 // Update DB and Memory Cache
                 await DatabaseService.saveLyrics(song.id, lyrics);
                 LyricsService.updateCache(song.id, lyrics);
@@ -1353,35 +1330,38 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     try {
       // 1. Update File Metadata if it's a local file
       if (!song.url.startsWith("http") && !song.url.startsWith("content://")) {
-        try {
-          final currentTag = await AudioTags.read(song.url);
-          final tag = Tag(
-            title: title ?? currentTag?.title ?? song.title,
-            trackArtist: artist ?? currentTag?.trackArtist ?? song.artist,
-            album: album ?? currentTag?.album ?? song.album,
-            trackNumber:
-                trackNumber ?? currentTag?.trackNumber ?? song.trackNumber,
-            genre: genre ?? currentTag?.genre ?? song.genre,
-            year: year ?? currentTag?.year ?? song.year,
-            albumArtist:
-                albumArtist ?? currentTag?.albumArtist ?? song.albumArtist,
-            lyrics: currentTag?.lyrics,
-            pictures: currentTag?.pictures ?? [],
-          );
-          await AudioTags.write(song.url, tag);
-
-          // 2. Refresh from file to be absolutely sure we have the source of truth
-          await _syncSongWithFile(song.id, song.url);
-          return;
-        } catch (e) {
-          debugPrint(
-            "Note: Could not write metadata to physical file (it may be in use): $e",
-          );
-          // We continue to fallback if file write fails, but usually the file is our target
+        // On Android 11+, we might need MANAGE_EXTERNAL_STORAGE to write tags directly
+        if (Platform.isAndroid) {
+          final storageStatus = await Permission.manageExternalStorage.status;
+          if (!storageStatus.isGranted) {
+            // Request it if not granted - this is required for editing files on Android 11+
+            await Permission.manageExternalStorage.request();
+          }
         }
+
+        final currentTag = await AudioTags.read(song.url);
+        final tag = Tag(
+          title: title ?? currentTag?.title ?? song.title,
+          trackArtist: artist ?? currentTag?.trackArtist ?? song.artist,
+          album: album ?? currentTag?.album ?? song.album,
+          trackNumber:
+              trackNumber ?? currentTag?.trackNumber ?? song.trackNumber,
+          genre: genre ?? currentTag?.genre ?? song.genre,
+          year: year ?? currentTag?.year ?? song.year,
+          albumArtist:
+              albumArtist ?? currentTag?.albumArtist ?? song.albumArtist,
+          lyrics: currentTag?.lyrics,
+          pictures: currentTag?.pictures ?? [],
+        );
+
+        await AudioTags.write(song.url, tag);
+
+        // 2. Refresh from file to be absolutely sure we have the source of truth
+        await _syncSongWithFile(song.id, song.url);
+        return;
       }
 
-      // Fallback: update state directly if file write failed or isn't applicable
+      // Fallback: update state directly if it's not a local file (e.g. URI/Stream)
       final updatedSong = song.copyWith(
         title: title,
         artist: artist,
@@ -1408,58 +1388,47 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       await _saveToCache();
     } catch (e) {
       debugPrint("Error updating song metadata: $e");
-      rethrow;
+      // If it fails, we want the user to know it couldn't be saved to the file
+      throw Exception(
+        "Failed to save to audio file. Please check if the file is in use or check storage permissions. Error: $e",
+      );
     }
   }
 
   Future<void> updateSongLyrics(Song song, String lyricsText) async {
     try {
-      // 1. Update file metadata
+      // 1. Update file metadata if it's a local file
       if (!song.url.startsWith("http") && !song.url.startsWith("content://")) {
-        try {
-          final currentTag = await AudioTags.read(song.url);
-          final tag = Tag(
-            title: currentTag?.title,
-            trackArtist: currentTag?.trackArtist,
-            album: currentTag?.album,
-            albumArtist: currentTag?.albumArtist,
-            trackNumber: currentTag?.trackNumber,
-            genre: currentTag?.genre,
-            year: currentTag?.year,
-            lyrics: lyricsText,
-            pictures: currentTag?.pictures ?? [],
-          );
-          await AudioTags.write(song.url, tag);
-
-          // Refresh from file to be absolutely sure
-          await _syncSongWithFile(song.id, song.url);
-          return;
-        } catch (e) {
-          debugPrint(
-            "Note: Could not write lyrics to physical file (it may be in use): $e",
-          );
+        // On Android 11+, we might need MANAGE_EXTERNAL_STORAGE
+        if (Platform.isAndroid) {
+          final storageStatus = await Permission.manageExternalStorage.status;
+          if (!storageStatus.isGranted) {
+            await Permission.manageExternalStorage.request();
+          }
         }
+
+        final currentTag = await AudioTags.read(song.url);
+        final tag = Tag(
+          title: currentTag?.title ?? song.title,
+          trackArtist: currentTag?.trackArtist ?? song.artist,
+          album: currentTag?.album ?? song.album,
+          albumArtist: currentTag?.albumArtist ?? song.albumArtist,
+          trackNumber: currentTag?.trackNumber ?? song.trackNumber,
+          genre: currentTag?.genre ?? song.genre,
+          year: currentTag?.year ?? song.year,
+          lyrics: lyricsText,
+          pictures: currentTag?.pictures ?? [],
+        );
+
+        await AudioTags.write(song.url, tag);
+
+        // Refresh from file to ensure source of truth is updated
+        await _syncSongWithFile(song.id, song.url);
+        return;
       }
 
-      // Fallback: manual update if file write fails
-      List<LyricLine> lyrics = [];
-      if (lyricsText.contains('[') && lyricsText.contains(']')) {
-        lyrics = LyricsService.parseLrc(lyricsText);
-      } else {
-        final lines = lyricsText
-            .split('\n')
-            .where((line) => line.trim().isNotEmpty)
-            .toList();
-        lyrics = [];
-        for (int i = 0; i < lines.length; i++) {
-          lyrics.add(
-            LyricLine(
-              time: Duration(milliseconds: i),
-              text: lines[i].trim(),
-            ),
-          );
-        }
-      }
+      // Fallback: update state directly if not a local file
+      final lyrics = LyricsService.parse(lyricsText);
 
       final updatedSong = song.copyWith(lyrics: lyrics);
       state = state.copyWith(
@@ -1478,7 +1447,9 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       await _saveToCache();
     } catch (e) {
       debugPrint("Error updating lyrics: $e");
-      rethrow;
+      throw Exception(
+        "Failed to write lyrics to file. Please check permissions and ensure the file is not in use. Error: $e",
+      );
     }
   }
 
@@ -1680,34 +1651,36 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           .toList();
       final bytes = await File(imagePath).readAsBytes();
 
+      // On Android 11+, we might need MANAGE_EXTERNAL_STORAGE
+      if (Platform.isAndroid) {
+        final storageStatus = await Permission.manageExternalStorage.status;
+        if (!storageStatus.isGranted) {
+          await Permission.manageExternalStorage.request();
+        }
+      }
+
       for (var song in songsInAlbum) {
         if (!song.url.startsWith("http") &&
             !song.url.startsWith("content://")) {
-          try {
-            final currentTag = await AudioTags.read(song.url);
-            final tag = Tag(
-              title: currentTag?.title,
-              trackArtist: currentTag?.trackArtist,
-              album: currentTag?.album,
-              albumArtist: currentTag?.albumArtist,
-              trackNumber: currentTag?.trackNumber,
-              genre: currentTag?.genre,
-              year: currentTag?.year,
-              lyrics: currentTag?.lyrics,
-              pictures: [
-                Picture(
-                  bytes: bytes,
-                  mimeType: MimeType.values.first,
-                  pictureType: PictureType.values.first,
-                ),
-              ],
-            );
-            await AudioTags.write(song.url, tag);
-          } catch (e) {
-            debugPrint(
-              "Note: Could not write album cover to physical file: $e",
-            );
-          }
+          final currentTag = await AudioTags.read(song.url);
+          final tag = Tag(
+            title: currentTag?.title ?? song.title,
+            trackArtist: currentTag?.trackArtist ?? song.artist,
+            album: currentTag?.album ?? song.album,
+            albumArtist: currentTag?.albumArtist ?? song.albumArtist,
+            trackNumber: currentTag?.trackNumber ?? song.trackNumber,
+            genre: currentTag?.genre ?? song.genre,
+            year: currentTag?.year ?? song.year,
+            lyrics: currentTag?.lyrics,
+            pictures: [
+              Picture(
+                bytes: bytes,
+                mimeType: MimeType.values.first,
+                pictureType: PictureType.values.first,
+              ),
+            ],
+          );
+          await AudioTags.write(song.url, tag);
         }
       }
 
@@ -1715,7 +1688,9 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       await scanLibrary(force: true);
     } catch (e) {
       debugPrint("Error updating album cover: $e");
-      rethrow;
+      throw Exception(
+        "Failed to update album cover in physical files. Error: $e",
+      );
     }
   }
 
@@ -1837,27 +1812,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       final tag = await AudioTags.read(song.url);
       final lyricsText = tag?.lyrics;
       if (lyricsText != null && lyricsText.isNotEmpty) {
-        List<LyricLine> parsedLyrics = [];
-        if (lyricsText.contains('[') && lyricsText.contains(']')) {
-          parsedLyrics = LyricsService.parseLrc(lyricsText);
-        }
-
-        if (parsedLyrics.isEmpty) {
-          final lines = lyricsText
-              .split('\n')
-              .map((line) => line.trim())
-              .where((text) => text.isNotEmpty)
-              .toList();
-          parsedLyrics = [];
-          for (int i = 0; i < lines.length; i++) {
-            parsedLyrics.add(
-              LyricLine(
-                time: Duration(milliseconds: i),
-                text: lines[i],
-              ),
-            );
-          }
-        }
+        final parsedLyrics = LyricsService.parse(lyricsText);
 
         if (parsedLyrics.isNotEmpty) {
           await DatabaseService.saveLyrics(song.id, parsedLyrics);

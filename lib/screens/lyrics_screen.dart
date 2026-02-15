@@ -194,25 +194,14 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
-                        onTap: () {
-                          ref
-                              .read(playerProvider.notifier)
-                              .updateFavoriteStatus(song.id, !song.isFavorite);
-                          ref
-                              .read(libraryProvider.notifier)
-                              .toggleFavorite(song);
-                        },
+                        onTap: () => ref.read(playerProvider.notifier).next(),
                         child: Container(
                           width: 44,
                           height: 44,
                           alignment: Alignment.center,
-                          child: Icon(
-                            song.isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: song.isFavorite
-                                ? const Color(0xFF1DB954)
-                                : Colors.grey,
+                          child: const Icon(
+                            Icons.skip_next,
+                            color: Colors.white70,
                             size: 24,
                           ),
                         ),
@@ -406,10 +395,12 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                                                 fontWeight: isCurrent
                                                     ? FontWeight.bold
                                                     : FontWeight.w500,
-                                                color: isCurrent
+                                                color:
+                                                    !isActuallySynced ||
+                                                        isCurrent
                                                     ? Colors.white
-                                                    : Colors.grey.withOpacity(
-                                                        0.4,
+                                                    : Colors.white.withOpacity(
+                                                        0.35,
                                                       ),
                                               ),
                                             ),

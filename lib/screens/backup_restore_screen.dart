@@ -43,7 +43,7 @@ class BackupRestoreScreen extends ConsumerWidget {
                     Text(
                       "Data Portability",
                       style: AppTextStyles.titleLarge.copyWith(
-                        color: AppColors.accentYellow,
+                        color: AppColors.accentBlue,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -131,10 +131,10 @@ class BackupRestoreScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.accentYellow.withOpacity(0.1),
+                color: AppColors.accentBlue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: AppColors.accentYellow),
+              child: Icon(icon, color: AppColors.accentBlue),
             ),
             const SizedBox(width: 20),
             Expanded(
@@ -178,7 +178,7 @@ class BackupRestoreScreen extends ConsumerWidget {
           child: LinearProgressIndicator(
             value: state.progress,
             backgroundColor: Colors.white.withOpacity(0.1),
-            valueColor: const AlwaysStoppedAnimation(AppColors.accentYellow),
+            valueColor: const AlwaysStoppedAnimation(AppColors.accentBlue),
             minHeight: 8,
           ),
         ),
@@ -194,7 +194,7 @@ class BackupRestoreScreen extends ConsumerWidget {
           style: AppTextStyles.outfit(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: AppColors.accentYellow,
+            color: AppColors.accentBlue,
           ),
         ),
       ],
@@ -268,7 +268,7 @@ class BackupRestoreScreen extends ConsumerWidget {
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
               "Restore",
-              style: TextStyle(color: AppColors.accentYellow),
+              style: TextStyle(color: AppColors.accentBlue),
             ),
           ),
         ],

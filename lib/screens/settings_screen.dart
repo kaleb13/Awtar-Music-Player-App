@@ -437,20 +437,20 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.accentYellow.withOpacity(0.1)
+              ? AppColors.accentBlue.withOpacity(0.1)
               : Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
           icon,
-          color: isSelected ? AppColors.accentYellow : Colors.white,
+          color: isSelected ? AppColors.accentBlue : Colors.white,
           size: 20,
         ),
       ),
       title: Text(
         title,
         style: TextStyle(
-          color: isSelected ? AppColors.accentYellow : Colors.white,
+          color: isSelected ? AppColors.accentBlue : Colors.white,
           fontSize: 15,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
         ),
@@ -459,7 +459,7 @@ class SettingsScreen extends ConsumerWidget {
         subtitle,
         style: TextStyle(
           color: isSelected
-              ? AppColors.accentYellow.withOpacity(0.7)
+              ? AppColors.accentBlue.withOpacity(0.7)
               : Colors.white54,
           fontSize: 12,
         ),
@@ -467,7 +467,7 @@ class SettingsScreen extends ConsumerWidget {
       trailing: isSelected
           ? const Icon(
               Icons.check_circle,
-              color: AppColors.accentYellow,
+              color: AppColors.accentBlue,
               size: 20,
             )
           : null,
@@ -486,7 +486,7 @@ class SettingsScreen extends ConsumerWidget {
           child: Text(
             title,
             style: const TextStyle(
-              color: AppColors.accentYellow,
+              color: AppColors.accentBlue,
               fontSize: 14,
               fontWeight: FontWeight.bold,
               letterSpacing: 1,

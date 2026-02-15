@@ -33,8 +33,8 @@ class AppPlayButton extends StatelessWidget {
     required this.isPlaying,
     required this.onTap,
     this.size = 64,
-    this.color = Colors.black,
-    this.iconColor = Colors.white,
+    this.color = Colors.white,
+    this.iconColor = AppColors.surfacePlayer,
   });
 
   @override
@@ -125,7 +125,7 @@ class AppProgressBar extends StatelessWidget {
     required this.value,
     required this.max,
     required this.onChanged,
-    this.activeColor = Colors.black,
+    this.activeColor = Colors.white,
   });
 
   @override
@@ -179,7 +179,7 @@ class AppSectionHeader extends StatelessWidget {
             child: Text(
               "See all",
               style: AppTextStyles.caption.copyWith(
-                color: AppColors.primaryGreen,
+                color: AppColors.accentBlue,
               ),
             ),
           ),
@@ -268,7 +268,7 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
   @override
   Widget build(BuildContext context) {
     final borderColor =
-        widget.borderColor ?? _dominantColor ?? AppColors.accentYellow;
+        widget.borderColor ?? _dominantColor ?? AppColors.accentBlue;
     final double borderRadiusInner = widget.isCircular
         ? (widget.flexible ? 1000 : widget.size)
         : 24;
@@ -544,19 +544,19 @@ class _MenuButtonState extends ConsumerState<_MenuButton> {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
           color: _isOpen
-              ? AppColors.primaryGreen.withOpacity(0.15)
+              ? AppColors.accentBlue.withOpacity(0.15)
               : AppColors.surfacePopover.withOpacity(0.4),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _isOpen
-                ? AppColors.primaryGreen.withOpacity(0.4)
+                ? AppColors.accentBlue.withOpacity(0.4)
                 : Colors.white.withOpacity(0.05),
             width: 1,
           ),
           boxShadow: [
             if (_isOpen)
               BoxShadow(
-                color: AppColors.primaryGreen.withOpacity(0.1),
+                color: AppColors.accentBlue.withOpacity(0.1),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -564,9 +564,7 @@ class _MenuButtonState extends ConsumerState<_MenuButton> {
         ),
         child: Icon(
           Icons.more_horiz,
-          color: _isOpen
-              ? AppColors.primaryGreen
-              : Colors.white.withOpacity(0.5),
+          color: _isOpen ? AppColors.accentBlue : Colors.white.withOpacity(0.5),
           size: 14,
         ),
       ),
@@ -712,14 +710,14 @@ class AppSummaryItem extends StatelessWidget {
                       decoration: BoxDecoration(
                         color:
                             (isTrendPositive
-                                    ? AppColors.primaryGreen
+                                    ? AppColors.accentBlue
                                     : Colors.redAccent)
                                 .withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color:
                               (isTrendPositive
-                                      ? AppColors.primaryGreen
+                                      ? AppColors.accentBlue
                                       : Colors.redAccent)
                                   .withOpacity(0.2),
                           width: 1,
@@ -734,7 +732,7 @@ class AppSummaryItem extends StatelessWidget {
                                 : Icons.arrow_downward,
                             size: 10,
                             color: isTrendPositive
-                                ? AppColors.primaryGreen
+                                ? AppColors.accentBlue
                                 : Colors.redAccent,
                           ),
                           const SizedBox(width: 4),
@@ -744,7 +742,7 @@ class AppSummaryItem extends StatelessWidget {
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
                               color: isTrendPositive
-                                  ? AppColors.primaryGreen
+                                  ? AppColors.accentBlue
                                   : Colors.redAccent,
                             ),
                           ),
@@ -813,7 +811,7 @@ class _AppMiniPlayerState extends State<AppMiniPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = _dominantColor ?? AppColors.accentYellow;
+    final borderColor = _dominantColor ?? AppColors.accentBlue;
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -840,7 +838,7 @@ class _AppMiniPlayerState extends State<AppMiniPlayer> {
                 alignment: Alignment.bottomLeft,
                 child: FractionallySizedBox(
                   widthFactor: widget.progress.clamp(0.0, 1.0),
-                  child: Container(height: 3, color: AppColors.primaryGreen),
+                  child: Container(height: 3, color: AppColors.accentBlue),
                 ),
               ),
               Padding(
@@ -1131,7 +1129,7 @@ class AppTopBar extends ConsumerWidget {
                                 ),
                               ),
                               value: libraryState.hideSmallAlbums,
-                              activeColor: AppColors.primaryGreen,
+                              activeColor: AppColors.accentBlue,
                               contentPadding: EdgeInsets.zero,
                               onChanged: (val) {
                                 ref
@@ -1225,7 +1223,7 @@ class AppTopBar extends ConsumerWidget {
                           style: TextStyle(color: Colors.white54, fontSize: 11),
                         ),
                         value: libraryState.hideSmallArtists,
-                        activeColor: AppColors.primaryGreen,
+                        activeColor: AppColors.accentBlue,
                         contentPadding: EdgeInsets.zero,
                         onChanged: (val) {
                           ref
@@ -1247,7 +1245,7 @@ class AppTopBar extends ConsumerWidget {
                           style: TextStyle(color: Colors.white, fontSize: 13),
                         ),
                         value: libraryState.hideUnknownArtist,
-                        activeColor: AppColors.primaryGreen,
+                        activeColor: AppColors.accentBlue,
                         contentPadding: EdgeInsets.zero,
                         onChanged: (val) {
                           ref
@@ -1391,12 +1389,38 @@ class AppTopBar extends ConsumerWidget {
   }
 }
 
-class AppSearchBar extends ConsumerWidget {
+class AppSearchBar extends ConsumerStatefulWidget {
   final bool autoFocus;
   const AppSearchBar({super.key, this.autoFocus = false});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppSearchBar> createState() => _AppSearchBarState();
+}
+
+class _AppSearchBarState extends ConsumerState<AppSearchBar> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: ref.read(searchQueryProvider));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = ref.watch(searchQueryProvider);
+
+    // Sync controller if provider changed externally (less common but good for consistency)
+    if (_controller.text != query && query.isEmpty) {
+      _controller.text = query;
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
@@ -1409,7 +1433,8 @@ class AppSearchBar extends ConsumerWidget {
             border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
           ),
           child: TextField(
-            autofocus: autoFocus,
+            controller: _controller,
+            autofocus: widget.autoFocus,
             onChanged: (value) {
               ref.read(searchQueryProvider.notifier).state = value;
             },
@@ -1431,6 +1456,20 @@ class AppSearchBar extends ConsumerWidget {
                   ),
                 ),
               ),
+              suffixIcon: query.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white54,
+                        size: 18,
+                      ),
+                      onPressed: () {
+                        _controller.clear();
+                        ref.read(searchQueryProvider.notifier).state = "";
+                        FocusScope.of(context).unfocus();
+                      },
+                    )
+                  : null,
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(vertical: 14),
             ),
@@ -1476,7 +1515,7 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
           borderRadius: BorderRadius.circular(32),
         ),
         child: const Center(
-          child: CircularProgressIndicator(color: AppColors.accentYellow),
+          child: CircularProgressIndicator(color: AppColors.accentBlue),
         ),
       );
     }
@@ -1492,7 +1531,7 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
       });
     }
 
-    final borderColor = _dominantColor ?? AppColors.accentYellow;
+    final borderColor = _dominantColor ?? AppColors.accentBlue;
 
     return GestureDetector(
       onTap: () {
@@ -1660,7 +1699,7 @@ class AppCenteredModal extends StatelessWidget {
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF0D0D0F).withOpacity(0.85),
+                color: AppColors.surfacePlayer.withOpacity(0.85),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.08),
@@ -1858,14 +1897,11 @@ class AppSongTile extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: isCurrent
-            ? AppColors.primaryGreen.withOpacity(0.15)
+            ? AppColors.accentBlue.withOpacity(0.15)
             : Colors.white.withOpacity(0.02),
         borderRadius: BorderRadius.circular(12),
         border: isCurrent
-            ? Border.all(
-                color: AppColors.primaryGreen.withOpacity(0.3),
-                width: 1,
-              )
+            ? Border.all(color: AppColors.accentBlue.withOpacity(0.3), width: 1)
             : Border.all(color: Colors.white.withOpacity(0.02), width: 1),
       ),
       child: ListTile(
@@ -1879,11 +1915,11 @@ class AppSongTile extends ConsumerWidget {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: AppColors.primaryGreen,
+                    color: AppColors.accentBlue,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primaryGreen.withOpacity(0.4),
+                        color: AppColors.accentBlue.withOpacity(0.4),
                         blurRadius: 8,
                         spreadRadius: 2,
                       ),
@@ -1922,7 +1958,7 @@ class AppSongTile extends ConsumerWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: isCurrent ? AppColors.primaryGreen : Colors.white,
+            color: isCurrent ? AppColors.accentBlue : Colors.white,
             fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
             fontSize: 14,
           ),

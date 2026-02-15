@@ -5,7 +5,7 @@ import '../models/playlist.dart';
 
 class DatabaseService {
   static Database? _db;
-  static const int _version = 2;
+  static const int _version = 3;
 
   static Future<Database> get database async {
     if (_db != null) return _db!;
@@ -40,10 +40,10 @@ class DatabaseService {
 
         await db.execute('''
           CREATE TABLE lyrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             songId INTEGER,
             timeMs INTEGER,
             text TEXT,
-            PRIMARY KEY (songId, timeMs),
             FOREIGN KEY (songId) REFERENCES songs (id) ON DELETE CASCADE
           )
         ''');
@@ -81,6 +81,18 @@ class DatabaseService {
           await db.execute('ALTER TABLE songs ADD COLUMN trackNumber INTEGER');
           await db.execute('ALTER TABLE songs ADD COLUMN genre TEXT');
           await db.execute('ALTER TABLE songs ADD COLUMN year INTEGER');
+        }
+        if (oldVersion < 3) {
+          await db.execute('DROP TABLE IF EXISTS lyrics');
+          await db.execute('''
+            CREATE TABLE lyrics (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              songId INTEGER,
+              timeMs INTEGER,
+              text TEXT,
+              FOREIGN KEY (songId) REFERENCES songs (id) ON DELETE CASCADE
+            )
+          ''');
         }
       },
     );
@@ -148,7 +160,7 @@ class DatabaseService {
       'lyrics',
       where: 'songId = ?',
       whereArgs: [songId],
-      orderBy: 'timeMs ASC',
+      orderBy: 'timeMs ASC, id ASC',
     );
 
     return lMaps
@@ -172,7 +184,7 @@ class DatabaseService {
       'lyrics',
       where: 'songId IN ($placeholders)',
       whereArgs: songIds,
-      orderBy: 'songId, timeMs ASC',
+      orderBy: 'songId ASC, timeMs ASC, id ASC',
     );
 
     final Map<int, List<LyricLine>> result = {};
@@ -199,7 +211,7 @@ class DatabaseService {
           'songId': songId,
           'timeMs': line.time.inMilliseconds,
           'text': line.text,
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        });
       }
       await batch.commit(noResult: true);
     });

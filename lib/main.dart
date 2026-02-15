@@ -73,7 +73,7 @@ class MyApp extends ConsumerWidget {
         splashColor: Colors.white.withOpacity(0.08),
         highlightColor: Colors.white.withOpacity(0.04),
         tabBarTheme: TabBarThemeData(
-          indicatorColor: AppColors.accentYellow,
+          indicatorColor: AppColors.accentBlue,
           splashFactory: InkRipple.splashFactory,
           overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
             if (states.contains(WidgetState.pressed)) {
@@ -102,7 +102,8 @@ class MyApp extends ConsumerWidget {
           titleTextStyle: AppTextStyles.titleMedium,
         ),
         drawerTheme: const DrawerThemeData(
-          backgroundColor: AppColors.surfacePopover,
+          backgroundColor: AppColors.surfacePlayer,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         ),
         bottomSheetTheme: const BottomSheetThemeData(
           backgroundColor: AppColors.surfacePopover,
@@ -293,11 +294,11 @@ class LibraryLoadingScreen extends StatelessWidget {
               height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primaryGreen.withOpacity(0.1),
+                color: AppColors.accentBlue.withOpacity(0.1),
               ),
               child: const Icon(
                 Icons.music_note,
-                color: AppColors.primaryGreen,
+                color: AppColors.accentBlue,
                 size: 50,
               ),
             ),
@@ -325,7 +326,7 @@ class LibraryLoadingScreen extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: const LinearProgressIndicator(
-                  color: AppColors.primaryGreen,
+                  color: AppColors.accentBlue,
                   backgroundColor: AppColors.surfaceDark,
                   minHeight: 6,
                 ),
@@ -353,7 +354,7 @@ class PermissionRequestScreen extends ConsumerWidget {
             children: [
               const Icon(
                 Icons.folder_open,
-                color: AppColors.primaryGreen,
+                color: AppColors.accentBlue,
                 size: 80,
               ),
               const SizedBox(height: 40),
@@ -381,7 +382,7 @@ class PermissionRequestScreen extends ConsumerWidget {
                   ref.read(libraryProvider.notifier).requestPermission();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
+                  backgroundColor: AppColors.accentBlue,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 48,
@@ -454,7 +455,7 @@ class PermissionDeniedScreen extends ConsumerWidget {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
+                  backgroundColor: AppColors.accentBlue,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 48,
@@ -520,7 +521,7 @@ class ErrorScreen extends ConsumerWidget {
                   ref.read(libraryProvider.notifier).requestPermission();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
+                  backgroundColor: AppColors.accentBlue,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 48,

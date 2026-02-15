@@ -27,7 +27,7 @@ class AlbumDetailsScreen extends ConsumerStatefulWidget {
 }
 
 class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
-  Color _dominantColor = AppColors.accentYellow;
+  Color _dominantColor = AppColors.accentBlue;
 
   @override
   void initState() {

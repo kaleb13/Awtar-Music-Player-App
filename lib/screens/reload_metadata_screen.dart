@@ -41,10 +41,10 @@ class ReloadMetadataScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withOpacity(0.05),
+                        color: AppColors.accentBlue.withOpacity(0.05),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: AppColors.primaryGreen.withOpacity(0.1),
+                          color: AppColors.accentBlue.withOpacity(0.1),
                           width: 2,
                         ),
                       ),
@@ -52,7 +52,7 @@ class ReloadMetadataScreen extends ConsumerWidget {
                         Icons.settings_backup_restore_rounded,
                         size: 80,
                         color: isReloading
-                            ? AppColors.primaryGreen
+                            ? AppColors.accentBlue
                             : Colors.white24,
                       ),
                     ),
@@ -84,7 +84,7 @@ class ReloadMetadataScreen extends ConsumerWidget {
                           minHeight: 8,
                           backgroundColor: Colors.white10,
                           valueColor: const AlwaysStoppedAnimation(
-                            AppColors.primaryGreen,
+                            AppColors.accentBlue,
                           ),
                         ),
                       ),
@@ -92,7 +92,7 @@ class ReloadMetadataScreen extends ConsumerWidget {
                       Text(
                         "${(progress * 100).toInt()}% Complete",
                         style: const TextStyle(
-                          color: AppColors.primaryGreen,
+                          color: AppColors.accentBlue,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -106,7 +106,7 @@ class ReloadMetadataScreen extends ConsumerWidget {
                             ref.read(libraryProvider.notifier).reloadMetadata();
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryGreen,
+                            backgroundColor: AppColors.accentBlue,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),

@@ -34,7 +34,7 @@ class FoldersTab extends ConsumerWidget {
               onPressed: () =>
                   ref.read(libraryProvider.notifier).requestPermission(),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentYellow,
+                backgroundColor: AppColors.accentBlue,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
@@ -98,12 +98,12 @@ class FoldersTab extends ConsumerWidget {
             leading: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.accentYellow.withOpacity(0.1),
+                color: AppColors.accentBlue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: const Icon(
                 Icons.folder_rounded,
-                color: AppColors.accentYellow,
+                color: AppColors.accentBlue,
                 size: 24,
               ),
             ),
@@ -128,7 +128,7 @@ class FoldersTab extends ConsumerWidget {
                 Text(
                   "$songCount Tracks",
                   style: TextStyle(
-                    color: AppColors.primaryGreen.withOpacity(0.7),
+                    color: AppColors.accentBlue.withOpacity(0.7),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
