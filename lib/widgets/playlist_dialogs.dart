@@ -86,7 +86,6 @@ class PlaylistDialogs {
                         );
                       },
                     ),
-                    const Divider(color: Colors.white10, height: 1),
                     if (playlists.isEmpty)
                       Padding(
                         padding: const EdgeInsets.all(48.0),
@@ -232,7 +231,6 @@ class PlaylistDialogs {
                         );
                       },
                     ),
-                    const Divider(color: Colors.white10, height: 1),
                     if (playlists.isEmpty)
                       Padding(
                         padding: const EdgeInsets.all(48.0),

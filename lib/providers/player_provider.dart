@@ -275,13 +275,20 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
               currentIndex: lastIndex != -1 ? lastIndex : 0,
             );
 
-            final sources = queue.map((s) => _createAudioSource(s)).toList();
-            _playlist = ConcatenatingAudioSource(children: sources);
-            await _audioPlayer.setAudioSource(
-              _playlist,
-              initialIndex: state.currentIndex,
-              initialPosition: Duration.zero,
-            );
+            // Progressive: Defer heavy audio source initialization
+            Future.delayed(const Duration(milliseconds: 500), () async {
+              if (mounted && _playlist.length == 0) {
+                final sources = queue
+                    .map((s) => _createAudioSource(s))
+                    .toList();
+                _playlist = ConcatenatingAudioSource(children: sources);
+                await _audioPlayer.setAudioSource(
+                  _playlist,
+                  initialIndex: state.currentIndex,
+                  initialPosition: Duration.zero,
+                );
+              }
+            });
           } else {
             state = state.copyWith(currentSong: lastSong);
           }
@@ -561,6 +568,37 @@ class PlayerNotifier extends StateNotifier<MusicPlayerState> {
   Stream<Duration> get positionStream => _audioPlayer.positionStream;
   Stream<Duration?> get durationStream => _audioPlayer.durationStream;
   Stream<PlayerState> get playerStateStream => _audioPlayer.playerStateStream;
+
+  void reorderQueue(int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    final newQueue = List<Song>.from(state.queue);
+    final item = newQueue.removeAt(oldIndex);
+    newQueue.insert(newIndex, item);
+
+    int newCurrentIndex = state.currentIndex;
+    if (oldIndex == state.currentIndex) {
+      newCurrentIndex = newIndex;
+    } else if (oldIndex < state.currentIndex &&
+        newIndex >= state.currentIndex) {
+      newCurrentIndex -= 1;
+    } else if (oldIndex > state.currentIndex &&
+        newIndex <= state.currentIndex) {
+      newCurrentIndex += 1;
+    }
+
+    state = state.copyWith(queue: newQueue, currentIndex: newCurrentIndex);
+
+    // Update the audio player's concatenating source
+    try {
+      await _playlist.move(oldIndex, newIndex);
+      _savePlaybackState();
+    } catch (e) {
+      debugPrint('Error reordering playlist: $e');
+    }
+  }
 
   @override
   void dispose() {

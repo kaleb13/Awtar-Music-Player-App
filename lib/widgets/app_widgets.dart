@@ -354,7 +354,7 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
                   top: 4,
                   right: -4,
                   child: widget.showMenu
-                      ? _MenuButton(
+                      ? AppMenuButton(
                           menuBuilder: widget.menuBuilder,
                           onSelected: widget.onMenuSelected,
                         )
@@ -470,17 +470,17 @@ class AppPopularArtistCard extends StatelessWidget {
   }
 }
 
-class _MenuButton extends ConsumerStatefulWidget {
+class AppMenuButton extends ConsumerStatefulWidget {
   final PopupMenuItemBuilder<String>? menuBuilder;
   final void Function(String)? onSelected;
 
-  const _MenuButton({this.menuBuilder, this.onSelected});
+  const AppMenuButton({super.key, this.menuBuilder, this.onSelected});
 
   @override
-  ConsumerState<_MenuButton> createState() => _MenuButtonState();
+  ConsumerState<AppMenuButton> createState() => _AppMenuButtonState();
 }
 
-class _MenuButtonState extends ConsumerState<_MenuButton> {
+class _AppMenuButtonState extends ConsumerState<AppMenuButton> {
   bool _isOpen = false;
 
   void _showMenu() async {
@@ -1208,7 +1208,6 @@ class AppTopBar extends ConsumerWidget {
                   value: 'hidden',
                   child: AppMenuEntry(label: "Hidden Artists"),
                 ),
-                const PopupMenuDivider(),
                 PopupMenuItem(
                   enabled: false,
                   child: StatefulBuilder(
@@ -1368,11 +1367,7 @@ class AppTopBar extends ConsumerWidget {
                 );
               }
 
-              // Always add settings at the bottom (if there are other items, add a divider)
-              if (items.isNotEmpty) {
-                items.add(const PopupMenuDivider(height: 1));
-              }
-
+              // Always add settings at the bottom
               items.add(
                 const PopupMenuItem(
                   value: 'settings',
@@ -1733,20 +1728,7 @@ class AppCenteredModal extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    Container(
-                      height: 1,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.white.withOpacity(0.0),
-                            Colors.white.withOpacity(0.1),
-                            Colors.white.withOpacity(0.0),
-                          ],
-                        ),
-                      ),
-                    ),
+                    const SizedBox(height: 12),
                     Flexible(
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
@@ -1969,7 +1951,7 @@ class AppSongTile extends ConsumerWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
         ),
-        trailing: _MenuButton(
+        trailing: AppMenuButton(
           menuBuilder: (context) => MediaMenuService.buildSongMenuItems(
             context: context,
             ref: ref,

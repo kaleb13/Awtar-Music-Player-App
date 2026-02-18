@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/song.dart';
 import '../theme/app_theme.dart';
+import '../services/media_menu_service.dart';
+import 'app_widgets.dart';
 import 'app_artwork.dart';
 
 class AppSongListTile extends ConsumerWidget {
@@ -32,6 +34,15 @@ class AppSongListTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: onTap,
+      onLongPress: () => AppCenteredModal.show(
+        context,
+        title: song.title,
+        items: MediaMenuService.buildSongActions(
+          context: context,
+          ref: ref,
+          song: song,
+        ),
+      ),
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
@@ -99,17 +110,17 @@ class AppSongListTile extends ConsumerWidget {
             if (trailing != null) ...[
               const SizedBox(width: 12),
               trailing!,
-            ] else if (onMenuTap != null) ...[
+            ] else ...[
               const SizedBox(width: 12),
-              IconButton(
-                icon: Icon(
-                  Icons.more_horiz,
-                  color: Colors.white.withOpacity(0.5),
-                  size: 20,
+              AppMenuButton(
+                menuBuilder: (context) => MediaMenuService.buildSongMenuItems(
+                  context: context,
+                  ref: ref,
+                  song: song,
                 ),
-                onPressed: onMenuTap,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                onSelected: (val) {
+                  // Handled by MenuButton
+                },
               ),
             ],
           ],

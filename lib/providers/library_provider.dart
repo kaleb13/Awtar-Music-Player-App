@@ -43,9 +43,11 @@ class LibraryState {
   final Map<String, int> folderSongCounts;
   final Map<String, int> representativeArtistSongs;
   final Map<String, int> representativeAlbumSongs;
+  final Map<int, Song> songMap;
   final Map<String, Color> artistColors;
   final Map<String, Color> albumColors;
   final int lastScanTimestamp;
+  final int libraryGeneration;
   final Song? bannerSong;
   final bool isLoading;
   final bool isRefiningLibrary;
@@ -76,9 +78,11 @@ class LibraryState {
     this.folderSongCounts = const {},
     this.representativeArtistSongs = const {},
     this.representativeAlbumSongs = const {},
+    this.songMap = const {},
     this.artistColors = const {},
     this.albumColors = const {},
     this.lastScanTimestamp = 0,
+    this.libraryGeneration = 0,
     this.bannerSong,
     this.isLoading = false,
     this.isRefiningLibrary = false,
@@ -112,9 +116,11 @@ class LibraryState {
     Map<String, int>? folderSongCounts,
     Map<String, int>? representativeArtistSongs,
     Map<String, int>? representativeAlbumSongs,
+    Map<int, Song>? songMap,
     Map<String, Color>? artistColors,
     Map<String, Color>? albumColors,
     int? lastScanTimestamp,
+    int? libraryGeneration,
     Song? bannerSong,
     bool? isLoading,
     LibraryPermissionStatus? permissionStatus,
@@ -147,9 +153,11 @@ class LibraryState {
           representativeArtistSongs ?? this.representativeArtistSongs,
       representativeAlbumSongs:
           representativeAlbumSongs ?? this.representativeAlbumSongs,
+      songMap: songMap ?? this.songMap,
       artistColors: artistColors ?? this.artistColors,
       albumColors: albumColors ?? this.albumColors,
       lastScanTimestamp: lastScanTimestamp ?? this.lastScanTimestamp,
+      libraryGeneration: libraryGeneration ?? this.libraryGeneration,
       bannerSong: bannerSong ?? this.bannerSong,
       isLoading: isLoading ?? this.isLoading,
       permissionStatus: permissionStatus ?? this.permissionStatus,
@@ -180,9 +188,15 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   Future<void> _init() async {
     // 1. Try to load from cache immediately for fast startup
     await _loadFromCache();
-    // 2. Check permissions and scan in background
-    await _checkPermission();
-    _scanForLyrics();
+
+    // 2. Defer heavy scan check to background (Phase B)
+    // Delay slightly to ensure UI is interactive
+    Future.delayed(const Duration(seconds: 4), () async {
+      if (mounted) {
+        await _checkPermission();
+        _scanForLyrics();
+      }
+    });
   }
 
   Future<void> _loadFromCache() async {
@@ -223,6 +237,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         repArtists = Map<String, int>.from(decoded['repArtists'] ?? {});
         repAlbums = Map<String, int>.from(decoded['repAlbums'] ?? {});
         lastScan = decoded['lastScan'] ?? 0;
+        final libraryGeneration = decoded['libraryGeneration'] ?? 0;
 
         final albumSource = AlbumNameSource.values.firstWhere(
           (e) => e.name == (decoded['albumNameSource'] ?? 'metadata'),
@@ -242,6 +257,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
           hideSmallAlbums: hideSmallAlbums,
           hideSmallArtists: hideSmallArtists,
           hideUnknownArtist: hideUnknownArtist,
+          libraryGeneration: libraryGeneration,
         );
       }
 
@@ -306,6 +322,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
 
       state = state.copyWith(
         songs: filteredSongs,
+        songMap: {for (var s in filteredSongs) s.id: s},
         artists: artists,
         albums: albums,
         playlists: playlists,
@@ -320,9 +337,13 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         lastScanTimestamp: lastScan,
       );
 
-      // Trigger background color calculation
-      _calculateArtistColors(artists, songs);
-      _calculateAlbumColors(albums, songs);
+      // Defer background color calculation to when the app is idle
+      Future.delayed(const Duration(seconds: 10), () {
+        if (mounted) {
+          _calculateArtistColors(artists, state.songs);
+          _calculateAlbumColors(albums, state.songs);
+        }
+      });
 
       if (songs.isNotEmpty) {
         _updateBannerSong(songs);
@@ -350,6 +371,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         'repArtists': state.representativeArtistSongs,
         'repAlbums': state.representativeAlbumSongs,
         'lastScan': state.lastScanTimestamp,
+        'libraryGeneration': state.libraryGeneration,
         'albumNameSource': state.albumNameSource.name,
         'titleSource': state.titleSource.name,
         'hideSmallAlbums': state.hideSmallAlbums,
@@ -597,15 +619,12 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
     }
 
     try {
-      // 1. Fast check: query only song count or ids to see if we need a full scan
+      // 1. PHASE B - Lightweight Check: fingerprint all songs in MediaStore
       final songModels = await _audioQuery.querySongs(
         sortType: null,
-        orderType: OrderType.ASC_OR_SMALLER,
         uriType: UriType.EXTERNAL,
-        ignoreCase: true,
       );
 
-      // Compute a lightweight signature to detect changes reliably
       final int currentCount = songModels.length;
       int currentIdSum = 0;
       int currentDurationSum = 0;
@@ -614,73 +633,81 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         currentDurationSum += (s.duration ?? 0);
       }
 
-      // Compare with current state signature
-      int stateIdSum = 0;
-      int stateDurationSum = 0;
-      for (var s in state.songs) {
-        stateIdSum += s.id;
-        stateDurationSum += s.duration;
-      }
+      final int generationHash = currentIdSum ^ currentDurationSum;
 
-      // If signature matches and it's not a forced scan, and we have data, skip the heavy scan
+      // Skip the heavy scan if signature is identical
       if (!force &&
           state.songs.isNotEmpty &&
           currentCount == state.songs.length &&
-          currentIdSum == stateIdSum &&
-          currentDurationSum == stateDurationSum) {
-        debugPrint("Library scan skipped: item signature identical.");
+          state.libraryGeneration == generationHash) {
+        debugPrint("⚡ Library scan skipped: Fingerprint identical.");
         state = state.copyWith(isLoading: false);
         return;
       }
 
+      debugPrint("🔍 Library change detected. Starting chunked scan...");
       state = state.copyWith(scanProgress: 0.1);
 
-      final int totalSongs = songModels.length;
       final List<Song> songs = [];
+      const int batchSize = 100;
 
-      for (int i = 0; i < totalSongs; i++) {
-        final s = songModels[i];
-        String? artworkUri;
-        if (s.id != 0) {
-          artworkUri = 'content://media/external/audio/albumart/${s.albumId}';
+      // 2. Chunked processing of Song model creation
+      for (int i = 0; i < songModels.length; i += batchSize) {
+        final int end = (i + batchSize < songModels.length)
+            ? i + batchSize
+            : songModels.length;
+
+        for (int j = i; j < end; j++) {
+          final s = songModels[j];
+          String? artworkUri;
+          if (s.id != 0) {
+            artworkUri = 'content://media/external/audio/albumart/${s.albumId}';
+          }
+
+          final parts = s.data.split('/');
+          final folderName = parts.length > 1
+              ? parts[parts.length - 2]
+              : "Unknown";
+          final fileName = parts.last.split('.').first;
+
+          final String finalTitle = state.titleSource == TitleSource.metadata
+              ? s.title
+              : fileName;
+          final String? finalAlbum =
+              state.albumNameSource == AlbumNameSource.metadata
+              ? s.album
+              : folderName;
+
+          songs.add(
+            Song(
+              id: s.id,
+              title: finalTitle,
+              artist: s.artist ?? "Unknown Artist",
+              album: finalAlbum,
+              albumArt: artworkUri,
+              url: s.data,
+              duration: s.duration ?? 0,
+              lyrics: [],
+              trackNumber: (s.track != null && s.track! >= 1000)
+                  ? s.track! % 1000
+                  : s.track,
+              genre: s.genre,
+            ),
+          );
         }
 
-        final folderName = s.data.split('/').reversed.elementAt(1);
-        final fileName = s.data.split('/').last.split('.').first;
-
-        final String finalTitle = state.titleSource == TitleSource.metadata
-            ? s.title
-            : fileName;
-        final String? finalAlbum =
-            state.albumNameSource == AlbumNameSource.metadata
-            ? s.album
-            : folderName;
-
-        songs.add(
-          Song(
-            id: s.id,
-            title: finalTitle,
-            artist: s.artist ?? "Unknown Artist",
-            album: finalAlbum,
-            albumArt: artworkUri,
-            url: s.data,
-            duration: s.duration ?? 0,
-            lyrics: [],
-            trackNumber: (s.track != null && s.track! >= 1000)
-                ? s.track! % 1000
-                : s.track,
-            genre: s.genre,
-          ),
-        );
-
-        if (i % 50 == 0) {
-          state = state.copyWith(scanProgress: 0.1 + (i / totalSongs) * 0.7);
+        if (mounted) {
+          state = state.copyWith(
+            scanProgress: 0.1 + (i / songModels.length) * 0.7,
+          );
         }
+        // Allow UI thread to breathe between batches
+        await Future.delayed(const Duration(milliseconds: 10));
       }
 
       state = state.copyWith(scanProgress: 0.85);
 
-      // Get favorites from DB to preserve them
+      // Preserve favorites
       final dbSongs = await DatabaseService.getAllSongs();
       final favoritedIds = dbSongs
           .where((s) => s.isFavorite)
@@ -692,26 +719,44 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         return s;
       }).toList();
 
-      final Map<String, Set<String>> storageParentFolders = {};
-      final Set<String> filteredFolderSet = {};
-      final Set<String> allDiscoveredFolders = {};
+      final filteredSongs = _filterSongsByFolders(
+        updatedSongs,
+        state.excludedFolders,
+      );
 
+      // Update state with new songs and songMap immediately
+      state = state.copyWith(
+        songs: filteredSongs,
+        songMap: {for (var s in filteredSongs) s.id: s},
+        libraryGeneration: generationHash,
+      );
+
+      // 3. Heavy extraction/processing (Deferred/Chunked)
+      final artists = _rebuildArtists(filteredSongs);
+      final albums = _rebuildAlbums(filteredSongs);
+
+      final Map<String, int> folderCounts = {};
+      final Set<String> discoveredFolders = {};
+      final Map<String, Set<String>> storageParentFolders = {};
       final Map<String, int> repArtists = {};
       final Map<String, int> repAlbums = {};
 
-      for (final s in updatedSongs) {
+      for (final s in filteredSongs) {
         final path = s.url;
         final index = path.lastIndexOf('/');
+
+        // Track representative IDs
+        repArtists.putIfAbsent(s.artist, () => s.id);
+        if (s.album != null) {
+          repAlbums.putIfAbsent("${s.album}_${s.artist}", () => s.id);
+        }
+
         if (index != -1) {
           final dirPath = path.substring(0, index);
-          allDiscoveredFolders.add(dirPath);
+          discoveredFolders.add(dirPath);
+          folderCounts[dirPath] = (folderCounts[dirPath] ?? 0) + 1;
 
-          repArtists.putIfAbsent(s.artist, () => s.id);
-          if (s.album != null) {
-            repAlbums.putIfAbsent("${s.album}_${s.artist}", () => s.id);
-          }
-
-          // Determine storage root for this folder
+          // Determine storage root for storageMap
           String storageRoot = "";
           if (dirPath.startsWith("/storage/emulated/0")) {
             storageRoot = "/storage/emulated/0";
@@ -729,27 +774,11 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
                 .where((p) => p.isNotEmpty)
                 .toList();
             if (relParts.isNotEmpty) {
-              final topLevelFolderName = relParts.first;
               storageParentFolders
                   .putIfAbsent(storageRoot, () => {})
-                  .add("$storageRoot/$topLevelFolderName");
+                  .add("$storageRoot/${relParts.first}");
             }
           }
-        }
-      }
-
-      final filteredSongs = _filterSongsByFolders(
-        updatedSongs,
-        state.excludedFolders,
-      );
-      final artists = _rebuildArtists(filteredSongs);
-      final albums = _rebuildAlbums(filteredSongs);
-
-      for (final s in filteredSongs) {
-        final path = s.url;
-        final index = path.lastIndexOf('/');
-        if (index != -1) {
-          filteredFolderSet.add(path.substring(0, index));
         }
       }
 
@@ -757,39 +786,28 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
         (key, value) => MapEntry(key, value.toList()),
       );
 
-      // Precompute folder song counts
-      final Map<String, int> folderCounts = {};
-      for (final s in filteredSongs) {
-        final path = s.url;
-        final index = path.lastIndexOf('/');
-        if (index != -1) {
-          final dirPath = path.substring(0, index);
-          folderCounts[dirPath] = (folderCounts[dirPath] ?? 0) + 1;
-        }
-      }
-
       state = state.copyWith(
-        songs: filteredSongs,
         artists: artists,
         albums: albums,
-        folders: filteredFolderSet.toList(),
-        discoveredFolders: allDiscoveredFolders.toList(),
-        storageMap: storageMap,
+        folders: discoveredFolders.toList()..sort(),
         folderSongCounts: folderCounts,
+        discoveredFolders: discoveredFolders.toList(),
+        storageMap: storageMap,
         representativeArtistSongs: repArtists,
         representativeAlbumSongs: repAlbums,
-        lastScanTimestamp: DateTime.now().millisecondsSinceEpoch,
         isLoading: false,
         scanProgress: 1.0,
       );
 
-      if (filteredSongs.isNotEmpty) {
-        _updateBannerSong(filteredSongs);
-      }
+      _updateBannerSong(filteredSongs);
 
-      // Trigger background color calculation
-      _calculateArtistColors(artists, filteredSongs);
-      _calculateAlbumColors(albums, filteredSongs);
+      // 4. Delayed Palette tasks (Phase B)
+      Future.microtask(() {
+        if (mounted) {
+          _calculateArtistColors(artists, state.songs);
+          _calculateAlbumColors(albums, state.songs);
+        }
+      });
 
       await _saveToCache();
       _scanForLyrics();
@@ -957,27 +975,36 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   ) async {
     final Map<String, Color> colors = {...state.artistColors};
     bool changed = false;
+    const int batchSize = 5;
 
-    for (final artist in artists) {
-      if (!colors.containsKey(artist.artist)) {
-        final songId = state.representativeArtistSongs[artist.artist];
-        final song = songs.firstWhere(
-          (s) => s.id == songId,
-          orElse: () => songs.first,
-        );
+    for (int i = 0; i < artists.length; i += batchSize) {
+      final end = (i + batchSize < artists.length)
+          ? i + batchSize
+          : artists.length;
 
-        final color = await _getArtistColor(
-          artist.artist,
-          artist.imagePath,
-          song,
-        );
-        colors[artist.artist] = color;
-        changed = true;
+      for (int j = i; j < end; j++) {
+        final artist = artists[j];
+        if (!colors.containsKey(artist.artist)) {
+          final songId = state.representativeArtistSongs[artist.artist];
+          final song = state.songMap[songId] ?? songs.first;
+
+          final color = await _getArtistColor(
+            artist.artist,
+            artist.imagePath,
+            song,
+          );
+          colors[artist.artist] = color;
+          changed = true;
+        }
       }
-    }
 
-    if (changed && mounted) {
-      state = state.copyWith(artistColors: colors);
+      if (changed && mounted) {
+        state = state.copyWith(artistColors: colors);
+        changed = false;
+      }
+
+      // Throttle palette extraction
+      await Future.delayed(const Duration(milliseconds: 200));
     }
   }
 
@@ -987,28 +1014,37 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   ) async {
     final Map<String, Color> colors = {...state.albumColors};
     bool changed = false;
+    const int batchSize = 5;
 
-    for (final album in albums) {
-      final String albumKey = '${album.album}_${album.artist}';
-      if (!colors.containsKey(albumKey)) {
-        final songId = state.representativeAlbumSongs[albumKey];
-        final song = songs.firstWhere(
-          (s) => s.id == songId,
-          orElse: () => songs.first,
-        );
+    for (int i = 0; i < albums.length; i += batchSize) {
+      final end = (i + batchSize < albums.length)
+          ? i + batchSize
+          : albums.length;
 
-        final color = await PaletteService.getColor(
-          song.albumArt ?? "",
-          songId: song.id,
-          songPath: song.url,
-        );
-        colors[albumKey] = color;
-        changed = true;
+      for (int j = i; j < end; j++) {
+        final album = albums[j];
+        final String albumKey = '${album.album}_${album.artist}';
+        if (!colors.containsKey(albumKey)) {
+          final songId = state.representativeAlbumSongs[albumKey];
+          final song = state.songMap[songId] ?? songs.first;
+
+          final color = await PaletteService.getColor(
+            song.albumArt ?? "",
+            songId: song.id,
+            songPath: song.url,
+          );
+          colors[albumKey] = color;
+          changed = true;
+        }
       }
-    }
 
-    if (changed && mounted) {
-      state = state.copyWith(albumColors: colors);
+      if (changed && mounted) {
+        state = state.copyWith(albumColors: colors);
+        changed = false;
+      }
+
+      // Throttle palette extraction
+      await Future.delayed(const Duration(milliseconds: 200));
     }
   }
 
@@ -1076,14 +1112,16 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   ) {
     if (excludedFolders.isEmpty) return allSongs;
 
+    // Convert to list for faster startsWith comparison
+    final excludedList = excludedFolders.toList();
+
     return allSongs.where((song) {
-      // Check if song's path starts with any excluded folder
-      for (final excludedPath in excludedFolders) {
+      for (final excludedPath in excludedList) {
         if (song.url.startsWith(excludedPath)) {
-          return false; // Exclude this song
+          return false;
         }
       }
-      return true; // Include this song
+      return true;
     }).toList();
   }
 

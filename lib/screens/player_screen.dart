@@ -12,6 +12,7 @@ import 'details/album_details_screen.dart';
 import 'details/artist_details_screen.dart';
 import 'package:awtar_music_player/widgets/app_song_list_tile.dart';
 import '../models/artist.dart';
+import '../services/media_menu_service.dart';
 import 'dart:async';
 
 class PlayerScreenContent extends ConsumerStatefulWidget {
@@ -120,7 +121,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                   icon: const Icon(Icons.more_horiz, color: Colors.white),
                   onSelected: (value) {
                     if (value == 'Share') {
-                      // Share implementation
+                      MediaMenuService.shareSong(song);
                     } else if (value == 'View Artist') {
                       final artistObj = ref
                           .read(libraryProvider)
@@ -375,80 +376,9 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
               onTap: () {
                 showModalBottomSheet(
                   context: context,
-                  backgroundColor: AppColors.surfacePlayer,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  builder: (context) => Consumer(
-                    builder: (context, ref, child) {
-                      final pState = ref.watch(playerProvider);
-                      return Column(
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.symmetric(vertical: 12),
-                            width: 36,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.white24,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.queue_music,
-                                  color: AppColors.accentBlue,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  "Current Queue (${pState.queue.length})",
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              itemCount: pState.queue.length,
-                              itemBuilder: (context, index) {
-                                final qSong = pState.queue[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: AppSongListTile(
-                                    song: qSong,
-                                    isActive: index == pState.currentIndex,
-                                    onTap: () {
-                                      ref
-                                          .read(playerProvider.notifier)
-                                          .play(
-                                            qSong,
-                                            queue: pState.queue,
-                                            index: index,
-                                          );
-                                      Navigator.pop(context);
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const QueueSheet(),
                 );
               },
               behavior: HitTestBehavior.opaque,
@@ -477,11 +407,41 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
   }
 }
 
-class LyricsHeaderContent extends ConsumerWidget {
+class LyricsHeaderContent extends ConsumerStatefulWidget {
   const LyricsHeaderContent({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LyricsHeaderContent> createState() =>
+      _LyricsHeaderContentState();
+}
+
+class _LyricsHeaderContentState extends ConsumerState<LyricsHeaderContent> {
+  Timer? _seekTimer;
+
+  void _startSeeking(bool forward) {
+    _seekTimer?.cancel();
+    _seekTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      ref
+          .read(playerProvider.notifier)
+          .seekRelative(
+            forward ? const Duration(seconds: 5) : const Duration(seconds: -5),
+          );
+    });
+  }
+
+  void _stopSeeking() {
+    _seekTimer?.cancel();
+    _seekTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _seekTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final playerState = ref.watch(playerProvider);
     final library = ref.watch(libraryProvider);
     final song =
@@ -552,23 +512,42 @@ class LyricsHeaderContent extends ConsumerWidget {
                 onSelected: (value) {
                   if (value == 'edit_lyrics') {
                     MediaEditDialogs.showEditLyrics(context, ref, song);
+                  } else if (value == 'open_queue') {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => const QueueSheet(),
+                    );
                   }
                 },
                 itemBuilder: (context) => [
                   const PopupMenuItem(
                     value: 'edit_lyrics',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_note, color: Colors.white, size: 20),
-                        SizedBox(width: 12),
-                        Text(
-                          "Edit Lyrics",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ],
+                    child: AppMenuEntry(
+                      icon: Icons.edit_note,
+                      label: "Edit Lyrics",
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'open_queue',
+                    child: AppMenuEntry(
+                      icon: Icons.queue_music,
+                      label: "Queue",
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(width: 8),
+              AppIconButton(
+                icon: Icons.skip_previous,
+                color: Colors.white70,
+                size: 26,
+                onTap: () {
+                  ref.read(playerProvider.notifier).previous();
+                },
+                onLongPressStart: () => _startSeeking(false),
+                onLongPressEnd: _stopSeeking,
               ),
               const SizedBox(width: 8),
               AppIconButton(
@@ -578,6 +557,8 @@ class LyricsHeaderContent extends ConsumerWidget {
                 onTap: () {
                   ref.read(playerProvider.notifier).next();
                 },
+                onLongPressStart: () => _startSeeking(true),
+                onLongPressEnd: _stopSeeking,
               ),
             ],
           ),
@@ -817,7 +798,7 @@ class _LyricsScreenContentState extends ConsumerState<LyricsScreenContent> {
   }
 }
 
-class _LyricLineItem extends StatelessWidget {
+class _LyricLineItem extends ConsumerWidget {
   final int index;
   final List<LyricLine> lyrics;
   final Duration position;
@@ -832,40 +813,170 @@ class _LyricLineItem extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final lyric = lyrics[index];
     final isCurrent =
         isSynced &&
         position >= lyric.time &&
         (index == lyrics.length - 1 || position < lyrics[index + 1].time);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 28.0),
-      child: Row(
-        children: [
-          if (isCurrent)
-            Padding(
-              padding: const EdgeInsets.only(right: 12.0),
-              child: SvgPicture.asset(
-                "assets/icons/play_icon.svg",
-                colorFilter: const ColorFilter.mode(
-                  AppColors.accentBlue,
-                  BlendMode.srcIn,
+    return GestureDetector(
+      onTap: () {
+        if (isSynced) {
+          ref.read(playerProvider.notifier).seek(lyric.time);
+        }
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 28.0),
+        child: Row(
+          children: [
+            if (isCurrent)
+              Padding(
+                padding: const EdgeInsets.only(right: 12.0),
+                child: SvgPicture.asset(
+                  "assets/icons/play_icon.svg",
+                  colorFilter: const ColorFilter.mode(
+                    AppColors.accentBlue,
+                    BlendMode.srcIn,
+                  ),
+                  width: 20,
+                  height: 20,
                 ),
-                width: 20,
-                height: 20,
+              ),
+            Expanded(
+              child: Text(
+                lyric.text,
+                style: AppTextStyles.outfit(
+                  fontSize: isCurrent ? 22 : 18,
+                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                  color: !isSynced || isCurrent
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.35),
+                ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class QueueSheet extends ConsumerStatefulWidget {
+  const QueueSheet({super.key});
+
+  @override
+  ConsumerState<QueueSheet> createState() => _QueueSheetState();
+}
+
+class _QueueSheetState extends ConsumerState<QueueSheet> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+
+    // Auto-scroll to current song
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pState = ref.read(playerProvider);
+      if (pState.currentIndex > 0) {
+        // Estimate of tile height: 56px art + padding/margins
+        double offset = (pState.currentIndex) * 76.0;
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            offset,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pState = ref.watch(playerProvider);
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.9,
+      decoration: const BoxDecoration(
+        color: AppColors.surfacePlayer,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 12, 16),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.queue_music,
+                  color: AppColors.accentBlue,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  "Current Queue (${pState.queue.length})",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white54),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          // Queue List
           Expanded(
-            child: Text(
-              lyric.text,
-              style: AppTextStyles.outfit(
-                fontSize: isCurrent ? 22 : 18,
-                fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-                color: !isSynced || isCurrent
-                    ? Colors.white
-                    : Colors.white.withOpacity(0.35),
-              ),
+            child: ReorderableListView.builder(
+              scrollController: _scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: pState.queue.length,
+              onReorder: (oldIndex, newIndex) {
+                ref
+                    .read(playerProvider.notifier)
+                    .reorderQueue(oldIndex, newIndex);
+              },
+              itemBuilder: (context, index) {
+                final qSong = pState.queue[index];
+                return Padding(
+                  key: ValueKey("queue_song_${qSong.id}_$index"),
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: AppSongListTile(
+                    song: qSong,
+                    isActive: index == pState.currentIndex,
+                    onTap: () {
+                      ref
+                          .read(playerProvider.notifier)
+                          .play(qSong, queue: pState.queue, index: index);
+                    },
+                  ),
+                );
+              },
             ),
           ),
         ],

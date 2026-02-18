@@ -267,30 +267,37 @@ class DatabaseService {
 
   static Future<List<Playlist>> getAllPlaylists() async {
     final db = await database;
+
+    // 1. Fetch all playlists
     final List<Map<String, dynamic>> pMaps = await db.query('playlists');
-    final List<Playlist> playlists = [];
+    if (pMaps.isEmpty) return [];
 
-    for (final m in pMaps) {
-      final List<Map<String, dynamic>> sMaps = await db.query(
-        'playlist_songs',
-        where: 'playlistId = ?',
-        whereArgs: [m['id']],
-        orderBy: 'position ASC',
-      );
+    // 2. Fetch all playlist-song associations in one go
+    final List<Map<String, dynamic>> allSongsMaps = await db.query(
+      'playlist_songs',
+      orderBy: 'playlistId ASC, position ASC',
+    );
 
-      playlists.add(
-        Playlist(
-          id: m['id'],
-          name: m['name'],
-          imagePath: m['imagePath'],
-          songIds: sMaps.map((s) => s['songId'] as int).toList(),
-          createdAt: m['createdAt'] != null
-              ? DateTime.fromMillisecondsSinceEpoch(m['createdAt'])
-              : DateTime.now(),
-        ),
-      );
+    // 3. Group songs by playlistId
+    final Map<String, List<int>> songIdsByPlaylist = {};
+    for (final sMap in allSongsMaps) {
+      final String pId = sMap['playlistId'].toString();
+      songIdsByPlaylist.putIfAbsent(pId, () => []).add(sMap['songId'] as int);
     }
-    return playlists;
+
+    // 4. Build Playlist objects
+    return pMaps.map((m) {
+      final String id = m['id'].toString();
+      return Playlist(
+        id: id,
+        name: m['name'],
+        imagePath: m['imagePath'],
+        songIds: songIdsByPlaylist[id] ?? [],
+        createdAt: m['createdAt'] != null
+            ? DateTime.fromMillisecondsSinceEpoch(m['createdAt'])
+            : DateTime.now(),
+      );
+    }).toList();
   }
 
   // Artist Metadata (Image overrides)

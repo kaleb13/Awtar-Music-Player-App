@@ -524,14 +524,26 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                               fontSize: 10,
                             ),
                           ),
-                          trailing: Icon(
-                            Icons.trending_up,
-                            color: Colors.white.withOpacity(0.2),
-                            size: 16,
+                          trailing: AppMenuButton(
+                            menuBuilder: (context) =>
+                                MediaMenuService.buildSongMenuItems(
+                                  context: context,
+                                  ref: ref,
+                                  song: song,
+                                ),
                           ),
                           onTap: () => ref
                               .read(playerProvider.notifier)
                               .playPlaylist(displayTopTracks, index),
+                          onLongPress: () => AppCenteredModal.show(
+                            context,
+                            title: song.title,
+                            items: MediaMenuService.buildSongActions(
+                              context: context,
+                              ref: ref,
+                              song: song,
+                            ),
+                          ),
                         ),
                       );
                     }, childCount: displayTopTracks.length),

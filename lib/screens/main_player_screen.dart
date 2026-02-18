@@ -17,6 +17,7 @@ import 'player_screen.dart';
 import '../providers/sleep_timer_provider.dart';
 import '../widgets/sleep_timer_dialog.dart';
 
+import '../providers/search_provider.dart';
 import 'package:awtar_music_player/providers/performance_provider.dart';
 import 'dart:async';
 
@@ -285,6 +286,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
             ? screenHeight - 150
             : screenHeight - 75;
 
+        final isSearching = ref.watch(searchQueryProvider).isNotEmpty;
+
         return TweenAnimationBuilder<double>(
           tween: Tween<double>(
             begin: miniPlayerBaseTopTarget,
@@ -429,7 +432,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                   ref,
                                   MainTab.home,
                                   "Home",
-                                  currentMainTab == MainTab.home,
+                                  !isSearching &&
+                                      currentMainTab == MainTab.home,
                                   svgPath: AppAssets.home,
                                 ),
                               ),
@@ -438,7 +442,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                   ref,
                                   MainTab.discover,
                                   "Discovery",
-                                  currentMainTab == MainTab.discover,
+                                  !isSearching &&
+                                      currentMainTab == MainTab.discover,
                                   svgPath: AppAssets.search,
                                 ),
                               ),
@@ -447,7 +452,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                   ref,
                                   MainTab.collection,
                                   "Collection",
-                                  currentMainTab == MainTab.collection,
+                                  !isSearching &&
+                                      currentMainTab == MainTab.collection,
                                   svgPath: AppAssets.collection,
                                 ),
                               ),
@@ -766,7 +772,12 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
     String? svgPath,
   }) {
     return GestureDetector(
-      onTap: () => ref.read(mainTabProvider.notifier).state = tab,
+      onTap: () {
+        if (ref.read(searchQueryProvider).isNotEmpty) {
+          ref.read(searchQueryProvider.notifier).state = "";
+        }
+        ref.read(mainTabProvider.notifier).state = tab;
+      },
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,

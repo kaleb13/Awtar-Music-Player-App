@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,6 +10,7 @@ import 'package:awtar_music_player/widgets/app_artwork.dart';
 import 'package:awtar_music_player/widgets/media_edit_dialogs.dart';
 
 import 'package:awtar_music_player/widgets/app_widgets.dart';
+import 'player_screen.dart';
 
 class LyricsScreen extends ConsumerStatefulWidget {
   const LyricsScreen({super.key});
@@ -21,8 +23,29 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
   final List<GlobalKey> _lyricKeys = [];
   int _prevIndex = -1;
   final bool _isUserScrolling = false;
-  // Timer to reset user scrolling state
-  // Timer? _userScrollTimer; // Optional: auto-resume scrolling after interaction
+  Timer? _seekTimer;
+
+  void _startSeeking(bool forward) {
+    _seekTimer?.cancel();
+    _seekTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      ref
+          .read(playerProvider.notifier)
+          .seekRelative(
+            forward ? const Duration(seconds: 5) : const Duration(seconds: -5),
+          );
+    });
+  }
+
+  void _stopSeeking() {
+    _seekTimer?.cancel();
+    _seekTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _seekTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -180,6 +203,13 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                         onSelected: (value) {
                           if (value == 'edit_lyrics') {
                             MediaEditDialogs.showEditLyrics(context, ref, song);
+                          } else if (value == 'open_queue') {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => const QueueSheet(),
+                            );
                           }
                         },
                         itemBuilder: (context) => [
@@ -190,21 +220,33 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                               label: "Edit Lyrics",
                             ),
                           ),
+                          PopupMenuItem(
+                            value: 'open_queue',
+                            child: AppMenuEntry(
+                              icon: Icons.queue_music,
+                              label: "Queue",
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(width: 8),
-                      GestureDetector(
+                      AppIconButton(
+                        icon: Icons.skip_previous,
+                        color: Colors.black54,
+                        size: 26,
+                        onTap: () =>
+                            ref.read(playerProvider.notifier).previous(),
+                        onLongPressStart: () => _startSeeking(false),
+                        onLongPressEnd: _stopSeeking,
+                      ),
+                      const SizedBox(width: 8),
+                      AppIconButton(
+                        icon: Icons.skip_next,
+                        color: Colors.black54,
+                        size: 26,
                         onTap: () => ref.read(playerProvider.notifier).next(),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.skip_next,
-                            color: Colors.white70,
-                            size: 24,
-                          ),
-                        ),
+                        onLongPressStart: () => _startSeeking(true),
+                        onLongPressEnd: _stopSeeking,
                       ),
                     ],
                   ),
@@ -358,56 +400,67 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                                 index < song.lyrics.length;
                                 index++
                               )
-                                Padding(
+                                GestureDetector(
                                   key: _lyricKeys[index],
-                                  padding: const EdgeInsets.only(bottom: 28.0),
-                                  child: Builder(
-                                    builder: (context) {
-                                      final lyric = song.lyrics[index];
-                                      final isActuallySynced = song.isSynced;
-                                      final isCurrent =
-                                          isActuallySynced &&
-                                          index == currentIndex;
+                                  onTap: () {
+                                    if (song.isSynced) {
+                                      ref
+                                          .read(playerProvider.notifier)
+                                          .seek(song.lyrics[index].time);
+                                    }
+                                  },
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                      bottom: 28.0,
+                                    ),
+                                    child: Builder(
+                                      builder: (context) {
+                                        final lyric = song.lyrics[index];
+                                        final isActuallySynced = song.isSynced;
+                                        final isCurrent =
+                                            isActuallySynced &&
+                                            index == currentIndex;
 
-                                      return Row(
-                                        children: [
-                                          if (isCurrent)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                right: 12.0,
-                                              ),
-                                              child: SvgPicture.asset(
-                                                "assets/icons/play_icon.svg",
-                                                colorFilter:
-                                                    const ColorFilter.mode(
-                                                      Color(0xFFEEE544),
-                                                      BlendMode.srcIn,
-                                                    ),
-                                                width: 20,
-                                                height: 20,
-                                              ),
-                                            ),
-                                          Expanded(
-                                            child: Text(
-                                              lyric.text,
-                                              style: GoogleFonts.outfit(
-                                                fontSize: isCurrent ? 22 : 18,
-                                                fontWeight: isCurrent
-                                                    ? FontWeight.bold
-                                                    : FontWeight.w500,
-                                                color:
-                                                    !isActuallySynced ||
-                                                        isCurrent
-                                                    ? Colors.white
-                                                    : Colors.white.withOpacity(
-                                                        0.35,
+                                        return Row(
+                                          children: [
+                                            if (isCurrent)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  right: 12.0,
+                                                ),
+                                                child: SvgPicture.asset(
+                                                  "assets/icons/play_icon.svg",
+                                                  colorFilter:
+                                                      const ColorFilter.mode(
+                                                        Color(0xFFEEE544),
+                                                        BlendMode.srcIn,
                                                       ),
+                                                  width: 20,
+                                                  height: 20,
+                                                ),
+                                              ),
+                                            Expanded(
+                                              child: Text(
+                                                lyric.text,
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: isCurrent ? 22 : 18,
+                                                  fontWeight: isCurrent
+                                                      ? FontWeight.bold
+                                                      : FontWeight.w500,
+                                                  color:
+                                                      !isActuallySynced ||
+                                                          isCurrent
+                                                      ? Colors.white
+                                                      : Colors.white
+                                                            .withOpacity(0.35),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ],
-                                      );
-                                    },
+                                          ],
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                               // Add padding at the bottom so the last line can be centered

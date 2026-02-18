@@ -9,6 +9,7 @@ import '../widgets/app_widgets.dart';
 import '../widgets/playlist_dialogs.dart';
 import '../widgets/media_edit_dialogs.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import 'image_processing_service.dart';
 
 class MediaMenuService {
@@ -59,9 +60,7 @@ class MediaMenuService {
       AppModalItem(
         icon: Icons.share_outlined,
         label: "Share",
-        onTap: () {
-          // Implementation for share
-        },
+        onTap: () => shareSong(song),
       ),
     ];
   }
@@ -150,13 +149,6 @@ class MediaMenuService {
       ),
       AppModalItem(
         icon: null,
-        label: "Share",
-        onTap: () {
-          // Share implementation
-        },
-      ),
-      AppModalItem(
-        icon: null,
         label: "Hide Album",
         onTap: () {
           ref
@@ -233,13 +225,6 @@ class MediaMenuService {
       ),
       AppModalItem(
         icon: null,
-        label: "Share",
-        onTap: () {
-          // Share implementation
-        },
-      ),
-      AppModalItem(
-        icon: null,
         label: "Hide Artist",
         onTap: () {
           ref
@@ -307,9 +292,6 @@ class MediaMenuService {
           () => _showDeleteArtistDialog(context, ref, artist),
         ),
       ),
-      _ActionData(null, "Share", () {
-        // Share implementation
-      }),
       _ActionData(
         null,
         "Hide Artist",
@@ -392,6 +374,7 @@ class MediaMenuService {
         "Edit",
         () => MediaEditDialogs.showEditSong(context, ref, song),
       ),
+      _ActionData(Icons.share_outlined, "Share", () => shareSong(song)),
     ]);
   }
 
@@ -457,9 +440,6 @@ class MediaMenuService {
           () => _showDeleteAlbumDialog(context, ref, album),
         ),
       ),
-      _ActionData(null, "Share", () {
-        // Share implementation
-      }),
       _ActionData(
         null,
         "Hide Album",
@@ -519,6 +499,18 @@ class MediaMenuService {
           ),
         )
         .toList();
+  }
+
+  static Future<void> shareSong(Song song) async {
+    if (song.url.isEmpty) return;
+    try {
+      await Share.shareXFiles(
+        [XFile(song.url)],
+        text: 'Listen to ${song.title} by ${song.artist} on Awtar Music Player',
+      );
+    } catch (e) {
+      debugPrint("Error sharing song: $e");
+    }
   }
 }
 
