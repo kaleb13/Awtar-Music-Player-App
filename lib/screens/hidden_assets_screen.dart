@@ -79,7 +79,7 @@ class _VisibilityList extends ConsumerWidget {
             ),
             subtitle: Text(
               "${artist.numberOfTracks} songs",
-              style: TextStyle(color: Colors.white.withOpacity(0.6)),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
             ),
             // Logic: "Toggle ... to list ... or not"
             // If toggle is ON, it is Visible? Or Hidden?
@@ -113,7 +113,7 @@ class _VisibilityList extends ConsumerWidget {
             ),
             subtitle: Text(
               album.artist,
-              style: TextStyle(color: Colors.white.withOpacity(0.6)),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
             ),
             value: !isHidden,
             onChanged: (visible) {
@@ -125,3 +125,4 @@ class _VisibilityList extends ConsumerWidget {
     }
   }
 }
+

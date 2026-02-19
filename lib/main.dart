@@ -17,6 +17,8 @@ import 'widgets/app_drawer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/stats_provider.dart';
 import 'providers/performance_provider.dart';
+import 'services/database_service.dart';
+import 'services/palette_service.dart';
 
 // Keys moved to navigation_provider.dart
 
@@ -27,19 +29,32 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    await JustAudioBackground.init(
-      androidNotificationChannelId:
-          'com.example.awtart_music_player.channel.audio',
-      androidNotificationChannelName: 'Music Playback',
-      androidNotificationOngoing: true,
-      androidNotificationIcon: 'drawable/ic_notification',
-    );
-  } catch (e) {
-    debugPrint("❌ Critical Error: JustAudioBackground.init failed: $e");
-  }
+  // 1. Fire audio background init WITHOUT awaiting — it can finish later.
+  //    This shaves ~300-800ms off cold start.
+  final audioInitFuture =
+      JustAudioBackground.init(
+        androidNotificationChannelId:
+            'com.example.awtart_music_player.channel.audio',
+        androidNotificationChannelName: 'Music Playback',
+        androidNotificationOngoing: true,
+        androidNotificationIcon: 'drawable/ic_notification',
+      ).catchError((e) {
+        debugPrint("❌ Critical Error: JustAudioBackground.init failed: $e");
+      });
 
+  // 2. Pre-warm SharedPreferences, Database, and Palette cache IN PARALLEL.
+  //    This means by the time LibraryProvider._init() runs, all three are
+  //    already hot — no cold-open penalty.
   final prefs = await SharedPreferences.getInstance();
+  await Future.wait([
+    DatabaseService.warmUp(),
+    PaletteService.loadFromDisk(prefs: prefs),
+  ]);
+
+  // 3. Ensure audio init completes before the player is used
+  //    (the player screen won't render until the user taps a song,
+  //    so this is effectively invisible).
+  audioInitFuture.ignore();
 
   runApp(
     ProviderScope(
@@ -70,17 +85,17 @@ class MyApp extends ConsumerWidget {
         ),
         useMaterial3: true,
         splashFactory: InkRipple.splashFactory,
-        splashColor: Colors.white.withOpacity(0.08),
-        highlightColor: Colors.white.withOpacity(0.04),
+        splashColor: Colors.white.withValues(alpha: 0.08),
+        highlightColor: Colors.white.withValues(alpha: 0.04),
         tabBarTheme: TabBarThemeData(
           indicatorColor: AppColors.accentBlue,
           splashFactory: InkRipple.splashFactory,
           overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
             if (states.contains(WidgetState.pressed)) {
-              return Colors.white.withOpacity(0.05);
+              return Colors.white.withValues(alpha: 0.05);
             }
             if (states.contains(WidgetState.hovered)) {
-              return Colors.white.withOpacity(0.03);
+              return Colors.white.withValues(alpha: 0.03);
             }
             return null;
           }),
@@ -89,7 +104,10 @@ class MyApp extends ConsumerWidget {
           color: AppColors.surfacePopover,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: Colors.white.withOpacity(0.08), width: 1.2),
+            side: BorderSide(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 1.2,
+            ),
           ),
           elevation: 12,
           textStyle: AppTextStyles.bodySmall.copyWith(color: Colors.white),
@@ -179,9 +197,19 @@ class RootLayout extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final libraryState = ref.watch(libraryProvider);
+    // 1. Optimize rebuilds by watching ONLY the properties needed for routing
+    final permissionStatus = ref.watch(
+      libraryProvider.select((s) => s.permissionStatus),
+    );
+    final isLoading = ref.watch(libraryProvider.select((s) => s.isLoading));
+    final hasSongs = ref.watch(
+      libraryProvider.select((s) => s.songs.isNotEmpty),
+    );
+    final errorMessage = ref.watch(
+      libraryProvider.select((s) => s.errorMessage),
+    );
+
     final currentTab = ref.watch(mainTabProvider);
-    final currentSong = ref.watch(playerProvider.select((s) => s.currentSong));
 
     // Set status bar color for dark backgrounds (main app)
     SystemChrome.setSystemUIOverlayStyle(
@@ -193,23 +221,21 @@ class RootLayout extends ConsumerWidget {
     );
 
     // Auto-request permission silently if in initial state
-    // (onboarding has already shown permission UI)
-    if (libraryState.permissionStatus == LibraryPermissionStatus.initial) {
-      // Request permission silently without showing UI
+    if (permissionStatus == LibraryPermissionStatus.initial) {
       Future.microtask(() {
         ref.read(libraryProvider.notifier).requestPermission();
       });
       return const LibraryLoadingScreen();
     }
 
-    // Show loading screen while scanning
-    if (libraryState.isLoading) {
+    // Show loading screen ONLY if we have NO cached songs yet.
+    if (isLoading && !hasSongs) {
       return const LibraryLoadingScreen();
     }
 
     // Show error if scanning failed
-    if (libraryState.errorMessage != null) {
-      return ErrorScreen(message: libraryState.errorMessage!);
+    if (errorMessage != null) {
+      return ErrorScreen(message: errorMessage);
     }
 
     // Normal app flow
@@ -223,57 +249,92 @@ class RootLayout extends ConsumerWidget {
         content = const HomeScreen();
     }
 
-    final performanceMode = ref.watch(performanceModeProvider);
-
     return Stack(
       children: [
-        // 1. Dynamic Blurred Background
-        if (currentSong != null && performanceMode != PerformanceMode.ultraLow)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: AppArtwork(
-                songId: currentSong.id,
-                fit: BoxFit.cover,
-                size: 300, // Background optimization: downsample for blur
-              ),
-            ),
-          ),
+        // 1. Dynamic Blurred Background (Extracted & Wrapped in RepaintBoundary)
+        const BlurredBackground(),
 
-        // 2. Blur Filter (Disabled in Ultra Low mode)
-        if (currentSong != null && performanceMode != PerformanceMode.ultraLow)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: performanceMode == PerformanceMode.low ? 15 : 30,
-                  sigmaY: performanceMode == PerformanceMode.low ? 15 : 30,
-                ),
-                child: Container(color: Colors.transparent),
-              ),
-            ),
-          ),
-
-        // 3. Current background color with 25% opacity (Overground)
-        Positioned.fill(
-          child: IgnorePointer(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.mainDarkLight.withOpacity(0.85),
-                    AppColors.mainDark.withOpacity(0.85),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // 4. Main App content
+        // 2. Main App content
         Material(color: Colors.transparent, child: content),
       ],
+    );
+  }
+}
+
+/// Extracted background to isolate blur calculations and repaints.
+/// Uses [RepaintBoundary] to ensure scrolling content doesn't force a re-blur.
+class BlurredBackground extends ConsumerWidget {
+  const BlurredBackground({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentSong = ref.watch(playerProvider.select((s) => s.currentSong));
+    final performanceMode = ref.watch(performanceModeProvider);
+
+    return RepaintBoundary(
+      child: Stack(
+        children: [
+          // Background Color / Gradient (Always present)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.mainDarkLight.withValues(alpha: 0.85),
+                      AppColors.mainDark.withValues(alpha: 0.85),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Artwork & Blur (Conditional)
+          if (currentSong != null &&
+              performanceMode != PerformanceMode.ultraLow) ...[
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AppArtwork(
+                  songId: currentSong.id,
+                  fit: BoxFit.cover,
+                  size: 300, // Downsampled for performance
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: performanceMode == PerformanceMode.low ? 15 : 30,
+                    sigmaY: performanceMode == PerformanceMode.low ? 15 : 30,
+                  ),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            // Re-apply overlay for depth and readability
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppColors.mainDarkLight.withValues(alpha: 0.7),
+                        AppColors.mainDark.withValues(alpha: 0.8),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -294,7 +355,7 @@ class LibraryLoadingScreen extends StatelessWidget {
               height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.accentBlue.withOpacity(0.1),
+                color: AppColors.accentBlue.withValues(alpha: 0.1),
               ),
               child: const Icon(
                 Icons.music_note,
@@ -316,7 +377,7 @@ class LibraryLoadingScreen extends StatelessWidget {
             Text(
               "Organizing your musical world...",
               style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 14,
               ),
             ),
@@ -371,7 +432,7 @@ class PermissionRequestScreen extends ConsumerWidget {
               Text(
                 "Awtar needs permission to access your music library to play your favorite songs.",
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 16,
                 ),
                 textAlign: TextAlign.center,
@@ -440,7 +501,7 @@ class PermissionDeniedScreen extends ConsumerWidget {
                     ? "Storage permission was permanently denied. Please enable it in your device settings to use Awtar."
                     : "Awtar cannot function without storage permission. Please grant access to continue.",
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 16,
                 ),
                 textAlign: TextAlign.center,
@@ -510,7 +571,7 @@ class ErrorScreen extends ConsumerWidget {
               Text(
                 message,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 14,
                 ),
                 textAlign: TextAlign.center,

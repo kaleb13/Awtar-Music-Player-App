@@ -5,3 +5,4 @@ final isAlbumSelectionModeProvider = StateProvider<bool>((ref) => false);
 
 // State provider to track selected album identifiers (e.g., "${album.album}_${album.artist}")
 final selectedAlbumIdsProvider = StateProvider<Set<String>>((ref) => {});
+

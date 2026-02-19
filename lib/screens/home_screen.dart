@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/artist.dart';
 import '../models/album.dart';
@@ -206,34 +207,30 @@ class HomeOverviewContent extends ConsumerWidget {
     }
 
     // Background warming for home screen items
-    ref.listen(libraryProvider, (prev, next) {
-      if (prev?.isLoading == true &&
-          next.isLoading == false &&
-          next.songs.isNotEmpty) {
-        // Warm up some top artists and albums
-        for (final artist in next.artists.take(5)) {
-          final songId = next.representativeArtistSongs[artist.artist];
-          if (songId != null) {
-            final song = next.songs.firstWhere(
-              (s) => s.id == songId,
-              orElse: () => next.songs.first,
-            );
-            ArtworkCacheService.warmUp(song.url, song.id);
+    ref.listen(
+      libraryProvider.select((s) => (s.isLoading, s.songs.isNotEmpty)),
+      (prev, next) {
+        if (prev?.$1 == true && next.$1 == false && next.$2) {
+          final state = ref.read(libraryProvider);
+          // Warm up some top artists and albums
+          for (final artist in state.artists.take(5)) {
+            final songId = state.representativeArtistSongs[artist.artist];
+            if (songId != null) {
+              final song = state.songMap[songId] ?? state.songs.first;
+              ArtworkCacheService.warmUp(song.url, song.id);
+            }
+          }
+          for (final album in state.albums.take(5)) {
+            final key = '${album.album}_${album.artist}';
+            final songId = state.representativeAlbumSongs[key];
+            if (songId != null) {
+              final song = state.songMap[songId] ?? state.songs.first;
+              ArtworkCacheService.warmUp(song.url, song.id);
+            }
           }
         }
-        for (final album in next.albums.take(5)) {
-          final key = '${album.album}_${album.artist}';
-          final songId = next.representativeAlbumSongs[key];
-          if (songId != null) {
-            final song = next.songs.firstWhere(
-              (s) => s.id == songId,
-              orElse: () => next.songs.first,
-            );
-            ArtworkCacheService.warmUp(song.url, song.id);
-          }
-        }
-      }
-    });
+      },
+    );
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -292,12 +289,12 @@ class HomeOverviewContent extends ConsumerWidget {
           // 5th Section: Summary
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
-            child: AppSectionHeader(title: "Monthly Summary"),
+            child: AppSectionHeader(title: "Your Stats"),
           ),
           const SizedBox(height: 20),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _buildSummarySection(stats),
+            child: _buildSummarySection(stats, libraryState),
           ),
           const SizedBox(height: 180),
         ],
@@ -357,10 +354,9 @@ class HomeOverviewContent extends ConsumerWidget {
             durationStr = "${(duration / 60).toInt()}m";
           }
 
-          final artistSong = libraryState.songs.firstWhere(
-            (s) => s.artist == name,
-            orElse: () => libraryState.songs.first,
-          );
+          final artistSongId = libraryState.representativeArtistSongs[name];
+          final artistSong =
+              libraryState.songMap[artistSongId] ?? libraryState.songs.first;
 
           return Expanded(
             child: Padding(
@@ -473,10 +469,10 @@ class HomeOverviewContent extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) {
-    final albumSong = libraryState.songs.firstWhere(
-      (s) => s.album == album.album,
-      orElse: () => libraryState.songs.first,
-    );
+    final albumKey = '${album.album}_${album.artist}';
+    final albumSongId = libraryState.representativeAlbumSongs[albumKey];
+    final albumSong =
+        libraryState.songMap[albumSongId] ?? libraryState.songs.first;
 
     return AppAlbumCard(
       title: album.album,
@@ -537,9 +533,7 @@ class HomeOverviewContent extends ConsumerWidget {
 
     final fullQueue = <Song>[];
     for (var entry in sortedSongs.take(100)) {
-      final song = libraryState.songs
-          .where((s) => s.id == entry.key)
-          .firstOrNull;
+      final song = libraryState.songMap[entry.key];
       if (song != null) {
         // Filter out if artist or album is hidden
         final isHidden =
@@ -574,7 +568,7 @@ class HomeOverviewContent extends ConsumerWidget {
 
     final fullQueue = <Song>[];
     for (var id in stats.recentPlayedIds.take(100)) {
-      final song = libraryState.songs.where((s) => s.id == id).firstOrNull;
+      final song = libraryState.songMap[id];
       if (song != null) {
         // Filter out if artist or album is hidden
         final isHidden =
@@ -597,42 +591,230 @@ class HomeOverviewContent extends ConsumerWidget {
     return _buildSongRow(context, ref, displaySongs, limitedQueue);
   }
 
-  Widget _buildSummarySection(PlayStats stats) {
-    final now = DateTime.now();
-    final weekNumber =
-        ((now.difference(DateTime(now.year, 1, 1)).inDays +
-                    DateTime(now.year, 1, 1).weekday) /
-                7)
-            .ceil();
-    final weekKey = "${now.year}-W${weekNumber.toString().padLeft(2, '0')}";
-    final monthKey = "${now.year}-${now.month.toString().padLeft(2, '0')}";
+  /// Formats a large integer with K/M suffix to prevent overflow.
+  String _fmtCount(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return n.toString();
+  }
 
-    final weeklyPlays = stats.weeklyPlays[weekKey] ?? 0;
+  /// Formats seconds into a compact human-readable duration.
+  String _fmtDuration(int seconds) {
+    if (seconds <= 0) return '0m';
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    if (h >= 100) return '${h}h'; // e.g. "342h" — no minutes needed
+    if (h > 0) return '${h}h ${m}m';
+    return '${m}m';
+  }
+
+  Widget _buildSummarySection(PlayStats stats, LibraryState library) {
+    final now = DateTime.now();
+    final monthKey = '${now.year}-${now.month.toString().padLeft(2, '0')}';
     final monthlyPlays = stats.monthlyPlays[monthKey] ?? 0;
-    final totalDuration = stats.songPlayDuration.values.fold(
+
+    final totalDurationSec = stats.songPlayDuration.values.fold(
       0,
       (a, b) => a + b,
     );
-    final totalHours = (totalDuration / 3600).toStringAsFixed(1);
+    final lifetimePlays = stats.songPlayCounts.values.fold(0, (a, b) => a + b);
 
-    return Row(
+    final totalTracks = library.songs.length;
+    final playedIds = stats.songPlayCounts.keys.toSet();
+    final neverPlayed = library.songs
+        .where((s) => !playedIds.contains(s.id))
+        .length;
+    final totalArtists = library.artists.length;
+    final totalAlbums = library.albums.length;
+
+    // ── helper to build one stat tile ──────────────────────────────────────
+    Widget tile({
+      required IconData icon,
+      required String label,
+      required String value,
+      Color? accent,
+      bool wide = false,
+    }) {
+      final color = accent ?? AppColors.accentBlue;
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withValues(alpha: 0.10),
+                Colors.white.withValues(alpha: 0.03),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: color.withValues(alpha: 0.18), width: 1),
+          ),
+          child: wide
+              // Wide tile: icon + label on left, value on right
+              ? Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, size: 16, color: color),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        label.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          color: Colors.white.withValues(alpha: 0.45),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        height: 1,
+                      ),
+                    ),
+                  ],
+                )
+              // Square tile: icon top, value middle, label bottom
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, size: 13, color: color),
+                    ),
+                    const SizedBox(height: 8),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        value,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      label.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: Colors.white.withValues(alpha: 0.4),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ],
+                ),
+        ),
+      );
+    }
+
+    // ── layout ─────────────────────────────────────────────────────────────
+    const gap = SizedBox(width: 10);
+    const vgap = SizedBox(height: 10);
+
+    return Column(
       children: [
-        Expanded(
-          child: AppSummaryItem(
-            label: "Monthly Plays",
-            value: monthlyPlays.toString(),
-            trend: "+$weeklyPlays", // Weekly as trend label
-            isTrendPositive: true,
+        // Row 1: Tracks | Never Played | Lifetime Plays
+        IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(
+                child: tile(
+                  icon: Icons.library_music_outlined,
+                  label: 'Tracks',
+                  value: _fmtCount(totalTracks),
+                  accent: AppColors.accentBlue,
+                ),
+              ),
+              gap,
+              Expanded(
+                child: tile(
+                  icon: Icons.music_off_outlined,
+                  label: 'Never Played',
+                  value: _fmtCount(neverPlayed),
+                  accent: const Color(0xFFFF6B6B),
+                ),
+              ),
+              gap,
+              Expanded(
+                child: tile(
+                  icon: Icons.play_circle_outline,
+                  label: 'Lifetime Plays',
+                  value: _fmtCount(lifetimePlays),
+                  accent: const Color(0xFF6BCB77),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: AppSummaryItem(
-            label: "Total Playtime",
-            value: "${totalHours}h",
-            trend: "${(totalDuration / 60).toInt()}m", // Total minutes as trend
-            isTrendPositive: true,
+        vgap,
+        // Row 2: Artists | Albums | This Month
+        IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(
+                child: tile(
+                  icon: Icons.person_outline,
+                  label: 'Artists',
+                  value: _fmtCount(totalArtists),
+                  accent: const Color(0xFFFFD93D),
+                ),
+              ),
+              gap,
+              Expanded(
+                child: tile(
+                  icon: Icons.album_outlined,
+                  label: 'Albums',
+                  value: _fmtCount(totalAlbums),
+                  accent: const Color(0xFFFF922B),
+                ),
+              ),
+              gap,
+              Expanded(
+                child: tile(
+                  icon: Icons.calendar_month_outlined,
+                  label: 'This Month',
+                  value: _fmtCount(monthlyPlays),
+                  accent: const Color(0xFFCC5DE8),
+                ),
+              ),
+            ],
           ),
+        ),
+        vgap,
+        // Row 3: Total Playtime — full-width wide tile
+        tile(
+          icon: Icons.timer_outlined,
+          label: 'Total Playtime',
+          value: _fmtDuration(totalDurationSec),
+          accent: AppColors.accentBlue,
+          wide: true,
         ),
       ],
     );

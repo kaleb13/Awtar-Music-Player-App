@@ -317,7 +317,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
               ).transform(val);
               currentMargin = Tween<double>(begin: 16, end: 0).transform(val);
               currentColor = Color.lerp(
-                Colors.black.withOpacity(0.2), // Darker glass for miniplayer
+                Colors.black.withValues(alpha: 0.2), // Darker glass for miniplayer
                 AppColors.surfacePlayer,
                 val.clamp(0.0, 1.0),
               )!;
@@ -497,7 +497,7 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                 ? []
                                 : [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.15),
+                                      color: Colors.black.withValues(alpha: 0.15),
                                       blurRadius: 20,
                                       offset: const Offset(0, 5),
                                     ),
@@ -527,8 +527,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                     val < 0.1)
                                 ? Container(
                                     color: val < 0.1
-                                        ? Colors.black.withOpacity(0.3)
-                                        : currentColor.withOpacity(0.95),
+                                        ? Colors.black.withValues(alpha: 0.3)
+                                        : currentColor.withValues(alpha: 0.95),
                                     child: _buildMainContent(
                                       context,
                                       val,
@@ -552,8 +552,8 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                                     ),
                                     child: Container(
                                       color: val < 0.1
-                                          ? Colors.black.withOpacity(0.3)
-                                          : currentColor.withOpacity(0.95),
+                                          ? Colors.black.withValues(alpha: 0.3)
+                                          : currentColor.withValues(alpha: 0.95),
                                       child: _buildMainContent(
                                         context,
                                         val,
@@ -882,12 +882,12 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(radius),
               border: val > 0.2
-                  ? Border.all(color: borderColor.withOpacity(0.9), width: 2.5)
+                  ? Border.all(color: borderColor.withValues(alpha: 0.9), width: 2.5)
                   : null,
               boxShadow: [
                 if (val > 0.2 && val < 1.8)
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 20,
                     spreadRadius: 5,
                     offset: const Offset(0, 10),
@@ -905,9 +905,9 @@ class _MainMusicPlayerState extends ConsumerState<MainMusicPlayer>
                     ? AppArtwork(
                         songId: songId,
                         songPath: songPath,
-                        size:
-                            screenWidth, // Stable size (max needed) to avoid re-decoding
+                        size: screenWidth,
                         fit: BoxFit.cover,
+                        highQuality: true, // Full-res for main player screen
                       )
                     : Image.network(
                         url,
@@ -989,7 +989,7 @@ class _LyricsPreview extends ConsumerWidget {
                   fontWeight: FontWeight.bold,
                   shadows: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -1072,7 +1072,7 @@ class PlayerBottomBar extends ConsumerWidget {
                         boxShadow: [
                           if (ref.watch(sleepTimerProvider).isActive)
                             BoxShadow(
-                              color: AppColors.accentBlue.withOpacity(0.3),
+                              color: AppColors.accentBlue.withValues(alpha: 0.3),
                               blurRadius: 10,
                               spreadRadius: 2,
                             ),
@@ -1120,7 +1120,7 @@ class PlayerBottomBar extends ConsumerWidget {
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
+                        color: Colors.white.withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -1159,8 +1159,8 @@ class LyricsBottomBarContent extends ConsumerWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppColors.mainDark.withOpacity(0.0),
-            AppColors.mainDark.withOpacity(0.8),
+            AppColors.mainDark.withValues(alpha: 0.0),
+            AppColors.mainDark.withValues(alpha: 0.8),
             AppColors.mainDark,
             AppColors.mainDark,
           ],
@@ -1211,7 +1211,7 @@ class LyricsBottomBarContent extends ConsumerWidget {
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -1227,3 +1227,4 @@ class LyricsBottomBarContent extends ConsumerWidget {
     );
   }
 }
+

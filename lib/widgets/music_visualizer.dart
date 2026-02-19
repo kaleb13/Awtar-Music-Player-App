@@ -90,3 +90,4 @@ class _MusicVisualizerState extends ConsumerState<MusicVisualizer>
     );
   }
 }
+

@@ -63,3 +63,4 @@ class ColorAwareAlbumCard extends StatelessWidget {
     );
   }
 }
+

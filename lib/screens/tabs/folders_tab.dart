@@ -51,7 +51,11 @@ class FoldersTab extends ConsumerWidget {
       );
     }
 
-    final folders = libraryState.folders;
+    final folders = libraryState.folders.where((folder) {
+      return !libraryState.excludedFolders.any(
+        (excluded) => folder == excluded || folder.startsWith("$excluded/"),
+      );
+    }).toList();
 
     if (folders.isEmpty) {
       return Center(
@@ -86,9 +90,9 @@ class FoldersTab extends ConsumerWidget {
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.04),
+            color: Colors.white.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(
@@ -98,7 +102,7 @@ class FoldersTab extends ConsumerWidget {
             leading: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.accentBlue.withOpacity(0.1),
+                color: AppColors.accentBlue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: const Icon(
@@ -128,7 +132,7 @@ class FoldersTab extends ConsumerWidget {
                 Text(
                   "$songCount Tracks",
                   style: TextStyle(
-                    color: AppColors.accentBlue.withOpacity(0.7),
+                    color: AppColors.accentBlue.withValues(alpha: 0.7),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -187,9 +191,12 @@ class AppStorageCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 1,
+            ),
           ),
           child: Opacity(
             opacity: isEnabled ? 1.0 : 0.4,
@@ -198,7 +205,7 @@ class AppStorageCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.15),
+                    color: accentColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: accentColor, size: 20),
@@ -216,14 +223,14 @@ class AppStorageCard extends StatelessWidget {
                             style: AppTextStyles.bodyMain.copyWith(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                             ),
                           ),
                           Text(
                             "$used / $total",
                             style: TextStyle(
                               fontSize: 10,
-                              color: Colors.white.withOpacity(0.5),
+                              color: Colors.white.withValues(alpha: 0.5),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -235,7 +242,7 @@ class AppStorageCard extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: percent,
                           minHeight: 4,
-                          backgroundColor: Colors.white.withOpacity(0.1),
+                          backgroundColor: Colors.white.withValues(alpha: 0.1),
                           valueColor: AlwaysStoppedAnimation(accentColor),
                         ),
                       ),
@@ -245,7 +252,7 @@ class AppStorageCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 Icon(
                   Icons.chevron_right,
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   size: 18,
                 ),
               ],

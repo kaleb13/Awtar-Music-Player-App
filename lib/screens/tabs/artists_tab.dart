@@ -39,7 +39,10 @@ class ArtistsTab extends ConsumerWidget {
     final artistColors = ref.watch(
       libraryProvider.select((s) => s.artistColors),
     );
-    final songs = ref.watch(libraryProvider.select((s) => s.songs));
+    final songMap = ref.watch(libraryProvider.select((s) => s.songMap));
+    final defaultSong =
+        ref.watch(libraryProvider.select((s) => s.songs.firstOrNull)) ??
+        Song(id: 0, title: "", url: "", artist: "", duration: 0, lyrics: []);
 
     if (permissionStatus != LibraryPermissionStatus.granted) {
       return Center(
@@ -101,19 +104,7 @@ class ArtistsTab extends ConsumerWidget {
       itemBuilder: (context, index) {
         final artist = artists[index];
         final representativeSongId = representativeArtistSongs[artist.artist];
-        final artistSong = songs.firstWhere(
-          (s) => s.id == representativeSongId,
-          orElse: () => songs.isNotEmpty
-              ? songs.first
-              : Song(
-                  id: 0,
-                  title: "",
-                  url: "",
-                  artist: "",
-                  duration: 0,
-                  lyrics: [],
-                ),
-        );
+        final artistSong = songMap[representativeSongId] ?? defaultSong;
 
         return AppPremiumCard(
           title: artist.artist,

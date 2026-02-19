@@ -332,7 +332,7 @@ class PlaylistDialogs {
                 hintStyle: const TextStyle(color: Colors.white38),
                 enabledBorder: UnderlineInputBorder(
                   borderSide: BorderSide(
-                    color: AppColors.accentBlue.withOpacity(0.5),
+                    color: AppColors.accentBlue.withValues(alpha: 0.5),
                   ),
                 ),
                 focusedBorder: const UnderlineInputBorder(
@@ -484,3 +484,4 @@ class PlaylistDialogs {
     );
   }
 }
+

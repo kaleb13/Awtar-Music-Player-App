@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:storage_space/storage_space.dart';
 import 'dart:io';
@@ -50,7 +51,7 @@ class StorageNotifier extends StateNotifier<StorageState> {
         ),
       );
     } catch (e) {
-      print("Error getting internal storage: $e");
+      debugPrint("Error getting internal storage: $e");
     }
 
     // 2. SD Card (Simplified detection for now)
@@ -77,7 +78,7 @@ class StorageNotifier extends StateNotifier<StorageState> {
         }
       }
     } catch (e) {
-      print("Error detecting SD card: $e");
+      debugPrint("Error detecting SD card: $e");
     }
 
     results.add(

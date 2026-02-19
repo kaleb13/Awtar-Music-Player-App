@@ -145,7 +145,7 @@ class PlaylistDetailsScreen extends ConsumerWidget {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(0.8),
+                          Colors.black.withValues(alpha: 0.8),
                         ],
                       ),
                     ),
@@ -164,7 +164,7 @@ class PlaylistDetailsScreen extends ConsumerWidget {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
+                              color: Colors.black.withValues(alpha: 0.3),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -254,7 +254,7 @@ class PlaylistDetailsScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(30),
                       ),
                       elevation: 4,
-                      shadowColor: AppColors.accentBlue.withOpacity(0.3),
+                      shadowColor: AppColors.accentBlue.withValues(alpha: 0.3),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -307,3 +307,4 @@ class PlaylistDetailsScreen extends ConsumerWidget {
     );
   }
 }
+

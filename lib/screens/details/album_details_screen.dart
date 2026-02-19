@@ -122,8 +122,8 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.mainDarkLight.withOpacity(0.92),
-                    AppColors.mainDark.withOpacity(0.92),
+                    AppColors.mainDarkLight.withValues(alpha: 0.92),
+                    AppColors.mainDark.withValues(alpha: 0.92),
                   ],
                 ),
               ),
@@ -171,12 +171,12 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(50),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   width: 2,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
+                                    color: Colors.black.withValues(alpha: 0.3),
                                     blurRadius: 20,
                                     offset: const Offset(0, 10),
                                   ),
@@ -202,7 +202,7 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
                                   4,
                                 ), // Perforation Gap
                                 decoration: BoxDecoration(
-                                  color: AppColors.mainDark.withOpacity(0.5),
+                                  color: AppColors.mainDark.withValues(alpha: 0.5),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Container(
@@ -213,7 +213,7 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: _dominantColor.withOpacity(0.4),
+                                        color: _dominantColor.withValues(alpha: 0.4),
                                         blurRadius: 15,
                                         spreadRadius: 2,
                                       ),
@@ -271,7 +271,7 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
                               Text(
                                 widget.artist,
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.6),
+                                  color: Colors.white.withValues(alpha: 0.6),
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -280,7 +280,7 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
                               Text(
                                 "${albumSongs.length} Tracks",
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.4),
+                                  color: Colors.white.withValues(alpha: 0.4),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -317,3 +317,4 @@ class _AlbumDetailsScreenState extends ConsumerState<AlbumDetailsScreen> {
     );
   }
 }
+

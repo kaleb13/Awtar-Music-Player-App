@@ -55,12 +55,12 @@ class StorageFoldersScreen extends ConsumerWidget {
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.03),
+                                color: Colors.white.withValues(alpha: 0.03),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: isExcluded
-                                      ? Colors.white.withOpacity(0.05)
-                                      : AppColors.accentBlue.withOpacity(0.1),
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : AppColors.accentBlue.withValues(alpha: 0.1),
                                   width: 1,
                                 ),
                               ),
@@ -73,8 +73,8 @@ class StorageFoldersScreen extends ConsumerWidget {
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
                                     color: isExcluded
-                                        ? Colors.white.withOpacity(0.05)
-                                        : AppColors.accentBlue.withOpacity(
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : AppColors.accentBlue.withValues(alpha: 
                                             0.1,
                                           ),
                                     borderRadius: BorderRadius.circular(10),
@@ -115,7 +115,7 @@ class StorageFoldersScreen extends ConsumerWidget {
                                     activeThumbColor: AppColors.accentBlue,
                                     inactiveThumbColor: Colors.white24,
                                     inactiveTrackColor: Colors.white
-                                        .withOpacity(0.1),
+                                        .withValues(alpha: 0.1),
                                     onChanged: (value) async {
                                       await ref
                                           .read(libraryProvider.notifier)
@@ -207,3 +207,4 @@ class StorageFoldersScreen extends ConsumerWidget {
     );
   }
 }
+

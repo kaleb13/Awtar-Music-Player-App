@@ -13,6 +13,12 @@ class DatabaseService {
     return _db!;
   }
 
+  /// Pre-open the database during main() so that the first
+  /// getAllSongs() call is instant instead of cold-opening.
+  static Future<void> warmUp() async {
+    await database;
+  }
+
   static Future<Database> _initDb() async {
     final path = join(await getDatabasesPath(), 'awtar_library.db');
     return await openDatabase(
@@ -98,14 +104,13 @@ class DatabaseService {
     );
   }
 
-  // Songs
+  // Songs — incremental upsert: insert/update changed songs, delete removed ones.
   static Future<void> saveSongs(List<Song> songs) async {
+    if (songs.isEmpty) return;
     final db = await database;
-    await db.transaction((txn) async {
-      // Clear all songs and related data before saving the new list
-      // This ensures that songs from excluded folders are removed from DB
-      await txn.delete('songs');
 
+    await db.transaction((txn) async {
+      // 1. Upsert all incoming songs (INSERT OR REPLACE handles both new and updated)
       final batch = txn.batch();
       for (final song in songs) {
         batch.insert('songs', {
@@ -124,6 +129,23 @@ class DatabaseService {
         }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
       await batch.commit(noResult: true);
+
+      // 2. Delete songs that are no longer in the library (e.g. excluded folders)
+      final incomingIds = songs.map((s) => s.id).toSet();
+      final existingMaps = await txn.query('songs', columns: ['id']);
+      final toDelete = existingMaps
+          .map((m) => m['id'] as int)
+          .where((id) => !incomingIds.contains(id))
+          .toList();
+
+      if (toDelete.isNotEmpty) {
+        final placeholders = List.filled(toDelete.length, '?').join(',');
+        await txn.delete(
+          'songs',
+          where: 'id IN ($placeholders)',
+          whereArgs: toDelete,
+        );
+      }
     });
   }
 

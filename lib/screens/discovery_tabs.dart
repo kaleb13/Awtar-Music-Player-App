@@ -153,10 +153,10 @@ class _RemixCapsule extends ConsumerWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(100),
               border: Border.all(
-                color: AppColors.accentBlue.withOpacity(0.8),
+                color: AppColors.accentBlue.withValues(alpha: 0.8),
                 width: 2,
               ),
-              color: Colors.white.withOpacity(0.03),
+              color: Colors.white.withValues(alpha: 0.03),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -202,7 +202,7 @@ class _RemixCapsule extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -283,7 +283,7 @@ Widget _buildComingSoonState({
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppColors.accentBlue.withOpacity(0.1),
+                color: AppColors.accentBlue.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: AppColors.accentBlue, size: 64),
@@ -319,3 +319,4 @@ Widget _buildComingSoonState({
     ),
   );
 }
+

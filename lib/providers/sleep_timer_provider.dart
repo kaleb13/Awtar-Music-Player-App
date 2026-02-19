@@ -105,3 +105,4 @@ final sleepTimerProvider =
     StateNotifierProvider<SleepTimerNotifier, SleepTimerState>((ref) {
       return SleepTimerNotifier(ref);
     });
+

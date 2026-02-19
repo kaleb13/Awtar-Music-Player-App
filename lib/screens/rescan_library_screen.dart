@@ -41,10 +41,10 @@ class RescanLibraryScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
-                        color: AppColors.accentBlue.withOpacity(0.05),
+                        color: AppColors.accentBlue.withValues(alpha: 0.05),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: AppColors.accentBlue.withOpacity(0.1),
+                          color: AppColors.accentBlue.withValues(alpha: 0.1),
                           width: 2,
                         ),
                       ),
@@ -141,3 +141,4 @@ class RescanLibraryScreen extends ConsumerWidget {
     );
   }
 }
+

@@ -99,3 +99,4 @@ final searchResultsProvider = Provider<SearchResult>((ref) {
     albums: filteredAlbums,
   );
 });
+

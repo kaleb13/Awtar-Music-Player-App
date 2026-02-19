@@ -85,7 +85,10 @@ class AlbumsTab extends ConsumerWidget {
     final representativeAlbumSongs = ref.watch(
       libraryProvider.select((s) => s.representativeAlbumSongs),
     );
-    final songs = ref.watch(libraryProvider.select((s) => s.songs));
+    final songMap = ref.watch(libraryProvider.select((s) => s.songMap));
+    final defaultSong =
+        ref.watch(libraryProvider.select((s) => s.songs.firstOrNull)) ??
+        Song(id: 0, title: "", url: "", artist: "", duration: 0, lyrics: []);
 
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 180),
@@ -102,19 +105,7 @@ class AlbumsTab extends ConsumerWidget {
         final isSelected = selectedIds.contains(albumKey);
 
         final representativeSongId = representativeAlbumSongs[albumKey];
-        final albumSong = songs.firstWhere(
-          (s) => s.id == representativeSongId,
-          orElse: () => songs.isNotEmpty
-              ? songs.first
-              : Song(
-                  id: 0,
-                  title: "",
-                  url: "",
-                  artist: "",
-                  duration: 0,
-                  lyrics: [],
-                ),
-        );
+        final albumSong = songMap[representativeSongId] ?? defaultSong;
 
         return Stack(
           children: [
@@ -202,7 +193,7 @@ class AlbumsTab extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: isSelected
                         ? AppColors.accentBlue
-                        : Colors.black.withOpacity(0.5),
+                        : Colors.black.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 1.5),
                   ),

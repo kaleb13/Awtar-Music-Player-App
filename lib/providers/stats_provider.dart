@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -126,14 +127,21 @@ class PlayStats {
 
 class StatsNotifier extends StateNotifier<PlayStats> {
   final SharedPreferences _prefs;
+  Timer? _saveTimer;
 
   StatsNotifier(this._prefs) : super(PlayStats()) {
     _load();
   }
 
+  @override
+  void dispose() {
+    _saveTimer?.cancel();
+    super.dispose();
+  }
+
   void updateState(PlayStats newState) {
     state = newState;
-    _save();
+    _debouncedSave();
   }
 
   void _load() {
@@ -143,8 +151,13 @@ class StatsNotifier extends StateNotifier<PlayStats> {
     }
   }
 
-  Future<void> _save() async {
-    await _prefs.setString('play_stats', jsonEncode(state.toMap()));
+  /// Debounced save — waits 3 seconds after the last update before writing.
+  /// This prevents hammering SharedPreferences when skipping through songs.
+  void _debouncedSave() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(seconds: 3), () {
+      _prefs.setString('play_stats', jsonEncode(state.toMap()));
+    });
   }
 
   void recordPlay(int songId, String artist, String album) {
@@ -183,7 +196,7 @@ class StatsNotifier extends StateNotifier<PlayStats> {
       weeklyPlays: weekCounts,
       monthlyPlays: monthCounts,
     );
-    _save();
+    _debouncedSave();
   }
 
   void recordDuration(int songId, String artist, String album, int seconds) {
@@ -205,10 +218,11 @@ class StatsNotifier extends StateNotifier<PlayStats> {
       weeklyPlays: state.weeklyPlays,
       monthlyPlays: state.monthlyPlays,
     );
-    _save();
+    _debouncedSave();
   }
 }
 
 final statsProvider = StateNotifierProvider<StatsNotifier, PlayStats>((ref) {
   throw UnimplementedError('Initialize this in main with SharedPreferences');
 });
+

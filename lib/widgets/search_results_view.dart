@@ -166,7 +166,7 @@ class SearchResultsView extends ConsumerWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: AppColors.accentBlue.withOpacity(0.3),
+                            color: AppColors.accentBlue.withValues(alpha: 0.3),
                             width: 2,
                           ),
                         ),
@@ -210,9 +210,10 @@ class SearchResultsView extends ConsumerWidget {
         title,
         style: AppTextStyles.caption.copyWith(
           letterSpacing: 2,
-          color: Colors.white.withOpacity(0.5),
+          color: Colors.white.withValues(alpha: 0.5),
         ),
       ),
     );
   }
 }
+

@@ -372,7 +372,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                           "No lyrics available",
                           style: GoogleFonts.outfit(
                             fontSize: 18,
-                            color: Colors.grey.withOpacity(0.5),
+                            color: Colors.grey.withValues(alpha: 0.5),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -453,7 +453,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                                                           isCurrent
                                                       ? Colors.white
                                                       : Colors.white
-                                                            .withOpacity(0.35),
+                                                            .withValues(alpha: 0.35),
                                                 ),
                                               ),
                                             ),
@@ -523,7 +523,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                           enabledThumbRadius: 4,
                         ),
                         activeTrackColor: Colors.white,
-                        inactiveTrackColor: Colors.grey.withOpacity(0.3),
+                        inactiveTrackColor: Colors.grey.withValues(alpha: 0.3),
                         thumbColor: Colors.white,
                       ),
                       child: Slider(
@@ -544,7 +544,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -562,3 +562,4 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
     );
   }
 }
+

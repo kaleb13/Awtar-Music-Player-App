@@ -30,3 +30,4 @@ enum MainTab { home, discover, collection }
 final mainTabProvider = StateProvider<MainTab>((ref) => MainTab.home);
 
 final bottomNavVisibleProvider = StateProvider<bool>((ref) => true);
+

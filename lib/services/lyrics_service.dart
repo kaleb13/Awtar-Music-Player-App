@@ -3,12 +3,19 @@ import '../models/song.dart';
 import 'database_service.dart';
 
 class LyricsService {
+  static const int _maxCacheSize = 500;
+  // LinkedHashMap preserves insertion order for LRU eviction
   static final Map<int, List<LyricLine>> _cache = {};
 
   static List<LyricLine>? peekCache(int songId) => _cache[songId];
 
   static void updateCache(int songId, List<LyricLine> lyrics) {
+    _cache.remove(songId); // Remove to re-insert at end (most-recently-used)
     _cache[songId] = lyrics;
+    // Evict oldest entries if over limit
+    while (_cache.length > _maxCacheSize) {
+      _cache.remove(_cache.keys.first);
+    }
   }
 
   static void invalidateCache(int songId) {
@@ -137,3 +144,4 @@ class LyricsService {
     _cache.addAll(lyricsMap);
   }
 }
+

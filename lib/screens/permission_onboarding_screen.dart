@@ -170,7 +170,7 @@ class _PermissionOnboardingScreenState
                         decoration: BoxDecoration(
                           color: index <= _currentStep
                               ? AppColors.accentBlue
-                              : Colors.white.withOpacity(0.2),
+                              : Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -208,7 +208,7 @@ class _PermissionOnboardingScreenState
                           foregroundColor: Colors.black,
                           elevation: 8,
                           shadowColor: _permissionSteps[_currentStep].color
-                              .withOpacity(0.5),
+                              .withValues(alpha: 0.5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -236,7 +236,7 @@ class _PermissionOnboardingScreenState
                               ? 'Skip & Continue'
                               : 'Skip for Now',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -263,9 +263,9 @@ class _PermissionOnboardingScreenState
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: step.color.withOpacity(0.15),
+              color: step.color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
-              border: Border.all(color: step.color.withOpacity(0.3), width: 2),
+              border: Border.all(color: step.color.withValues(alpha: 0.3), width: 2),
             ),
             child: Icon(step.icon, size: 60, color: step.color),
           ),
@@ -290,7 +290,7 @@ class _PermissionOnboardingScreenState
           Text(
             step.description,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               fontSize: 16,
               height: 1.5,
             ),
@@ -304,13 +304,13 @@ class _PermissionOnboardingScreenState
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: step.isRequired
-                  ? Colors.red.withOpacity(0.2)
-                  : Colors.blue.withOpacity(0.2),
+                  ? Colors.red.withValues(alpha: 0.2)
+                  : Colors.blue.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: step.isRequired
-                    ? Colors.red.withOpacity(0.5)
-                    : Colors.blue.withOpacity(0.5),
+                    ? Colors.red.withValues(alpha: 0.5)
+                    : Colors.blue.withValues(alpha: 0.5),
                 width: 1,
               ),
             ),
@@ -347,3 +347,4 @@ class PermissionStep {
     required this.isRequired,
   });
 }
+

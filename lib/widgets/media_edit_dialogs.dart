@@ -55,7 +55,7 @@ class MediaEditDialogs {
                   showEditLyrics(context, ref, song);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentBlue.withOpacity(0.1),
+                  backgroundColor: AppColors.accentBlue.withValues(alpha: 0.1),
                   foregroundColor: AppColors.accentBlue,
                   elevation: 0,
                 ),
@@ -346,7 +346,7 @@ class MediaEditDialogs {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white10),
       ),
@@ -364,7 +364,7 @@ class MediaEditDialogs {
               Text(
                 "Search Lyrics Online",
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5,
@@ -379,7 +379,7 @@ class MediaEditDialogs {
                 child: ElevatedButton(
                   onPressed: () => _launchLyricSearch(song, titleSource),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentBlue.withOpacity(0.1),
+                    backgroundColor: AppColors.accentBlue.withValues(alpha: 0.1),
                     foregroundColor: AppColors.accentBlue,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -444,3 +444,4 @@ class MediaEditDialogs {
     );
   }
 }
+

@@ -20,6 +20,7 @@ import '../screens/reload_metadata_screen.dart';
 import '../screens/hidden_assets_screen.dart';
 import '../screens/rescan_library_screen.dart';
 import 'playlist_dialogs.dart';
+import '../screens/details/album_details_screen.dart';
 
 class AppPlayButton extends StatelessWidget {
   final bool isPlaying;
@@ -97,7 +98,7 @@ class AppIconButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: child,
@@ -136,7 +137,7 @@ class AppProgressBar extends StatelessWidget {
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
         overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
         activeTrackColor: activeColor,
-        inactiveTrackColor: activeColor.withOpacity(0.1),
+        inactiveTrackColor: activeColor.withValues(alpha: 0.1),
         thumbColor: activeColor,
       ),
       child: Slider(
@@ -286,7 +287,10 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
         borderRadius: widget.isCircular
             ? null
             : BorderRadius.circular(borderRadiusOuter),
-        border: Border.all(color: borderColor.withOpacity(0.9), width: 2.2),
+        border: Border.all(
+          color: borderColor.withValues(alpha: 0.9),
+          width: 2.2,
+        ),
       ),
       padding: const EdgeInsets.all(5),
       child: ClipRRect(
@@ -369,7 +373,9 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.2,
+                                      ),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     ),
@@ -413,7 +419,7 @@ class _AppPremiumCardState extends State<AppPremiumCard> {
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.caption.copyWith(
                       fontSize: 10,
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                     ),
                   ),
                 ],
@@ -544,19 +550,19 @@ class _AppMenuButtonState extends ConsumerState<AppMenuButton> {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
           color: _isOpen
-              ? AppColors.accentBlue.withOpacity(0.15)
-              : AppColors.surfacePopover.withOpacity(0.4),
+              ? AppColors.accentBlue.withValues(alpha: 0.15)
+              : AppColors.surfacePopover.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _isOpen
-                ? AppColors.accentBlue.withOpacity(0.4)
-                : Colors.white.withOpacity(0.05),
+                ? AppColors.accentBlue.withValues(alpha: 0.4)
+                : Colors.white.withValues(alpha: 0.05),
             width: 1,
           ),
           boxShadow: [
             if (_isOpen)
               BoxShadow(
-                color: AppColors.accentBlue.withOpacity(0.1),
+                color: AppColors.accentBlue.withValues(alpha: 0.1),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -564,7 +570,9 @@ class _AppMenuButtonState extends ConsumerState<AppMenuButton> {
         ),
         child: Icon(
           Icons.more_horiz,
-          color: _isOpen ? AppColors.accentBlue : Colors.white.withOpacity(0.5),
+          color: _isOpen
+              ? AppColors.accentBlue
+              : Colors.white.withValues(alpha: 0.5),
           size: 14,
         ),
       ),
@@ -645,18 +653,18 @@ class AppSummaryItem extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.08),
-                Colors.white.withOpacity(0.02),
+                Colors.white.withValues(alpha: 0.08),
+                Colors.white.withValues(alpha: 0.02),
               ],
             ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white.withValues(alpha: 0.08),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -674,7 +682,7 @@ class AppSummaryItem extends StatelessWidget {
                       letterSpacing: 1.5,
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                     ),
                   ),
                   Icon(
@@ -682,7 +690,7 @@ class AppSummaryItem extends StatelessWidget {
                         ? Icons.analytics_outlined
                         : Icons.show_chart,
                     size: 14,
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                   ),
                 ],
               ),
@@ -712,14 +720,14 @@ class AppSummaryItem extends StatelessWidget {
                             (isTrendPositive
                                     ? AppColors.accentBlue
                                     : Colors.redAccent)
-                                .withOpacity(0.15),
+                                .withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color:
                               (isTrendPositive
                                       ? AppColors.accentBlue
                                       : Colors.redAccent)
-                                  .withOpacity(0.2),
+                                  .withValues(alpha: 0.2),
                           width: 1,
                         ),
                       ),
@@ -823,7 +831,7 @@ class _AppMiniPlayerState extends State<AppMiniPlayer> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -852,7 +860,7 @@ class _AppMiniPlayerState extends State<AppMiniPlayer> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: borderColor.withOpacity(0.9),
+                          color: borderColor.withValues(alpha: 0.9),
                           width: 2.0,
                         ),
                       ),
@@ -918,7 +926,18 @@ class AppTopBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentTab = ref.watch(mainTabProvider);
     final homeTab = ref.watch(homeTabProvider);
-    final libraryState = ref.watch(libraryProvider);
+    // 1. WATCH ONLY WHAT IS NEEDED FOR THE UI DISPATCH
+    // This prevents AppTopBar (which is on every screen) from rebuilding
+    // several times per second during background library scans.
+    final hideSmallAlbums = ref.watch(
+      libraryProvider.select((s) => s.hideSmallAlbums),
+    );
+    final hideSmallArtists = ref.watch(
+      libraryProvider.select((s) => s.hideSmallArtists),
+    );
+    final hideUnknownArtist = ref.watch(
+      libraryProvider.select((s) => s.hideUnknownArtist),
+    );
 
     // Dynamic Title Logic
     String title = "Home";
@@ -960,7 +979,8 @@ class AppTopBar extends ConsumerWidget {
                     tooltip: "Play Selected",
                     onPressed: () {
                       if (selectedIds.isNotEmpty) {
-                        final selectedAlbums = libraryState.albums
+                        final lib = ref.read(libraryProvider);
+                        final selectedAlbums = lib.albums
                             .where(
                               (a) => selectedIds.contains(
                                 "${a.album}_${a.artist}",
@@ -970,7 +990,7 @@ class AppTopBar extends ConsumerWidget {
                         final songs = <Song>[];
                         for (final album in selectedAlbums) {
                           songs.addAll(
-                            libraryState.songs.where(
+                            lib.songs.where(
                               (s) =>
                                   s.album == album.album &&
                                   s.artist == album.artist,
@@ -996,7 +1016,8 @@ class AppTopBar extends ConsumerWidget {
                     tooltip: "Play Next",
                     onPressed: () {
                       if (selectedIds.isNotEmpty) {
-                        final selectedAlbums = libraryState.albums
+                        final lib = ref.read(libraryProvider);
+                        final selectedAlbums = lib.albums
                             .where(
                               (a) => selectedIds.contains(
                                 "${a.album}_${a.artist}",
@@ -1006,7 +1027,7 @@ class AppTopBar extends ConsumerWidget {
                         final songs = <Song>[];
                         for (final album in selectedAlbums) {
                           songs.addAll(
-                            libraryState.songs.where(
+                            lib.songs.where(
                               (s) =>
                                   s.album == album.album &&
                                   s.artist == album.artist,
@@ -1064,27 +1085,26 @@ class AppTopBar extends ConsumerWidget {
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, color: Colors.white),
                   onSelected: (value) {
+                    final lib = ref.read(libraryProvider);
                     if (value == 'select_mode') {
                       ref.read(isAlbumSelectionModeProvider.notifier).state =
                           true;
                     } else if (value == 'shuffle_all') {
-                      final visibleAlbums = libraryState.albums
+                      final visibleAlbums = lib.albums
                           .where(
-                            (a) => !libraryState.hiddenAlbums.contains(
+                            (a) => !lib.hiddenAlbums.contains(
                               "${a.album}_${a.artist}",
                             ),
                           )
                           .where(
-                            (a) =>
-                                !libraryState.hideSmallAlbums ||
-                                a.numberOfSongs >= 3,
+                            (a) => !lib.hideSmallAlbums || a.numberOfSongs >= 3,
                           )
                           .toList();
 
                       final allSongs = <Song>[];
                       for (final album in visibleAlbums) {
                         allSongs.addAll(
-                          libraryState.songs.where(
+                          lib.songs.where(
                             (s) =>
                                 s.album == album.album &&
                                 s.artist == album.artist,
@@ -1128,7 +1148,7 @@ class AppTopBar extends ConsumerWidget {
                                   fontSize: 12,
                                 ),
                               ),
-                              value: libraryState.hideSmallAlbums,
+                              value: hideSmallAlbums,
                               activeColor: AppColors.accentBlue,
                               contentPadding: EdgeInsets.zero,
                               onChanged: (val) {
@@ -1221,7 +1241,7 @@ class AppTopBar extends ConsumerWidget {
                           "Less than 3 songs",
                           style: TextStyle(color: Colors.white54, fontSize: 11),
                         ),
-                        value: libraryState.hideSmallArtists,
+                        value: hideSmallArtists,
                         activeColor: AppColors.accentBlue,
                         contentPadding: EdgeInsets.zero,
                         onChanged: (val) {
@@ -1243,7 +1263,7 @@ class AppTopBar extends ConsumerWidget {
                           "Hide 'Unknown' Artist",
                           style: TextStyle(color: Colors.white, fontSize: 13),
                         ),
-                        value: libraryState.hideUnknownArtist,
+                        value: hideUnknownArtist,
                         activeColor: AppColors.accentBlue,
                         contentPadding: EdgeInsets.zero,
                         onChanged: (val) {
@@ -1423,9 +1443,12 @@ class _AppSearchBarState extends ConsumerState<AppSearchBar> {
         child: Container(
           height: 48,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 1,
+            ),
           ),
           child: TextField(
             controller: _controller,
@@ -1438,7 +1461,7 @@ class _AppSearchBarState extends ConsumerState<AppSearchBar> {
             decoration: InputDecoration(
               hintText: "Search songs, artists, albums...",
               hintStyle: TextStyle(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
                 fontSize: 14,
               ),
               prefixIcon: Padding(
@@ -1446,7 +1469,7 @@ class _AppSearchBarState extends ConsumerState<AppSearchBar> {
                 child: SvgPicture.asset(
                   AppAssets.search,
                   colorFilter: ColorFilter.mode(
-                    Colors.white.withOpacity(0.3),
+                    Colors.white.withValues(alpha: 0.3),
                     BlendMode.srcIn,
                   ),
                 ),
@@ -1487,8 +1510,8 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
 
   @override
   Widget build(BuildContext context) {
-    final libraryState = ref.watch(libraryProvider);
-    final bannerSong = libraryState.bannerSong;
+    final bannerSong = ref.watch(libraryProvider.select((s) => s.bannerSong));
+
     ref.listen<Song?>(libraryProvider.select((s) => s.bannerSong), (
       prev,
       next,
@@ -1531,7 +1554,8 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
     return GestureDetector(
       onTap: () {
         if (bannerSong.album != null) {
-          final albumSongs = libraryState.songs
+          final songs = ref.read(libraryProvider).songs;
+          final albumSongs = songs
               .where(
                 (s) =>
                     s.album == bannerSong.album &&
@@ -1556,6 +1580,69 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
         // Fallback or if album is null
         ref.read(playerProvider.notifier).play(bannerSong);
       },
+      onLongPress: () {
+        final pinnedId = ref.read(libraryProvider).pinnedSongId;
+        final isPinned = pinnedId == bannerSong.id;
+
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (context) => Container(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            decoration: BoxDecoration(
+              color: AppColors.mainDark,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                if (isPinned)
+                  AppModalItem(
+                    icon: Icons.push_pin,
+                    label: "Unpin the music",
+                    onTap: () {
+                      ref
+                          .read(libraryProvider.notifier)
+                          .togglePinToBanner(bannerSong);
+                      Navigator.pop(context);
+                    },
+                  ),
+                AppModalItem(
+                  icon: Icons.album_outlined,
+                  label: "Go to music options",
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (bannerSong.album != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AlbumDetailsScreen(
+                            title: bannerSong.album!,
+                            artist: bannerSong.artist,
+                            imageUrl: bannerSong.albumArt ?? "",
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
       child: Container(
         width: double.infinity,
         height: 180,
@@ -1563,12 +1650,15 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
           ],
-          border: Border.all(color: borderColor.withOpacity(0.9), width: 2.5),
+          border: Border.all(
+            color: borderColor.withValues(alpha: 0.9),
+            width: 2.5,
+          ),
         ),
         padding: const EdgeInsets.all(5),
         child: ClipRRect(
@@ -1597,8 +1687,8 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        Colors.black.withOpacity(0.85),
-                        Colors.black.withOpacity(0.4),
+                        Colors.black.withValues(alpha: 0.85),
+                        Colors.black.withValues(alpha: 0.4),
                         Colors.transparent,
                       ],
                       stops: const [0.0, 0.5, 1.0],
@@ -1627,7 +1717,7 @@ class _AppPromoBannerState extends ConsumerState<AppPromoBanner> {
                       Text(
                         "${bannerSong.artist} • ${bannerSong.album ?? 'Single'}${bannerSong.year != null ? ' • ${bannerSong.year}' : ''}",
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 15,
                           letterSpacing: 0.2,
                         ),
@@ -1668,7 +1758,7 @@ class AppCenteredModal extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: title,
-      barrierColor: Colors.black.withOpacity(0.7),
+      barrierColor: Colors.black.withValues(alpha: 0.7),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) =>
           AppCenteredModal(title: title, items: items),
@@ -1694,15 +1784,15 @@ class AppCenteredModal extends StatelessWidget {
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
               decoration: BoxDecoration(
-                color: AppColors.surfacePlayer.withOpacity(0.85),
+                color: AppColors.surfacePlayer.withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withValues(alpha: 0.08),
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.4),
+                    color: Colors.black.withValues(alpha: 0.4),
                     blurRadius: 40,
                     offset: const Offset(0, 15),
                   ),
@@ -1788,7 +1878,7 @@ class AppModalItem extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: (color ?? Colors.white).withOpacity(0.05),
+                  color: (color ?? Colors.white).withValues(alpha: 0.05),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color ?? Colors.white70, size: 20),
@@ -1799,7 +1889,7 @@ class AppModalItem extends StatelessWidget {
               child: Text(
                 label,
                 style: AppTextStyles.bodyMain.copyWith(
-                  color: color ?? Colors.white.withOpacity(0.9),
+                  color: color ?? Colors.white.withValues(alpha: 0.9),
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.1,
@@ -1808,7 +1898,7 @@ class AppModalItem extends StatelessWidget {
             ),
             Icon(
               Icons.chevron_right,
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               size: 16,
             ),
           ],
@@ -1835,7 +1925,7 @@ class AppMenuEntry extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: Colors.white70, size: 16),
@@ -1845,7 +1935,7 @@ class AppMenuEntry extends StatelessWidget {
           Text(
             label,
             style: AppTextStyles.bodySmall.copyWith(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -1879,12 +1969,15 @@ class AppSongTile extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: isCurrent
-            ? AppColors.accentBlue.withOpacity(0.15)
-            : Colors.white.withOpacity(0.02),
+            ? AppColors.accentBlue.withValues(alpha: 0.15)
+            : Colors.white.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(12),
         border: isCurrent
-            ? Border.all(color: AppColors.accentBlue.withOpacity(0.3), width: 1)
-            : Border.all(color: Colors.white.withOpacity(0.02), width: 1),
+            ? Border.all(
+                color: AppColors.accentBlue.withValues(alpha: 0.3),
+                width: 1,
+              )
+            : Border.all(color: Colors.white.withValues(alpha: 0.02), width: 1),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1901,7 +1994,7 @@ class AppSongTile extends ConsumerWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.accentBlue.withOpacity(0.4),
+                        color: AppColors.accentBlue.withValues(alpha: 0.4),
                         blurRadius: 8,
                         spreadRadius: 2,
                       ),
@@ -1930,7 +2023,7 @@ class AppSongTile extends ConsumerWidget {
                                   .padLeft(2, '0');
                             })(),
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.3),
+                              color: Colors.white.withValues(alpha: 0.3),
                               fontWeight: FontWeight.bold,
                             ),
                           )
@@ -1949,7 +2042,10 @@ class AppSongTile extends ConsumerWidget {
           "${song.artist} • ${song.album ?? 'Single'}${song.year != null ? ' • ${song.year}' : ''}",
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.4),
+            fontSize: 11,
+          ),
         ),
         trailing: AppMenuButton(
           menuBuilder: (context) => MediaMenuService.buildSongMenuItems(

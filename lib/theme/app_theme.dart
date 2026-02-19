@@ -75,3 +75,4 @@ class AppAssets {
   static const String play = "assets/icons/play_icon.svg";
   static const String pause = "assets/icons/pause_icon.svg";
 }
+

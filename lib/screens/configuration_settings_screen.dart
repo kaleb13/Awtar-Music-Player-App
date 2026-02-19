@@ -84,47 +84,42 @@ class _ConfigurationSettingsScreenState
                         description:
                             "Choose whether to name albums using embedded metadata or the containing folder's name.",
                         icon: Icons.album_outlined,
-                        child: Column(
-                          children: [
-                            RadioListTile<AlbumNameSource>(
-                              value: AlbumNameSource.metadata,
-                              groupValue: _tempAlbumSource,
-                              onChanged: (v) {
-                                if (v != null) {
-                                  setState(() => _tempAlbumSource = v);
-                                  _checkChanges();
-                                }
-                              },
-                              title: const Text(
-                                "Use Metadata",
-                                style: TextStyle(color: Colors.white),
+                        child: RadioGroup<AlbumNameSource>(
+                          groupValue: _tempAlbumSource,
+                          onChanged: (v) {
+                            if (v != null) {
+                              setState(() => _tempAlbumSource = v);
+                              _checkChanges();
+                            }
+                          },
+                          child: Column(
+                            children: [
+                              RadioListTile<AlbumNameSource>(
+                                value: AlbumNameSource.metadata,
+                                title: const Text(
+                                  "Use Metadata",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                subtitle: const Text(
+                                  "Standard album names from tags",
+                                  style: TextStyle(color: Colors.white54),
+                                ),
+                                activeColor: AppColors.accentBlue,
                               ),
-                              subtitle: const Text(
-                                "Standard album names from tags",
-                                style: TextStyle(color: Colors.white54),
+                              RadioListTile<AlbumNameSource>(
+                                value: AlbumNameSource.folder,
+                                title: const Text(
+                                  "Use Folder Name",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                subtitle: const Text(
+                                  "Perfect if you organize songs by folder",
+                                  style: TextStyle(color: Colors.white54),
+                                ),
+                                activeColor: AppColors.accentBlue,
                               ),
-                              activeColor: AppColors.accentBlue,
-                            ),
-                            RadioListTile<AlbumNameSource>(
-                              value: AlbumNameSource.folder,
-                              groupValue: _tempAlbumSource,
-                              onChanged: (v) {
-                                if (v != null) {
-                                  setState(() => _tempAlbumSource = v);
-                                  _checkChanges();
-                                }
-                              },
-                              title: const Text(
-                                "Use Folder Name",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              subtitle: const Text(
-                                "Perfect if you organize songs by folder",
-                                style: TextStyle(color: Colors.white54),
-                              ),
-                              activeColor: AppColors.accentBlue,
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -133,47 +128,42 @@ class _ConfigurationSettingsScreenState
                         description:
                             "Choose whether to display the song's title from its metadata or use the actual file name.",
                         icon: Icons.title,
-                        child: Column(
-                          children: [
-                            RadioListTile<TitleSource>(
-                              value: TitleSource.metadata,
-                              groupValue: _tempTitleSource,
-                              onChanged: (v) {
-                                if (v != null) {
-                                  setState(() => _tempTitleSource = v);
-                                  _checkChanges();
-                                }
-                              },
-                              title: const Text(
-                                "Use Metadata Title",
-                                style: TextStyle(color: Colors.white),
+                        child: RadioGroup<TitleSource>(
+                          groupValue: _tempTitleSource,
+                          onChanged: (v) {
+                            if (v != null) {
+                              setState(() => _tempTitleSource = v);
+                              _checkChanges();
+                            }
+                          },
+                          child: Column(
+                            children: [
+                              RadioListTile<TitleSource>(
+                                value: TitleSource.metadata,
+                                title: const Text(
+                                  "Use Metadata Title",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                subtitle: const Text(
+                                  "Titles as embedded in the file",
+                                  style: TextStyle(color: Colors.white54),
+                                ),
+                                activeColor: AppColors.accentBlue,
                               ),
-                              subtitle: const Text(
-                                "Titles as embedded in the file",
-                                style: TextStyle(color: Colors.white54),
+                              RadioListTile<TitleSource>(
+                                value: TitleSource.filename,
+                                title: const Text(
+                                  "Use File Name",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                subtitle: const Text(
+                                  "Display files by their literal names",
+                                  style: TextStyle(color: Colors.white54),
+                                ),
+                                activeColor: AppColors.accentBlue,
                               ),
-                              activeColor: AppColors.accentBlue,
-                            ),
-                            RadioListTile<TitleSource>(
-                              value: TitleSource.filename,
-                              groupValue: _tempTitleSource,
-                              onChanged: (v) {
-                                if (v != null) {
-                                  setState(() => _tempTitleSource = v);
-                                  _checkChanges();
-                                }
-                              },
-                              title: const Text(
-                                "Use File Name",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              subtitle: const Text(
-                                "Display files by their literal names",
-                                style: TextStyle(color: Colors.white54),
-                              ),
-                              activeColor: AppColors.accentBlue,
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 40),
@@ -192,8 +182,8 @@ class _ConfigurationSettingsScreenState
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               elevation: 8,
-                              shadowColor: AppColors.accentBlue.withOpacity(
-                                0.3,
+                              shadowColor: AppColors.accentBlue.withValues(
+                                alpha: 0.3,
                               ),
                             ),
                             child: const Text(
@@ -286,7 +276,7 @@ class _ConfigurationSettingsScreenState
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white10),
       ),
@@ -299,7 +289,7 @@ class _ConfigurationSettingsScreenState
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.accentBlue.withOpacity(0.1),
+                  color: AppColors.accentBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: AppColors.accentBlue, size: 24),

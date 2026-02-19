@@ -59,3 +59,4 @@ class ArtworkCacheService {
     // Real pre-fetching will happen when the UI requests these items via AppArtwork.
   }
 }
+

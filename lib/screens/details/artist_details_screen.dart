@@ -167,8 +167,8 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.mainDarkLight.withOpacity(0.9),
-                    AppColors.mainDark.withOpacity(0.9),
+                    AppColors.mainDarkLight.withValues(alpha: 0.9),
+                    AppColors.mainDark.withValues(alpha: 0.9),
                   ],
                 ),
               ),
@@ -223,7 +223,7 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                                     width: 40,
                                     height: 4,
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.1),
+                                      color: Colors.white.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(2),
                                     ),
                                   ),
@@ -264,12 +264,12 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(80),
                             border: Border.all(
-                              color: dominantColor.withOpacity(0.8),
+                              color: dominantColor.withValues(alpha: 0.8),
                               width: 3,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: dominantColor.withOpacity(0.2),
+                                color: dominantColor.withValues(alpha: 0.2),
                                 blurRadius: 20,
                                 spreadRadius: 5,
                               ),
@@ -312,7 +312,7 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                       Text(
                         "${artistSongs.length} Tracks ${artistAlbums.length} Albums",
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha: 0.5),
                           fontSize: 16,
                           letterSpacing: 0.5,
                         ),
@@ -409,7 +409,7 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                                             (libraryState
                                                         .albumColors[albumKey] ??
                                                     dominantColor)
-                                                .withOpacity(0.5),
+                                                .withValues(alpha: 0.5),
                                         width: 2,
                                       ),
                                     ),
@@ -441,7 +441,7 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.4),
+                                      color: Colors.white.withValues(alpha: 0.4),
                                       fontSize: 8,
                                     ),
                                   ),
@@ -483,10 +483,10 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
+                          color: Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.05),
+                            color: Colors.white.withValues(alpha: 0.05),
                             width: 1,
                           ),
                         ),
@@ -495,14 +495,14 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                             width: 32,
                             height: 32,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.08),
+                              color: Colors.white.withValues(alpha: 0.08),
                               shape: BoxShape.circle,
                             ),
                             child: Center(
                               child: Text(
                                 "#${index + 1}",
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.3),
+                                  color: Colors.white.withValues(alpha: 0.3),
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -520,7 +520,7 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
                           subtitle: Text(
                             "$playCount plays • ${song.album ?? 'Single'}",
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.4),
+                              color: Colors.white.withValues(alpha: 0.4),
                               fontSize: 10,
                             ),
                           ),
@@ -589,3 +589,4 @@ class _ArtistDetailsScreenState extends ConsumerState<ArtistDetailsScreen> {
     );
   }
 }
+

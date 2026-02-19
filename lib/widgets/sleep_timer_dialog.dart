@@ -38,7 +38,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
         backgroundColor: AppColors.surfacePopover,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.medium),
-          side: BorderSide(color: Colors.white.withOpacity(0.1)),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
         title: Text("Custom Duration", style: AppTextStyles.titleMedium),
         content: Column(
@@ -104,7 +104,7 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.medium),
-        side: BorderSide(color: Colors.white.withOpacity(0.1)),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
       ),
       title: Row(
         children: [
@@ -125,10 +125,10 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(AppRadius.small),
                 border: Border.all(
-                  color: AppColors.accentBlue.withOpacity(0.3),
+                  color: AppColors.accentBlue.withValues(alpha: 0.3),
                 ),
               ),
               child: Column(
@@ -222,12 +222,12 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
                   decoration: BoxDecoration(
                     color: isSelected
                         ? AppColors.accentBlue
-                        : Colors.white.withOpacity(0.05),
+                        : Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isSelected
                           ? Colors.transparent
-                          : Colors.white.withOpacity(0.1),
+                          : Colors.white.withValues(alpha: 0.1),
                     ),
                   ),
                   child: Text(
@@ -343,3 +343,4 @@ class _SleepTimerDialogState extends ConsumerState<SleepTimerDialog> {
     );
   }
 }
+

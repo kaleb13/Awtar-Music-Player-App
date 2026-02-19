@@ -624,3 +624,4 @@ final playerDurationStreamProvider = StreamProvider<Duration?>((ref) {
 final playerStateStreamProvider = StreamProvider<PlayerState>((ref) {
   return ref.watch(playerProvider.notifier).playerStateStream;
 });
+

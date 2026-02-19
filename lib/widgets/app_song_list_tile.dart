@@ -47,12 +47,12 @@ class AppSongListTile extends ConsumerWidget {
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: isActive
-              ? AppColors.accentBlue.withOpacity(0.1)
-              : Colors.white.withOpacity(0.05),
+              ? AppColors.accentBlue.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
           border: isActive
               ? Border.all(
-                  color: AppColors.accentBlue.withOpacity(0.3),
+                  color: AppColors.accentBlue.withValues(alpha: 0.3),
                   width: 1,
                 )
               : null,
@@ -90,7 +90,7 @@ class AppSongListTile extends ConsumerWidget {
                   Text(
                     song.artist,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       fontSize: 13,
                     ),
                     maxLines: 1,
@@ -103,7 +103,7 @@ class AppSongListTile extends ConsumerWidget {
             Text(
               _formatDuration(song.duration),
               style: TextStyle(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
                 fontSize: 12,
               ),
             ),
@@ -129,3 +129,4 @@ class AppSongListTile extends ConsumerWidget {
     );
   }
 }
+

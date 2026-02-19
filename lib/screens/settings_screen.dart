@@ -28,7 +28,7 @@ class SettingsScreen extends ConsumerWidget {
             if (libraryState.errorMessage != null &&
                 libraryState.errorMessage!.contains("restart"))
               Container(
-                color: Colors.red.withOpacity(0.2),
+                color: Colors.red.withValues(alpha: 0.2),
                 padding: const EdgeInsets.all(8),
                 width: double.infinity,
                 child: Text(
@@ -39,7 +39,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
             if (libraryState.completionMessage != null)
               Container(
-                color: Colors.green.withOpacity(0.2),
+                color: Colors.green.withValues(alpha: 0.2),
                 padding: const EdgeInsets.all(8),
                 width: double.infinity,
                 child: Text(
@@ -110,7 +110,7 @@ class SettingsScreen extends ConsumerWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(Icons.search, color: Colors.white),
@@ -149,7 +149,7 @@ class SettingsScreen extends ConsumerWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(Icons.refresh, color: Colors.white),
@@ -189,7 +189,7 @@ class SettingsScreen extends ConsumerWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
@@ -232,7 +232,7 @@ class SettingsScreen extends ConsumerWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
@@ -279,7 +279,7 @@ class SettingsScreen extends ConsumerWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
@@ -326,7 +326,7 @@ class SettingsScreen extends ConsumerWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
@@ -374,7 +374,7 @@ class SettingsScreen extends ConsumerWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
@@ -437,8 +437,8 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.accentBlue.withOpacity(0.1)
-              : Colors.white.withOpacity(0.1),
+              ? AppColors.accentBlue.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
@@ -459,7 +459,7 @@ class SettingsScreen extends ConsumerWidget {
         subtitle,
         style: TextStyle(
           color: isSelected
-              ? AppColors.accentBlue.withOpacity(0.7)
+              ? AppColors.accentBlue.withValues(alpha: 0.7)
               : Colors.white54,
           fontSize: 12,
         ),
@@ -499,3 +499,4 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 }
+

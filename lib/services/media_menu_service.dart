@@ -62,6 +62,15 @@ class MediaMenuService {
         label: "Share",
         onTap: () => shareSong(song),
       ),
+      AppModalItem(
+        icon: ref.read(libraryProvider).pinnedSongId == song.id
+            ? Icons.push_pin
+            : Icons.push_pin_outlined,
+        label: ref.read(libraryProvider).pinnedSongId == song.id
+            ? "Unpin from Banner"
+            : "Pin to Banner",
+        onTap: () => ref.read(libraryProvider.notifier).togglePinToBanner(song),
+      ),
     ];
   }
 
@@ -279,17 +288,15 @@ class MediaMenuService {
       _ActionData(
         null,
         "Edit",
-        () => Future.delayed(
-          Duration.zero,
-          () => MediaEditDialogs.showEditArtist(context, ref, artist),
+        () => WidgetsBinding.instance.addPostFrameCallback(
+          (_) => MediaEditDialogs.showEditArtist(context, ref, artist),
         ),
       ),
       _ActionData(
         null,
         "Delete",
-        () => Future.delayed(
-          Duration.zero,
-          () => _showDeleteArtistDialog(context, ref, artist),
+        () => WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _showDeleteArtistDialog(context, ref, artist),
         ),
       ),
       _ActionData(
@@ -375,6 +382,15 @@ class MediaMenuService {
         () => MediaEditDialogs.showEditSong(context, ref, song),
       ),
       _ActionData(Icons.share_outlined, "Share", () => shareSong(song)),
+      _ActionData(
+        ref.read(libraryProvider).pinnedSongId == song.id
+            ? Icons.push_pin
+            : Icons.push_pin_outlined,
+        ref.read(libraryProvider).pinnedSongId == song.id
+            ? "Unpin from Banner"
+            : "Pin to Banner",
+        () => ref.read(libraryProvider.notifier).togglePinToBanner(song),
+      ),
     ]);
   }
 
@@ -427,17 +443,15 @@ class MediaMenuService {
       _ActionData(
         null,
         "Edit",
-        () => Future.delayed(
-          Duration.zero,
-          () => MediaEditDialogs.showEditAlbum(context, ref, album),
+        () => WidgetsBinding.instance.addPostFrameCallback(
+          (_) => MediaEditDialogs.showEditAlbum(context, ref, album),
         ),
       ),
       _ActionData(
         null,
         "Delete",
-        () => Future.delayed(
-          Duration.zero,
-          () => _showDeleteAlbumDialog(context, ref, album),
+        () => WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _showDeleteAlbumDialog(context, ref, album),
         ),
       ),
       _ActionData(

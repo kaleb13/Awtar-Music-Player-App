@@ -79,8 +79,8 @@ class FolderDetailsScreen extends ConsumerWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.mainDarkLight.withOpacity(0.9),
-                    AppColors.mainDark.withOpacity(0.9),
+                    AppColors.mainDarkLight.withValues(alpha: 0.9),
+                    AppColors.mainDark.withValues(alpha: 0.9),
                   ],
                 ),
               ),
@@ -122,7 +122,7 @@ class FolderDetailsScreen extends ConsumerWidget {
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.05),
+                                color: Colors.white.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(
@@ -211,7 +211,7 @@ class FolderDetailsScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(40),
           bottomRight: Radius.circular(40),
@@ -232,7 +232,7 @@ class FolderDetailsScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.accentBlue.withOpacity(0.1),
+                  color: AppColors.accentBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Icon(
@@ -279,3 +279,4 @@ class FolderDetailsScreen extends ConsumerWidget {
     );
   }
 }
+

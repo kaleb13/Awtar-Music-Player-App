@@ -253,7 +253,7 @@ class _PlayerScreenContentState extends ConsumerState<PlayerScreenContent> {
                     decoration: BoxDecoration(
                       color: song.isFavorite
                           ? AppColors.accentBlue
-                          : Colors.white.withOpacity(0.05),
+                          : Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(30),
                       border: song.isFavorite
                           ? null
@@ -577,7 +577,7 @@ class _LyricsHeaderContentState extends ConsumerState<LyricsHeaderContent> {
                 vertical: 10,
               ), // Adding margin for better touch area
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -769,7 +769,7 @@ class _LyricsScreenContentState extends ConsumerState<LyricsScreenContent> {
                       child: Text(
                         "No lyrics available",
                         style: AppTextStyles.bodyMain.copyWith(
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha: 0.5),
                         ),
                       ),
                     ),
@@ -852,7 +852,7 @@ class _LyricLineItem extends ConsumerWidget {
                   fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
                   color: !isSynced || isCurrent
                       ? Colors.white
-                      : Colors.white.withOpacity(0.35),
+                      : Colors.white.withValues(alpha: 0.35),
                 ),
               ),
             ),
@@ -984,3 +984,4 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
     );
   }
 }
+
